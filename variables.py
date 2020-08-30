@@ -1,5 +1,6 @@
 nominal_vars = ['weight', 'dipho_leadIDMVA', 'dipho_subleadIDMVA','dipho_PToM', 'dipho_lead_ptoM',
                 'dipho_sublead_ptoM', 'dipho_pt',  'dipho_leadEta','dipho_subleadEta',
+                'dipho_leadPt', 'dipho_subleadPt',
                 'dijet_SubJPt', 'dijet_LeadJPt',
                 'gghMVA_n_rec_jets', 'gghMVA_leadEta', 'gghMVA_subleadEta',
                 'gghMVA_leadJPt', 'gghMVA_SubleadJPt',
