@@ -61,14 +61,11 @@ def main(options):
                 avg_val_auc = np.average(np.array(bdt_hee.validation_rocs))
                 with open('{}/bdt_hp_opt.txt'.format(mc_dir),'a+') as val_roc_file:
                     hp_roc = val_roc_file.readlines()
-                    print('line in roc: {}'.format(hp_roc))
-                    print('AVG AUC: {}'.format(avg_val_auc))
                     if len(hp_roc)==0: 
-                        val_roc_file.write('\n')
-                        val_roc_file.write('{}:{:.4f}'.format(options.hp_perm, avg_val_auc))
+                        val_roc_file.write('{};{:.4f}'.format(options.hp_perm, avg_val_auc))
                     elif float(hp_roc[-1].split(':')[-1]) < avg_val_auc:
                         val_roc_file.write('\n')
-                        val_roc_file.write('{}:{:.4f}'.format(options.hp_perm, avg_val_auc))
+                        val_roc_file.write('{};{:.4f}'.format(options.hp_perm, avg_val_auc))
                     val_roc_file.close()
            
                 
@@ -79,9 +76,22 @@ def main(options):
             bdt_hee.batch_gs_cv(k_folds=3)
 
         #else just train BDT with default HPs
+        elif options.train_best:
+            with open('{}/bdt_hp_opt.txt'.format(mc_dir),'r') as val_roc_file:
+                hp_roc = val_roc_file.readlines()
+                best_params = hp_roc[-1].split(';')[0]
+                print 'Best classifier params are: {}'.format(best_params)
+                bdt_hee.set_hyper_parameters(best_params)
+                bdt_hee.train_classifier(data_obj.mc_dir, save=True)
+                bdt_hee.compute_roc()
+                bdt_hee.plot_roc()
+                bdt_hee.plot_output_score()
+
         else:
             bdt_hee.train_classifier(data_obj.mc_dir)
             bdt_hee.compute_roc()
+           bdt_hee.plot_roc()
+           bdt_hee.plot_output_score()
 
 
 if __name__ == "__main__":

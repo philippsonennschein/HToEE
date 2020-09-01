@@ -6,7 +6,15 @@ import os
 from os import path, system
 from variables import nominal_vars, gen_vars
 from sklearn.model_selection import train_test_split, KFold
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
+
+import warnings
+import matplotlib.pyplot as plt
+try:
+     plt.style.use("cms10_6")
+except IOError:
+     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
+plt.rcParams.update({'legend.fontsize':10})
 
 class ROOTHelpers(object):
     '''
@@ -188,10 +196,12 @@ class BDTHelpers(object):
         self.w_folds_validate = []
         self.validation_rocs  = []
 
-        self.logger           = Logger()
+        #FIXME: better to formally inherit from plotter?
+        self.plotter          = Plotter(data_obj, train_vars)
+        del data_obj
         
-        
-    def train_classifier(self, file_path, save=True):
+
+    def train_classifier(self, file_path, save=False):
         if self.eq_train: train_weights = self.train_weights_eq
         else: train_weights = self.train_weights
 
@@ -287,6 +297,28 @@ class BDTHelpers(object):
         self.y_pred_test = self.clf.predict_proba(self.X_test)[:,1:]
         print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights*1000))
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights*1000)
+
+    def plot_roc(self):
+        ''' 
+        Method to plot the roc curve, using method from Plotter() class
+        '''
+        roc_fig = self.plotter.plot_roc(self.y_train, self.y_pred_train, self.train_weights, 
+                                   self.y_test, self.y_pred_test, self.test_weights)
+
+        Utils.check_dir('{}/plots'.format(os.getcwd()))
+        roc_fig.savefig('plots/ROC_curve_best_model.pdf')
+        plt.close()
+
+    def plot_output_score(self):
+        ''' 
+        Method to plot the roc curve and compute the integral of the roc as a 
+        performance metric
+        '''
+        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights)
+
+        Utils.check_dir('{}/plots'.format(os.getcwd()))
+        output_score_fig.savefig('plots/output_score_best_model.pdf')
+        plt.close()
      
     def train_old_classifier(self, file_path, save=True):
         '''
@@ -308,6 +340,116 @@ class BDTHelpers(object):
 	print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, y_pred_train, sample_weight=self.train_weights*1000))
         y_pred_test = clf.predict(testing_matrix)
         print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, y_pred_test, sample_weight=self.test_weights*1000))
+
+
+class Plotter(object):
+    '''
+    Class to plot input variables and output scores
+    Inherits from root helpers to avoid duplicating the DFs
+    '''
+    def __init__(self, data_obj, input_vars, sig_col='firebrick', sig_label='VBF', bkg_col='violet', bkg_label='DYMC',  normalise=True): 
+        self.sig_df     = data_obj.mc_df_sig
+        self.bkg_df     = data_obj.mc_df_bkg
+
+        #FIXME:
+        # feature egineering here, by calling a method from above class (should be done above really)
+        self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
+        self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
+
+        self.sig_colour = sig_col
+        self.sig_label  = sig_label
+        self.bkg_colour = bkg_col
+        self.bkg_label  = bkg_label
+        self.normalise  = normalise
+
+        self.input_vars = input_vars
+        del data_obj
+
+    def plot_input(self, var):
+        fig  = plt.figure(1)
+        axes = fig.gca()
+        
+        var_sig     = self.sig_df[var].values
+        sig_weights = self.sig_df['weight'].values
+        var_bkg     = self.bkg_df[var].values
+        bkg_weights = self.bkg_df['weight'].values
+
+        if self.normalise:
+            sig_weights /= np.sum(sig_weights)
+            bkg_weights /= np.sum(bkg_weights)
+
+        #plot with np first to get consistent ranges and  modify last bin to avoid empty space 
+        binned_data, bin_edges = np.histogram(var_sig, weights=sig_weights)
+        bkw_index=0
+        for ibin_sum in reversed(binned_data):
+            if ibin_sum < 0.05*np.sum(binned_data): bkw_index+=1
+            else: break
+        if bkw_index!=0: bin_edges = bin_edges[:-bkw_index]     
+        bins = np.linspace(bin_edges[0], bin_edges[-1], 21)
+
+        axes.hist(var_sig, bins=bins, label=self.sig_label, weights=sig_weights, histtype='step', color=self.sig_colour)
+        axes.hist(var_bkg, bins=bins, label=self.bkg_label, weights=bkg_weights, histtype='step', color=self.bkg_colour)
+
+        var_name_safe = var.replace('_',' ')
+        axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1)
+        axes.set_ylabel('Arbitrary Units', ha='right', y=1)
+        current_bottom, current_top = axes.get_ylim()
+        axes.set_ylim(bottom=0, top=current_top*1.2)
+        axes.legend(bbox_to_anchor=(0.97,0.97))
+        self.plot_cms_labels(axes)
+       
+        Utils.check_dir('{}/plots'.format(os.getcwd()))
+        fig.savefig('plots/{}.pdf'.format(var))
+        plt.close()
+
+    def plot_cms_labels(self, axes, label='Work in progress', energy='(13 TeV)'):
+        axes.text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes.transAxes)
+        axes.text(1, 1.01, r'{}'.format(energy), ha='right', va='bottom', transform=axes.transAxes)
+
+    def plot_roc(self, y_train, y_pred_train, train_weights, y_test, y_pred_test, test_weights):
+        print 'plotting ROC'
+        bkg_eff_train, sig_eff_train, _ = roc_curve(y_train, y_pred_train, sample_weight=train_weights)
+        bkg_eff_test, sig_eff_test, _ = roc_curve(y_test, y_pred_test, sample_weight=test_weights)
+
+        fig = plt.figure(1)
+        axes = fig.gca()
+        axes.plot(bkg_eff_train, sig_eff_train, color='red', label='Train')
+        axes.plot(bkg_eff_test, sig_eff_test, color='blue', label='Test')                                            
+        axes.set_xlabel('Background efficiency', ha='right', x=1)
+        axes.set_xlim((0,1))
+        axes.set_ylabel('Signal efficiency', ha='right', y=1)
+        axes.set_ylim((0,1))
+        axes.legend(bbox_to_anchor=(0.97,0.97))
+        self.plot_cms_labels(axes)
+        return fig
+
+    def plot_output_score(self, y_test, y_pred_test, test_weights):
+        fig  = plt.figure(1)
+        axes = fig.gca()
+        bins = np.linspace(0,1,31)
+
+        sig_scores = y_pred_test.ravel()  * (y_test==1)
+        sig_w_true = test_weights.ravel() * (y_test==1)
+
+        bkg_scores = y_pred_test.ravel()  * (y_test==0)
+        bkg_w_true = test_weights.ravel() * (y_test==0)
+
+
+        if self.normalise:
+            sig_w_true /= np.sum(sig_w_true)
+            bkg_w_true /= np.sum(bkg_w_true)
+
+        axes.hist(sig_scores, bins=bins, label=self.sig_label, weights=sig_w_true, histtype='step', color=self.sig_colour)
+        axes.hist(bkg_scores, bins=bins, label=self.bkg_label, weights=bkg_w_true, histtype='step', color=self.bkg_colour)
+        axes.legend(bbox_to_anchor=(0.97,0.97))
+
+        current_bottom, current_top = axes.get_ylim()
+        axes.set_ylim(bottom=0, top=current_top*1.2)
+        axes.set_ylabel('Arbitrary Units', ha='right', y=1)
+        axes.set_xlabel('BDT Score', ha='right', x=1)
+        self.plot_cms_labels(axes)
+        return fig
+
 
 class Utils(object):
     def __init__(self): pass
@@ -344,15 +486,8 @@ class Utils(object):
                     if '!CMD!' in line: line = line.replace('!CMD!', '"{}"'.format(sub_command))
                     f_sub.write(line)
 
-        system( 'qsub -o {} -e {} -q hep.q -l h_rt=3:00:00 -l h_vmem=12G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
+        system( 'qsub -o {} -e {} -q hep.q -l h_rt=1:00:00 -l h_vmem=4G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
 
-    def plot_roc(self, y_pred, y_true, weight):
-        ''' 
-        Method to plot the roc curve and compute the integral of the roc as a 
-        performance metric
-        '''
-
-        pass
 
 class Logger(object):
     '''

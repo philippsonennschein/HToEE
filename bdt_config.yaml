@@ -33,7 +33,7 @@ data_file_names:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
-     'gghMVA_leadJPt', 'gghMVA_SubleadJPt', 'dijet_abs_dEta', 'gghMVA_Mjj', 
+     'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
      'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc','dijet_centrality']
 
 #FIXME: implement this in the BDT class by calling root helper function
@@ -43,4 +43,4 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dipho_mass > 100 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dipho_leadPt > 40 and gghMVA_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'
+    'dipho_mass > 100 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'
