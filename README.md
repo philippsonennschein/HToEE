@@ -1,4 +1,4 @@
-# Training of a BDT and DNN to separate VBF (H->ee) and DYMC
+# BDTs and DNNs for VBF H->ee searches 
 
 ## BDT Training
 

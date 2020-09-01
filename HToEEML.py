@@ -345,7 +345,6 @@ class BDTHelpers(object):
 class Plotter(object):
     '''
     Class to plot input variables and output scores
-    Inherits from root helpers to avoid duplicating the DFs
     '''
     def __init__(self, data_obj, input_vars, sig_col='firebrick', sig_label='VBF', bkg_col='violet', bkg_label='DYMC',  normalise=True): 
         self.sig_df     = data_obj.mc_df_sig
