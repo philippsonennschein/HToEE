@@ -90,8 +90,8 @@ def main(options):
         else:
             bdt_hee.train_classifier(data_obj.mc_dir)
             bdt_hee.compute_roc()
-           bdt_hee.plot_roc()
-           bdt_hee.plot_output_score()
+            bdt_hee.plot_roc()
+            bdt_hee.plot_output_score()
 
 
 if __name__ == "__main__":

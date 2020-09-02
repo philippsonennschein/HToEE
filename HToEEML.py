@@ -7,14 +7,15 @@ from os import path, system
 from variables import nominal_vars, gen_vars
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, roc_curve
-
+import pickle
 import warnings
 import matplotlib.pyplot as plt
 try:
      plt.style.use("cms10_6")
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
-plt.rcParams.update({'legend.fontsize':10})
+#plt.rcParams.update({'legend.fontsize':10})
+
 
 class ROOTHelpers(object):
     '''
@@ -72,15 +73,16 @@ class ROOTHelpers(object):
             if not bkg: self.mc_df_sig.append( self.root_to_df(self.mc_dir, file_name, self.mc_trees_sig, 'sig', year) )
             else: self.mc_df_bkg.append( self.root_to_df(self.mc_dir, file_name, self.mc_trees_bkg, 'bkg', year) )
 
-    def load_data(self, file_name, year):
+    def load_data(self, year, file_name, reload_data=False):
         '''
         Try to load Data dataframe. If it doesn't exist, read in the root file.
         This should be used once per year, if reading in multiple years.
         '''
         try: 
-            self.data_df.append( self.load_df(self.data_df_dir, 'data', year) )
+            if reload_data: raise IOError
+            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames', 'data', year) )
         except IOError: 
-            self.data_df.append( self.root_to_df(self.data_dir, self.df_trees, 'data', year) )
+            self.data_df.append( self.root_to_df(self.data_dir, file_name, self.data_trees, 'data', year) )
 
     def load_df(self, df_dir, flag, year):
         df = pd.read_hdf('{}/{}_df_{}.h5'.format(df_dir, flag, year))
@@ -106,9 +108,17 @@ class ROOTHelpers(object):
         if (flag=='sig') or(flag=='bkg'): df = self.scale_by_lumi(file_name, df, year)
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
 
+
+        #FIXME:
+        # feature egineering here, by calling a method from above class
+        #using literal_eval or sth
+        df['dijet_centrality'] = np.exp(-4.*((df['dijet_Zep']/df['dijet_abs_dEta'])**2))
+
+
         Utils.check_dir(file_dir+'DataFrames/') 
         df.to_hdf('{}/{}_df_{}.h5'.format(file_dir+'DataFrames', flag, year), 'df',mode='w',format='t')
         print('Saved dataframe: {}/{}_df_{}.h5'.format(file_dir+'DataFrames', flag, year))
+
 
         return df
 
@@ -122,13 +132,22 @@ class ROOTHelpers(object):
 
 
     def concat_years(self):
-        #FIXME: add functionality concat list with more than one entry
+        '''
+        Concat years, if more than one df in the associated sig, bkg or data list.
+        If the list is empty (not reading anything), leave it empty
+        '''
         if len(self.mc_df_sig) == 1: self.mc_df_sig = self.mc_df_sig[0]
-        else: pass
-        if len(self.mc_df_bkg) ==1:  self.mc_df_bkg = self.mc_df_bkg[0] 
-        else: pass
-        if len(self.data_df) ==1:  self.data_df = self.data_df[0] 
-        else: pass 
+        elif len(self.mc_df_sig) == 0: pass
+        else: self.mc_df_sig = pd.concat(self.mc_df_sig)
+
+        if len(self.mc_df_bkg) == 1: self.mc_df_bkg = self.mc_df_bkg[0] 
+        elif len(self.mc_df_bkg) == 0: pass
+        else: self.mc_df_bkg = pd.concat(self.mc_df_bkg)
+
+        if len(self.data_df) == 1: self.data_df = self.data_df[0] 
+        elif len(self.data_df) == 0 : pass
+        else: self.data_df = pd.concat(self.data_df)
+
 
 class BDTHelpers(object):
 
@@ -152,10 +171,10 @@ class BDTHelpers(object):
 
         Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
 
-        #FIXME:
+        #FIXME: can remove this now
         # feature egineering here, by calling a method from above class
         #using literal_eval or sth
-        Z_tot['dijet_centrality'] = np.exp(-4.*((Z_tot['dijet_Zep']/Z_tot['dijet_abs_dEta'])**2))
+        #Z_tot['dijet_centrality'] = np.exp(-4.*((Z_tot['dijet_Zep']/Z_tot['dijet_abs_dEta'])**2))
 
         if not eq_weights:
             X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True)
@@ -210,8 +229,10 @@ class BDTHelpers(object):
         print 'Finished Training classifier!'
         self.clf = clf
 
-        #ROOTHelpers.check_dir(file_path + 'models')
-        #if save: clf.save_model(file_path + 'models')
+        Utils.check_dir(os.getcwd() + '/models')
+        if save:
+            pickle.dump(clf, open("{}/models/clf.pickle.dat".format(os.getcwd()), "wb"))
+            print ("Saved classifier as: {}/models/clf.pickle.dat".format(os.getcwd()))
 
     def batch_gs_cv(self, k_folds=3):
         '''
@@ -350,10 +371,10 @@ class Plotter(object):
         self.sig_df     = data_obj.mc_df_sig
         self.bkg_df     = data_obj.mc_df_bkg
 
-        #FIXME:
+        #FIXME: can remove this (done in ROOTHelpers)
         # feature egineering here, by calling a method from above class (should be done above really)
-        self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
-        self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
+        #self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
+        #self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
 
         self.sig_colour = sig_col
         self.sig_label  = sig_label
@@ -377,7 +398,7 @@ class Plotter(object):
             sig_weights /= np.sum(sig_weights)
             bkg_weights /= np.sum(bkg_weights)
 
-        #plot with np first to get consistent ranges and  modify last bin to avoid empty space 
+        #plot with np first to get consistent ranges and modify last bin to avoid empty space 
         binned_data, bin_edges = np.histogram(var_sig, weights=sig_weights)
         bkw_index=0
         for ibin_sum in reversed(binned_data):

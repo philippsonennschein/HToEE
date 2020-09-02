@@ -20,21 +20,21 @@ mc_file_names:
 
 #.root Data files for all years should be kept in this dir:
 data_file_dir:
-    '/vols/cms/jwd18/HToEESamples/Data'
+    '/vols/cms/jwd18/HToEESamples/Data/'
 
-#.root Data files for all years (bkg) should have this tree path:
+#.root Data files for all years (data) should have this tree path:
 data_tree_name:
     'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
 
 data_file_names:
     2017:
-        'Data_PAS5_2017.root'
+        'DYData_2017_PAS5.root'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
      'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
-     'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc','dijet_centrality']
+     'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
