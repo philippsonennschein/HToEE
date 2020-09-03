@@ -12,10 +12,10 @@ mc_tree_name_bkg:
 
 mc_file_names:
     sig:
-        2017:
+        '2017':
             'VBF_HToEE_2017.root'
     bkg:
-        2017:
+        '2017':
             'DYMC_2017.root'
 
 #.root Data files for all years should be kept in this dir:
@@ -27,7 +27,7 @@ data_tree_name:
     'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
 
 data_file_names:
-    2017:
+    '2017':
         'DYData_2017_PAS5.root'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
@@ -39,8 +39,8 @@ train_vars:
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
     dijet_centrality:
-        'np.exp(-4.*((dijet_Zep/dijet_abs_dEta)**2))'
+        'np.exp(-4*((#dijet_Zep#/#dijet_abs_dEta#)**2))'
 
 #preselection that will be applied to all samples
 preselection:
-    'dipho_mass > 100 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'
+    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'

@@ -182,16 +182,19 @@ class CatOptim:
                 sigWeights = sigWeights * (self.sigDiscrims[name]<cuts[name][iCat+1])
                 bkgWeights = bkgWeights * (self.bkgDiscrims[name]<cuts[name][iCat+1])
               if self.addNonSig: nonSigWeights = nonSigWeights * (self.nonSigDiscrims[name]<cuts[name][iCat+1])
-        sigHist = r.TH1F('sigHistTemp',';m_{#ee}; Entries',160,100,180)
+        #sigHist = r.TH1F('sigHistTemp',';m_{#ee}; Entries',160,100,180)
+        sigHist = r.TH1F('sigHistTemp',';m_{#ee}; Entries',160,110,150)
         fill_hist(sigHist, self.sigMass, weights=sigWeights)
         sigCount = 0.68 * lumi * sigHist.Integral() 
         sigWidth = self.getRealSigma(sigHist)
-        bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,60,180)
+        #bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,100,180)
+        bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,110,150)
         histHolder[iCat] = bkgHist  
         fill_hist(bkgHist, self.bkgMass, weights=bkgWeights)
         bkgCount = self.computeBkg(bkgHist, sigWidth)
         if self.addNonSig:
-          nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,100,180)
+          #nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,100,180)
+          nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,110,150)
           fill_hist(nonSigHist, self.nonSigMass, weights=nonSigWeights)
           nonSigCount = 0.68 * lumi * nonSigHist.Integral() 
         else:
@@ -240,15 +243,18 @@ class CatOptim:
                   sigWeights = sigWeights * (self.sigDiscrims[jname]<cuts[jname][jCat+1])
                   bkgWeights = bkgWeights * (self.bkgDiscrims[jname]<cuts[jname][jCat+1])
                   if self.addNonSig: nonSigWeights = nonSigWeights * (self.nonSigDiscrims[jname]<cuts[jname][jCat+1])
-            sigHist = r.TH1F('sigHistTemp','sigHistTemp',160,100,180)
+            #sigHist = r.TH1F('sigHistTemp','sigHistTemp',160,100,180)
+            sigHist = r.TH1F('sigHistTemp','sigHistTemp',160,110,150)
             fill_hist(sigHist, self.sigMass, weights=sigWeights)
             sigCount = 0.68 * lumi * sigHist.Integral() 
             sigWidth = self.getRealSigma(sigHist)
-            bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,100,180)
+            #bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,100,180)
+            bkgHist = r.TH1F('bkgHistTemp','bkgHistTemp',160,110,150)
             fill_hist(bkgHist, self.bkgMass, weights=bkgWeights)
             bkgCount = self.computeBkg(bkgHist, sigWidth)
             if self.addNonSig:
-              nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,100,180)
+              #nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,100,180)
+              nonSigHist = r.TH1F('nonSigHistTemp','nonSigHistTemp',160,110,150)
               fill_hist(nonSigHist, self.nonSigMass, weights=nonSigWeights)
               nonSigCount = 0.68 * lumi * nonSigHist.Integral() 
             else:
@@ -269,6 +275,16 @@ class CatOptim:
         canv.Print('%s/%s.pdf'%(plotDir,graphName))
         canv.Print('%s/%s.png'%(plotDir,graphName))
 
+  def cutBasedAMS(self):
+    sig_hist = r.TH1F('sigHistTemp', ';m_{ee};Entries', 160,110,150)
+    fill_hist(sig_hist, self.sigMass, weights=self.sigWeights)
+    N_sig = 0.68 * sig_hist.Integral()
+    sig_width = self.getRealSigma(sig_hist)
+    bkg_hist = r.TH1F('bkgHistTemp', ';m_{ee};Entries', 160,110,150)
+    fill_hist(bkg_hist, self.bkgMass, weights=self.bkgWeights)
+    N_bkg = self.computeBkg(bkg_hist, sig_width)
+    return self.getAMS(N_sig, N_bkg)
+
   def setSortOthers(self, val):
     self.sortOthers = val
 
@@ -284,7 +300,7 @@ class CatOptim:
         printStr += '%s %1.3f,  '%(name, self.boundaries[name][iCat])
       printStr = printStr[:-3]
       printStr += '\n'
-      printStr += 'With SigmaEff %1.3f, S %1.8f,  B %1.3f + %1.3f,  signif = %1.3f \n'%(self.bests.sigmas[iCat], self.bests.sigs[iCat], self.bests.bkgs[iCat], self.bests.nons[iCat], self.bests.signifs[iCat])
+      printStr += 'With SigmaEff %1.3f, S %1.8f,  B %1.3f + %1.3f,  signif = %1.8f \n'%(self.bests.sigmas[iCat], self.bests.sigs[iCat], self.bests.bkgs[iCat], self.bests.nons[iCat], self.bests.signifs[iCat])
     printStr += 'Corresponding to a total significance of  %1.8f \n\n'%self.bests.totSignif
     return printStr
 
