@@ -8,7 +8,7 @@ For this, you may use the `train_bdt.py` script. This requires a configuration f
 The command to train a simple BDT with a train-test splitting fraction of 0.7, is:
 
 ```
-python -c bdt_config.yaml -t 0.7
+python train_bdt.py-c bdt_config.yaml -t 0.7
 ```
 
 You will notice that the performance training this simple BDT is poor; the classifier predicts only the background class, due to the massive class imbalance. To remedy this, try training with the sum of signal weights increased such that they equal the sum of background weights, by adding the option `-w`.
