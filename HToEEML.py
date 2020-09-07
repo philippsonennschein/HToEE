@@ -4,17 +4,19 @@ import pandas as pd
 import xgboost as xgb
 import os
 from os import path, system
+from ast import literal_eval
 from variables import nominal_vars, gen_vars
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, roc_curve
-
+import pickle
 import warnings
 import matplotlib.pyplot as plt
 try:
      plt.style.use("cms10_6")
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
-plt.rcParams.update({'legend.fontsize':10})
+#plt.rcParams.update({'legend.fontsize':10})
+
 
 class ROOTHelpers(object):
     '''
@@ -34,13 +36,11 @@ class ROOTHelpers(object):
     def __init__(self, mc_dir, mc_trees_sig_str, mc_trees_bkg_str, mc_fnames, data_dir, data_trees_str, data_fnames, train_vars, vars_to_add, presel_str):
 
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
-        #self.mc_df_dir      = mc_dir+'/DataFrames'
         self.mc_trees_sig       = mc_trees_sig_str
         self.mc_sig_year_fnames = mc_fnames['sig'].items()
         self.mc_trees_bkg       = mc_trees_bkg_str
         self.mc_bkg_year_fnames = mc_fnames['bkg'].items()
         self.data_dir           = data_dir
-        #self.data_df_dir        = data_dir+'/DataFrames'
         self.data_trees         = data_trees_str
         self.data_year_fnames   = data_fnames.items()
 
@@ -72,15 +72,16 @@ class ROOTHelpers(object):
             if not bkg: self.mc_df_sig.append( self.root_to_df(self.mc_dir, file_name, self.mc_trees_sig, 'sig', year) )
             else: self.mc_df_bkg.append( self.root_to_df(self.mc_dir, file_name, self.mc_trees_bkg, 'bkg', year) )
 
-    def load_data(self, file_name, year):
+    def load_data(self, year, file_name, reload_data=False):
         '''
         Try to load Data dataframe. If it doesn't exist, read in the root file.
         This should be used once per year, if reading in multiple years.
         '''
         try: 
-            self.data_df.append( self.load_df(self.data_df_dir, 'data', year) )
+            if reload_data: raise IOError
+            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames', 'data', year) )
         except IOError: 
-            self.data_df.append( self.root_to_df(self.data_dir, self.df_trees, 'data', year) )
+            self.data_df.append( self.root_to_df(self.data_dir, file_name, self.data_trees, 'data', year) )
 
     def load_df(self, df_dir, flag, year):
         df = pd.read_hdf('{}/{}_df_{}.h5'.format(df_dir, flag, year))
@@ -106,9 +107,26 @@ class ROOTHelpers(object):
         if (flag=='sig') or(flag=='bkg'): df = self.scale_by_lumi(file_name, df, year)
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
 
+        #FIXME:
+        # make general feature egineering here
+        #literal_eval does not work 
+        df['dijet_centrality'] = np.exp(-4.*((df['dijet_Zep']/df['dijet_abs_dEta'])**2))
+        #for var_name, var_string in self.vars_to_add.iteritems():
+        #    hash_counter=0
+        #    safe_string = list(var_string)
+        #    for index,char in enumerate(var_string):
+        #        if char=='#':
+        #            if hash_counter%2==0: safe_string[index] = "df['"
+        #            else: safe_string[index] =  "']"
+        #            hash_counter+=1
+        #    safe_string = "".join(safe_string)
+        #    print 'safe_string is: {}'.format(safe_string)
+        #    df[var_name] = literal_eval(safe_string)
+
         Utils.check_dir(file_dir+'DataFrames/') 
         df.to_hdf('{}/{}_df_{}.h5'.format(file_dir+'DataFrames', flag, year), 'df',mode='w',format='t')
         print('Saved dataframe: {}/{}_df_{}.h5'.format(file_dir+'DataFrames', flag, year))
+
 
         return df
 
@@ -120,15 +138,32 @@ class ROOTHelpers(object):
         df['weight']*=self.lumi_map[year]
         return df
 
+    def apply_more_cuts(self, cut_string):
+        '''
+        Apply some additional cut, after nominal preselection when file is read in
+        '''
+        self.mc_df_sig          = self.mc_df_sig.query(cut_string)
+        self.mc_df_bkg          = self.mc_df_bkg.query(cut_string)
+        self.data_df            = self.data_df.query(cut_string)
+
 
     def concat_years(self):
-        #FIXME: add functionality concat list with more than one entry
+        '''
+        Concat years, if more than one df in the associated sig, bkg or data list.
+        If the list is empty (not reading anything), leave it empty
+        '''
         if len(self.mc_df_sig) == 1: self.mc_df_sig = self.mc_df_sig[0]
-        else: pass
-        if len(self.mc_df_bkg) ==1:  self.mc_df_bkg = self.mc_df_bkg[0] 
-        else: pass
-        if len(self.data_df) ==1:  self.data_df = self.data_df[0] 
-        else: pass 
+        elif len(self.mc_df_sig) == 0: pass
+        else: self.mc_df_sig = pd.concat(self.mc_df_sig)
+
+        if len(self.mc_df_bkg) == 1: self.mc_df_bkg = self.mc_df_bkg[0] 
+        elif len(self.mc_df_bkg) == 0: pass
+        else: self.mc_df_bkg = pd.concat(self.mc_df_bkg)
+
+        if len(self.data_df) == 1: self.data_df = self.data_df[0] 
+        elif len(self.data_df) == 0 : pass
+        else: self.data_df = pd.concat(self.data_df)
+
 
 class BDTHelpers(object):
 
@@ -152,15 +187,10 @@ class BDTHelpers(object):
 
         Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
 
-        #FIXME:
-        # feature egineering here, by calling a method from above class
-        #using literal_eval or sth
-        Z_tot['dijet_centrality'] = np.exp(-4.*((Z_tot['dijet_Zep']/Z_tot['dijet_abs_dEta'])**2))
-
         if not eq_weights:
-            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True)
+            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
         else:
-            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True)
+            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
             self.train_weights_eq = train_eqw.values
             #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
       
@@ -210,8 +240,10 @@ class BDTHelpers(object):
         print 'Finished Training classifier!'
         self.clf = clf
 
-        #ROOTHelpers.check_dir(file_path + 'models')
-        #if save: clf.save_model(file_path + 'models')
+        Utils.check_dir(os.getcwd() + '/models')
+        if save:
+            pickle.dump(clf, open("{}/models/clf.pickle.dat".format(os.getcwd()), "wb"))
+            print ("Saved classifier as: {}/models/clf.pickle.dat".format(os.getcwd()))
 
     def batch_gs_cv(self, k_folds=3):
         '''
@@ -222,6 +254,7 @@ class BDTHelpers(object):
         '''
         #get all possible HP sets from permutations of the above dict
         hp_perms = self.get_hp_perms()
+        hp_perms = hp_perms[0:2]
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
             Utils.sub_hp_script(self.eq_train, hp_string, k_folds)
@@ -286,6 +319,14 @@ class BDTHelpers(object):
         self.y_test           = self.y_folds_validate[i_fold]
         self.test_weights     = self.w_folds_validate[i_fold]
 
+    def compare_rocs(self, roc_file, hp_string):
+        hp_roc = roc_file.readlines()
+        avg_val_auc = np.average(self.validation_rocs)
+        if len(hp_roc)==0: 
+            roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
+        elif float(hp_roc[-1].split(':')[-1]) < avg_val_auc:
+            roc_file.write('\n')
+            roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
 
     def compute_roc(self):
         '''
@@ -350,10 +391,10 @@ class Plotter(object):
         self.sig_df     = data_obj.mc_df_sig
         self.bkg_df     = data_obj.mc_df_bkg
 
-        #FIXME:
+        #FIXME: can remove this (done in ROOTHelpers)
         # feature egineering here, by calling a method from above class (should be done above really)
-        self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
-        self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
+        #self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
+        #self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
 
         self.sig_colour = sig_col
         self.sig_label  = sig_label
@@ -377,7 +418,7 @@ class Plotter(object):
             sig_weights /= np.sum(sig_weights)
             bkg_weights /= np.sum(bkg_weights)
 
-        #plot with np first to get consistent ranges and  modify last bin to avoid empty space 
+        #plot with np first to get consistent ranges and modify last bin to avoid empty space 
         binned_data, bin_edges = np.histogram(var_sig, weights=sig_weights)
         bkw_index=0
         for ibin_sum in reversed(binned_data):
@@ -392,6 +433,7 @@ class Plotter(object):
         var_name_safe = var.replace('_',' ')
         axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1)
         axes.set_ylabel('Arbitrary Units', ha='right', y=1)
+
         current_bottom, current_top = axes.get_ylim()
         axes.set_ylim(bottom=0, top=current_top*1.2)
         axes.legend(bbox_to_anchor=(0.97,0.97))
@@ -406,14 +448,13 @@ class Plotter(object):
         axes.text(1, 1.01, r'{}'.format(energy), ha='right', va='bottom', transform=axes.transAxes)
 
     def plot_roc(self, y_train, y_pred_train, train_weights, y_test, y_pred_test, test_weights):
-        print 'plotting ROC'
         bkg_eff_train, sig_eff_train, _ = roc_curve(y_train, y_pred_train, sample_weight=train_weights)
         bkg_eff_test, sig_eff_test, _ = roc_curve(y_test, y_pred_test, sample_weight=test_weights)
 
         fig = plt.figure(1)
         axes = fig.gca()
         axes.plot(bkg_eff_train, sig_eff_train, color='red', label='Train')
-        axes.plot(bkg_eff_test, sig_eff_test, color='blue', label='Test')                                            
+        axes.plot(bkg_eff_test, sig_eff_test, color='blue', label='Test')
         axes.set_xlabel('Background efficiency', ha='right', x=1)
         axes.set_xlim((0,1))
         axes.set_ylabel('Signal efficiency', ha='right', y=1)
