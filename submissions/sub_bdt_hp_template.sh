@@ -8,12 +8,18 @@ CMD=!CMD!
 #execution
 cd $MYDIR
 eval `scramv1 runtime -sh`
-echo "got to cmsenv"
 cd $TMPDIR
 mkdir -p scratch_$RAND
 cd scratch_$RAND
-cp -p $MYDIR/*.py .
-cp -p $MYDIR/*.yaml .
+cp -p $MYDIR/python/*.py .
+cp -p $MYDIR/training/*.py .
+cp -p $MYDIR/configs/*.yaml .
+
+echo "DEBUG: dir is::"
+echo ${CWD}
+echo "DEBUG: files in dir are:"
+ls .
+
 echo "About to run the following command:"
 echo $CMD
 if ( $CMD ) then

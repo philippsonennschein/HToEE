@@ -3,11 +3,14 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 import os
+from ROOT import TLorentzVector as lv
+from numpy import pi
 from os import path, system
-from ast import literal_eval
+#from ast import literal_eval
 from variables import nominal_vars, gen_vars
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.preprocessing import StandardScaler
 import pickle
 import warnings
 import matplotlib.pyplot as plt
@@ -17,6 +20,15 @@ except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 #plt.rcParams.update({'legend.fontsize':10})
 
+from keras.models import Sequential
+from keras.initializers import RandomNormal
+from keras.layers import *
+from keras.optimizers import Nadam
+from keras.regularizers import l2
+from keras.callbacks import EarlyStopping
+from keras.utils import np_utils
+
+#import tensorflow as tf #for creating custom metric
 
 class ROOTHelpers(object):
     '''
@@ -84,8 +96,8 @@ class ROOTHelpers(object):
             self.data_df.append( self.root_to_df(self.data_dir, file_name, self.data_trees, 'data', year) )
 
     def load_df(self, df_dir, flag, year):
-        df = pd.read_hdf('{}/{}_df_{}.h5'.format(df_dir, flag, year))
-        print('Sucessfully loaded DataFrame: {}/{}_df_{}.h5'.format(df_dir, flag, year))
+        df = pd.read_hdf('{}{}_df_{}.h5'.format(df_dir, flag, year))
+        print('Sucessfully loaded DataFrame: {}{}_df_{}.h5'.format(df_dir, flag, year))
         return df    
 
     def root_to_df(self, file_dir, file_name, tree_name, flag, year):
@@ -93,7 +105,6 @@ class ROOTHelpers(object):
         Load a single .root dataset for simulation. Apply any preselection and lumi scaling
         If reading in simulated samples, apply lumi scaling and read in gen-level variables too
         '''
-
         print('Reading {} file: {}, for year: {}'.format(flag, file_dir+file_name, year))
         df_file = upr.open(file_dir+file_name)
         df_tree = df_file[tree_name]
@@ -104,13 +115,18 @@ class ROOTHelpers(object):
         print('Reshuffling events')
         df = df.sample(frac=1).reset_index(drop=True)
 
+        print('dropping any NaNs. Check this doesnt remove too much!')
+        df = df.dropna()
+
         if (flag=='sig') or(flag=='bkg'): df = self.scale_by_lumi(file_name, df, year)
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
 
         #FIXME:
         # make general feature egineering here
-        #literal_eval does not work 
+        #literal_eval does not work ...
         df['dijet_centrality'] = np.exp(-4.*((df['dijet_Zep']/df['dijet_abs_dEta'])**2))
+        print 'adding Phis'
+        df[ ['dijet_lead_phi','dijet_sublead_phi'] ] = df.apply(self.add_jet_phis, axis=1, result_type='expand')
         #for var_name, var_string in self.vars_to_add.iteritems():
         #    hash_counter=0
         #    safe_string = list(var_string)
@@ -146,6 +162,24 @@ class ROOTHelpers(object):
         self.mc_df_bkg          = self.mc_df_bkg.query(cut_string)
         self.data_df            = self.data_df.query(cut_string)
 
+    def add_jet_phis(self, row):
+        leadPho = lv()
+        leadPho.SetPtEtaPhiM( row['dipho_lead_ptoM'] * row['dipho_mass'], row['dipho_leadEta'], row['dipho_leadPhi'], 0. )
+        subleadPho = lv()
+        subleadPho.SetPtEtaPhiM( row['dipho_sublead_ptoM'] * row['dipho_mass'], row['dipho_subleadEta'], row['dipho_subleadPhi'], 0. )
+ 
+        diphoSystem = leadPho + subleadPho
+ 
+        leadJetPhi    = row['gghMVA_leadDeltaPhi'] + diphoSystem.Phi()
+        subleadJetPhi = row['gghMVA_subleadDeltaPhi'] + diphoSystem.Phi()
+ 
+        if leadJetPhi > pi: leadJetPhi = leadJetPhi - 2.*pi
+        elif leadJetPhi < -1.*pi: leadJetPhi = leadJetPhi + 2.*pi
+ 
+        if subleadJetPhi > pi: subleadJetPhi = subleadJetPhi - 2.*pi
+        elif subleadJetPhi < -1.*pi: subleadJetPhi = subleadJetPhi + 2.*pi
+ 
+        return [leadJetPhi, subleadJetPhi]
 
     def concat_years(self):
         '''
@@ -205,8 +239,8 @@ class BDTHelpers(object):
         self.test_weights     = test_w.values
         self.y_pred_test      = None
 
-        self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=300, 
-                                                  eta=0.1, maxDepth=6, min_child_weight=0.5, 
+        self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=100, 
+                                                  eta=0.05, maxDepth=6, min_child_weight=0.5, 
                                                   subsample=0.6, colsample_bytree=0.6, gamma=1)
 
         #attributes for the hp optmisation and cross validation
@@ -217,6 +251,7 @@ class BDTHelpers(object):
                                  'subsample': [0.5, 0.8, 1.0],
                                  'n_estimators':[200,300,400,500]
                                 }
+
         self.X_folds_train    = []
         self.y_folds_train    = []
         self.X_folds_validate = []
@@ -226,7 +261,6 @@ class BDTHelpers(object):
         self.w_folds_validate = []
         self.validation_rocs  = []
 
-        #FIXME: better to formally inherit from plotter?
         self.plotter          = Plotter(data_obj, train_vars)
         del data_obj
         
@@ -254,7 +288,6 @@ class BDTHelpers(object):
         '''
         #get all possible HP sets from permutations of the above dict
         hp_perms = self.get_hp_perms()
-        hp_perms = hp_perms[0:2]
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
             Utils.sub_hp_script(self.eq_train, hp_string, k_folds)
@@ -278,7 +311,11 @@ class BDTHelpers(object):
     def set_hyper_parameters(self, hp_string):
         hp_dict = {}
         for params in hp_string.split(','):
-                hp_dict[params[0]] = params[1]
+            hp_name = params.split(':')[0]
+            hp_value =params.split(':')[1]
+            try: hp_value = int(hp_value)
+            except ValueError: hp_value = float(hp_value)
+            hp_dict[hp_name] = hp_value
         self.clf = xgb.XGBClassifier(**hp_dict)
  
     def set_k_folds(self, k_folds):
@@ -322,9 +359,10 @@ class BDTHelpers(object):
     def compare_rocs(self, roc_file, hp_string):
         hp_roc = roc_file.readlines()
         avg_val_auc = np.average(self.validation_rocs)
+        print 'avg. validation roc is: {}'.format(avg_val_auc)
         if len(hp_roc)==0: 
             roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
-        elif float(hp_roc[-1].split(':')[-1]) < avg_val_auc:
+        elif float(hp_roc[-1].split(';')[-1]) < avg_val_auc:
             roc_file.write('\n')
             roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
 
@@ -333,11 +371,11 @@ class BDTHelpers(object):
         Compute the area under the associated ROC curve, with mc weights
         '''
         self.y_pred_train = self.clf.predict_proba(self.X_train)[:,1:]
-        print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights*1000))
+        print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights))
 
         self.y_pred_test = self.clf.predict_proba(self.X_test)[:,1:]
-        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights*1000))
-        return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights*1000)
+        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
+        return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
     def plot_roc(self):
         ''' 
@@ -382,6 +420,134 @@ class BDTHelpers(object):
         y_pred_test = clf.predict(testing_matrix)
         print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, y_pred_test, sample_weight=self.test_weights*1000))
 
+class DNN_keras(object):
+    '''
+    Use the keras package to train a DNN for VBF/DY separation
+    '''
+    def __init__(self, data_obj, train_vars, train_frac, eq_weights=False):
+        #attributes for the dataset formation
+        mc_df_sig = data_obj.mc_df_sig
+        mc_df_bkg = data_obj.mc_df_bkg
+
+        #add y_target label (1 for signal, 0 for background)
+        mc_df_sig['y'] = np.ones(mc_df_sig.shape[0]).tolist()
+        mc_df_bkg['y'] = np.zeros(mc_df_bkg.shape[0]).tolist()
+
+        if eq_weights: 
+            b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
+            mc_df_sig['eq_weight'] = mc_df_sig['weight'] * b_to_s_ratio 
+            mc_df_bkg['eq_weight'] = mc_df_bkg['weight'] 
+            self.eq_train = True
+        else: self.eq_train = False
+
+        Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+
+        if not eq_weights:
+            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+        else:
+            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            self.train_weights_eq = train_eqw.values
+
+        self.train_vars       = train_vars
+
+        #develop scaler to standardise input features (and re-use to scale test data)
+        print ('Array contains NaN: ', np.isnan(X_train).any())
+        X_scaler = StandardScaler()
+        X_scaler.fit(X_train.values)
+        self.X_train          = X_scaler.transform(X_train)
+        self.y_train          = np_utils.to_categorical(y_train.values, num_classes=2)
+        self.train_weights    = train_w.values #needed for calc of train ROC even if training wth eq weights
+        self.y_pred_train     = None
+
+        self.X_test           = X_scaler.transform(X_test)
+        self.y_test           = np_utils.to_categorical(y_test.values, num_classes=2)
+        self.test_weights     = test_w.values
+        self.y_pred_test      = None
+
+        self.model            = Sequential()
+    
+    def set_model_params(self, hidden_n, num_layers, dropout):
+        for i,nodes in enumerate([hidden_n] * num_layers):
+            #first layer
+            if i==0:
+                self.model.add(
+                Dense( 
+                      nodes, #dim of output space
+                      kernel_initializer='glorot_normal',
+                      activation='relu',
+                      kernel_regularizer=l2(1e-5),
+                      input_dim=len(self.train_vars)
+                      )
+                )
+            else: #hidden layers
+                self.model.add(
+                Dense(
+                      nodes,
+                      kernel_initializer='glorot_normal',
+                      activation='relu',
+                      kernel_regularizer=l2(1e-5),
+                      )
+                )
+                self.model.add(Dropout(dropout))
+         
+        #final layer
+        self.model.add(
+        Dense(
+              2,
+              kernel_initializer='glorot_normal',
+              activation='softmax'
+             )
+        )
+         
+        self.model.compile(
+                loss='binary_crossentropy',
+                optimizer=Nadam(),
+                #metrics=['']
+                metrics=['accuracy']#change to area under roc curve
+        )
+        print 'model architecture:'
+        self.model.summary()
+ 
+    def auroc(y_true, y_pred, weight):
+            return tf.py_func(roc_auc_score, (np.array(y_true), np.array(y_pred)), tf.double)
+
+    def fit(self, batch_size, epochs, validate=False):
+        if self.eq_train: train_weights = self.train_weights_eq
+        else: train_weights = self.train_weights
+      
+        if validate:
+            X_train, X_val, y_train, y_val, w_eq_train, _, _, w_val = train_test_split(self.X_train, self.y_train, train_weights, self.train_weights, train_size=0.7, shuffle=True, random_state=1357)
+
+
+            print 'Fitting on training + validation data'
+            history = self.model.fit( X_train,
+                                      y_train,
+                                      sample_weight=w_eq_train,
+                                      validation_data=(X_val, y_val, w_val),
+                                      batch_size=batch_size,
+                                      epochs = epochs,
+                                      shuffle=True,
+                                      callbacks=[EarlyStopping(patience=20)] #when validation inc
+                                    ) 
+            print 'Finished fitting on training data'
+
+        else:
+            print 'Fitting on training data'
+            history = self.model.fit( self.X_train,
+                                      self.y_train,
+                                      sample_weight=train_weights,
+                                      batch_size=batch_size,
+                                      epochs = epochs,
+                                      shuffle=True
+                                    ) 
+            print 'Finished fitting on training data'
+
+    def get_predictions(self):
+        y_pred_train = (self.model.predict(self.X_train)).argmax(axis=1)
+        print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train.argmax(axis=1), y_pred_train, sample_weight=self.train_weights))
+        y_pred_test = (self.model.predict(self.X_test)).argmax(axis=1)
+        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test.argmax(axis=1), y_pred_test, sample_weight=self.test_weights))
+    
 
 class Plotter(object):
     '''
@@ -390,11 +556,6 @@ class Plotter(object):
     def __init__(self, data_obj, input_vars, sig_col='firebrick', sig_label='VBF', bkg_col='violet', bkg_label='DYMC',  normalise=True): 
         self.sig_df     = data_obj.mc_df_sig
         self.bkg_df     = data_obj.mc_df_bkg
-
-        #FIXME: can remove this (done in ROOTHelpers)
-        # feature egineering here, by calling a method from above class (should be done above really)
-        #self.sig_df['dijet_centrality'] = np.exp(-4.*((self.sig_df['dijet_Zep']/self.sig_df['dijet_abs_dEta'])**2))
-        #self.bkg_df['dijet_centrality'] = np.exp(-4.*((self.bkg_df['dijet_Zep']/self.bkg_df['dijet_abs_dEta'])**2))
 
         self.sig_colour = sig_col
         self.sig_label  = sig_label
@@ -474,7 +635,6 @@ class Plotter(object):
         bkg_scores = y_pred_test.ravel()  * (y_test==0)
         bkg_w_true = test_weights.ravel() * (y_test==0)
 
-
         if self.normalise:
             sig_w_true /= np.sum(sig_w_true)
             bkg_w_true /= np.sum(bkg_w_true)
@@ -504,7 +664,7 @@ class Utils(object):
             system('mkdir -p %s' %file_dir)
 
     @classmethod 
-    def sub_hp_script(self, eq_weights, hp_string, k_folds, job_dir='{}/bdt_hp_opts_jobs'.format(os.getcwd())):
+    def sub_hp_script(self, eq_weights, hp_string, k_folds, job_dir='{}/submissions/bdt_hp_opts_jobs'.format(os.getcwd())):
         '''
         Submits train_bdt.py with option -H hp_string -k, to IC batch
         When run this way, a BDT gets trained with HPs = hp_string, and cross validated on k_folds 
@@ -519,13 +679,12 @@ class Utils(object):
         #FIXME: add config name as a function argument to make it general
         sub_command   = "python train_bdt.py -c bdt_config.yaml -H {} -k {}".format(hp_string, k_folds)
         if eq_weights: sub_command += ' -w'
-        with open('sub_bdt_hp_template.sh') as f_template:
+        with open('{}/submissions/sub_bdt_hp_template.sh'.format(os.getcwd())) as f_template:
             with open(sub_file_name,'w') as f_sub:
                 for line in f_template.readlines():
                     if '!CWD!' in line: line = line.replace('!CWD!', os.getcwd())
                     if '!CMD!' in line: line = line.replace('!CMD!', '"{}"'.format(sub_command))
                     f_sub.write(line)
-
         system( 'qsub -o {} -e {} -q hep.q -l h_rt=1:00:00 -l h_vmem=4G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
 
 

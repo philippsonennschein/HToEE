@@ -33,6 +33,7 @@ data_file_names:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+     #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
      'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
      'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
 

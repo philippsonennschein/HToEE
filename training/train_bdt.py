@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import yaml
+import sys
 from HToEEML import ROOTHelpers, BDTHelpers
 from os import path,system
 
@@ -48,8 +49,7 @@ def main(options):
             else: 
                 print 'About to train + validate on dataset with {} fold splitting'.format(options.k_folds)
                 bdt_hee.set_hyper_parameters(options.hp_perm)
-                if options.k_folds<2: raise ValueError('K-folds option must be at least 2')
-                else: bdt_hee.set_k_folds(options.k_folds)
+                bdt_hee.set_k_folds(options.k_folds)
                 for i_fold in range(options.k_folds):
                     bdt_hee.set_i_fold(i_fold)
                     bdt_hee.train_classifier(data_obj.mc_dir, save=False)
@@ -60,7 +60,7 @@ def main(options):
            
         elif options.opt_hps:
             #FIXME: add warning that many jobs are about to be submiited
-            #FIXME: delete exisiting bdt_hp_opt file if it exists
+            if options.k_folds<2: raise ValueError('K-folds option must be at least 2')
             if path.isfile('{}/bdt_hp_opt.txt'.format(mc_dir)): 
                 system('rm {}/bdt_hp_opt.txt'.format(mc_dir))
                 print ('deleting: {}/bdt_hp_opt.txt'.format(mc_dir))
@@ -97,6 +97,6 @@ if __name__ == "__main__":
     opt_args.add_argument('-H','--hp_perm', action='store', default=None)
     opt_args.add_argument('-k','--k_folds', action='store', default=3, type=int)
     opt_args.add_argument('-b','--train_best', action='store_true', default=False)
-    opt_args.add_argument('-t','--train_frac', action='store', default=0.7)
+    opt_args.add_argument('-t','--train_frac', action='store', default=0.7, type=float)
     options=parser.parse_args()
     main(options)
