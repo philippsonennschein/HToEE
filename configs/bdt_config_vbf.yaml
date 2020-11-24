@@ -1,3 +1,7 @@
+# custom tag that will be added to all saved df's and models. 
+signal_process:
+    'VBF'
+
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
     '/vols/cms/jwd18/HToEESamples/MC/'
@@ -30,9 +34,11 @@ data_file_names:
     '2017':
         'DYData_2017_PAS5.root'
 
+
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+     #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
      'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
      'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
 

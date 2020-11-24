@@ -25,29 +25,29 @@ def main(options):
         presel       = config['preselection']
 
         sig_colour   = 'firebrick'
-        sig_label    = 'VBF'
+        sig_label    = config['signal_process']
         bkg_colour   = 'violet'
         bkg_label    = 'DYMC'
  
                                            #Data handling stuff#
- 
+
         #load the mc dataframe for all years
-        data_obj = ROOTHelpers(mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
+        data_obj = ROOTHelpers(sig_label, mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
 
         for year, file_name in data_obj.mc_sig_year_fnames:
-            data_obj.load_mc(str(year), file_name, reload_data=options.reload_data)
+            data_obj.load_mc(str(year), file_name, reload_samples=options.reload_samples)
         for year, file_name in data_obj.mc_bkg_year_fnames:
-            data_obj.load_mc(str(year), file_name, bkg=True, reload_data=options.reload_data)
+            data_obj.load_mc(str(year), file_name, bkg=True, reload_samples=options.reload_samples)
         #for year, file_name in data_obj.data_year_fnames:
         #    HToEEBDT.load_data(year, file_name, bkg=True)
         data_obj.concat_years()
 
-                                                #BDT stuff#
-
+                                                #Plotter stuff#
+ 
         #set up X, w and y, train-test 
         plotter = Plotter(data_obj, train_vars, sig_colour, sig_label, bkg_colour, bkg_label)
         for var in train_vars:
-            plotter.plot_input(var)
+            plotter.plot_input(var, options.n_bins)
 
 
 if __name__ == "__main__":
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     required_args = parser.add_argument_group('Required Arguments')
     required_args.add_argument('-c','--config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
-    opt_args.add_argument('-r','--reload_data', action='store_true', default=False)
+    opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
+    opt_args.add_argument('-b','--n_bins',  default=26, type=int)
     options=parser.parse_args()
     main(options)

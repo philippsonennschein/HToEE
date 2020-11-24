@@ -1,0 +1,59 @@
+#.root MC files for all years (sig and bkg) should be kept in this dir:
+mc_file_dir:
+    '/vols/cms/jwd18/HToEESamples/MC/'
+
+#.root MC files for all years (sig) should have this tree path:
+mc_tree_name_sig:
+    'vbfTagDumper/trees/vbf_125_13TeV_GeneralDipho'
+
+#.root MC files for all years (bkg) should have this tree path:
+mc_tree_name_bkg:
+    'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
+
+mc_file_names:
+    sig:
+        '2017':
+            'VBF_HToEE_2017.root'
+    bkg:
+        '2017':
+            'DYMC_2017.root'
+
+#.root Data files for all years should be kept in this dir:
+data_file_dir:
+    '/vols/cms/jwd18/HToEESamples/Data/'
+
+#.root Data files for all years (data) should have this tree path:
+data_tree_name:
+    'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
+
+data_file_names:
+    '2017':
+        'DYData_2017_PAS5.root'
+
+#X variables to train with (4 vectors of jets... and maybe photons... anything else that is low-level and maybe useful?)
+object_vars:
+    ['dijet_LeadJPt',  'dijet_leadEta', 'dijet_lead_phi',
+     'dijet_SubJPt',  'dijet_subleadEta', 'dijet_sublead_phi',
+     'dipho_leadPt',  'dipho_leadEta', 'dipho_leadPhi',
+     'dipho_subleadPt',  'dipho_subleadEta', 'dipho_subleadPhi',
+     'dijet_jet1_QGL', 'dijet_jet2_QGL' 
+    ]
+
+event_vars:
+    ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+     'dijet_abs_dEta', 'dijet_Mjj', 
+     'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality'
+    ]
+
+#FIXME: implement this in the BDT class by calling root helper function
+vars_to_add:
+    dijet_centrality:
+        'np.exp(-4*((#dijet_Zep#/#dijet_abs_dEta#)**2))'
+    dijet_lead_phi:
+        'bla'
+    dijet_sublead_phi:
+        'bla'
+
+#preselection that will be applied to all samples
+preselection:
+    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'
