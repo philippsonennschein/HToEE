@@ -1,4 +1,4 @@
-# BDTs and DNNs for VBF H->ee searches 
+# BDTs/DNNs for VBF and ggH H->ee searches 
 
 ## Setup
 
@@ -8,13 +8,20 @@ The first thing to do is: `source setup.sh`. This appends the appropriate pacaka
 
 ## BDT Training
 
-To separate the VBF HToEE signal from the dominant Drell-Yan background, we may use a Boosted Decision Tree (BDT).
-For this, you may use the `train_bdt.py` script. This requires a configuration file `-c bdt_config.yaml` which specifies the sample options (files dirs and names, tree names, years, ...), variables to train with, and a preselection for all samples. An example config can be found here:  `bdt_config.yaml`
+To separate the VBF or ggH HToEE signal from the dominant Drell-Yan background, we may use a Boosted Decision Tree (BDT).
+For this, you may use the `train_bdt.py` script. This requires a configuration file `-c bdt_config_<vbf/ggh>.yaml` which specifies: 
 
-The command to train a simple BDT with a train-test splitting fraction of 0.7, is:
+* whether we are training on ggH or VBF processes
+* the sample options (files dirs and names, tree names, years, ...)
+* variables to train our BDT with
+* preselection for all samples.
+
+An example config for VBF training can be found here:  `bdt_config_vbf.yaml`
+
+The command to train a simple VBF vs Bkg BDT with a train-test splitting fraction of 0.7, is:
 
 ```
-python training/train_bdt.py -c configs/bdt_config.yaml -t 0.7
+python training/train_bdt.py -c configs/bdt_config_vbf.yaml -t 0.7
 ```
 
 You will notice that the performance training this simple BDT is poor; the classifier predicts only the background class, due to the massive class imbalance. To remedy this, try training with the sum of signal weights increased such that they equal the sum of background weights, by adding the option `-w`.

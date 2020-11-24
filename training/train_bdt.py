@@ -14,6 +14,7 @@ def main(options):
         mc_tree_sig   = config['mc_tree_name_sig']
         mc_tree_bkg   = config['mc_tree_name_bkg']
         mc_fnames     = config['mc_file_names']
+        proc_tag      = config['signal_process']
   
         #data not needed yet, but stil specify in the config for compatibility with constructor
         data_dir      = config['data_file_dir']
@@ -27,12 +28,12 @@ def main(options):
                                            #Data handling stuff#
  
         #load the mc dataframe for all years
-        data_obj = ROOTHelpers(mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
+        data_obj = ROOTHelpers(proc_tag, mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
 
         for year, file_name in data_obj.mc_sig_year_fnames:
-            data_obj.load_mc(year, file_name, reload_data=options.reload_data)
+            data_obj.load_mc(year, file_name, reload_samples=options.reload_samples)
         for year, file_name in data_obj.mc_bkg_year_fnames:
-            data_obj.load_mc(year, file_name, bkg=True, reload_data=options.reload_data)
+            data_obj.load_mc(year, file_name, bkg=True, reload_samples=options.reload_samples)
         data_obj.concat_years()
 
                                                 #BDT stuff#
@@ -66,24 +67,24 @@ def main(options):
                 print ('deleting: {}/bdt_hp_opt.txt'.format(mc_dir))
             bdt_hee.batch_gs_cv(k_folds=3)
 
-        #else just train BDT with default HPs
         elif options.train_best:
+            proc_tag+='_best'
             with open('{}/bdt_hp_opt.txt'.format(mc_dir),'r') as val_roc_file:
                 hp_roc = val_roc_file.readlines()
                 best_params = hp_roc[-1].split(';')[0]
                 print 'Best classifier params are: {}'.format(best_params)
                 bdt_hee.set_hyper_parameters(best_params)
-                bdt_hee.train_classifier(data_obj.mc_dir, save=True)
+                bdt_hee.train_classifier(data_obj.mc_dir, save=True, model_name=proc_tag)
                 bdt_hee.compute_roc()
-                bdt_hee.plot_roc()
-                bdt_hee.plot_output_score()
+                bdt_hee.plot_roc(proc_tag)
+                bdt_hee.plot_output_score(proc_tag)
 
+        #else just train BDT with default HPs
         else:
-            bdt_hee.train_classifier(data_obj.mc_dir)
+            bdt_hee.train_classifier(data_obj.mc_dir, save=True, model_name=proc_tag+'_clf')
             bdt_hee.compute_roc()
-            bdt_hee.plot_roc()
-            bdt_hee.plot_output_score()
-
+            bdt_hee.plot_roc(proc_tag)
+            bdt_hee.plot_output_score(proc_tag)
 
 if __name__ == "__main__":
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     required_args = parser.add_argument_group('Required Arguments')
     required_args.add_argument('-c','--config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
-    opt_args.add_argument('-r','--reload_data', action='store_true', default=False)
+    opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-w','--eq_weights', action='store_true', default=False)
     opt_args.add_argument('-o','--opt_hps', action='store_true', default=False)
     opt_args.add_argument('-H','--hp_perm', action='store', default=None)
