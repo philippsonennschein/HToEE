@@ -3,7 +3,7 @@ import numpy as np
 import ROOT as r
 r.gROOT.SetBatch(True)
 from root_numpy import fill_hist
-import usefulStyle as useSty
+#import usefulStyle as useSty
 
 
 class Bests:
@@ -264,16 +264,17 @@ class CatOptim:
             nons.append(nonSigCount)
           bests.update(sigs, bkgs, nons)
           graph.SetPoint(iVal, val-best, bests.getTotSignif())
-        canv = useSty.setCanvas()
-        graphName = 'CrossCheck_%s_Cat%g'%(name, iCat)
-        graph.SetTitle(graphName.replace('_',' '))
-        graph.GetXaxis().SetTitle('Cut value - chosen value')
-        graph.GetYaxis().SetTitle('Significance (#sigma)')
-        graph.Draw()
-        useSty.drawCMS(text='Internal')
-        useSty.drawEnPu(lumi=lumi)
-        canv.Print('%s/%s.pdf'%(plotDir,graphName))
-        canv.Print('%s/%s.png'%(plotDir,graphName))
+        #comment out since dont actually use cross check yet. Means we dont have to inport usefuStyle
+        #canv = useSty.setCanvas()
+        #graphName = 'CrossCheck_%s_Cat%g'%(name, iCat)
+        #graph.SetTitle(graphName.replace('_',' '))
+        #graph.GetXaxis().SetTitle('Cut value - chosen value')
+        #graph.GetYaxis().SetTitle('Significance (#sigma)')
+        #graph.Draw()
+        #useSty.drawCMS(text='Internal')
+        #useSty.drawEnPu(lumi=lumi)
+        #canv.Print('%s/%s.pdf'%(plotDir,graphName))
+        #canv.Print('%s/%s.png'%(plotDir,graphName))
 
   def cutBasedAMS(self):
     sig_hist = r.TH1F('sigHistTemp', ';m_{ee};Entries', 160,110,150)
