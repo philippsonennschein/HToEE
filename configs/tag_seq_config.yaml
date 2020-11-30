@@ -14,20 +14,21 @@ mc_file_names:
     sig:
         VBF:
             '2017': 'VBF_HToEE_2017.root'
-            #'2017': 'VBF_HToEE_2017.root'
+        ggH:
+            '2017': 'ggH_HToEE_2017.root'
+            
     bkg:
         DYMC:
             '2017': 'DYMC_2017.root'
-            #'2018': 'DYMC_2018.root'
 
 data_file_names:
     Data:
         '2017': 'DYData_2017_PAS5.root'
-        #'2018': 'DYData_2018_PAS5.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     VBF:  'vbfTagDumper/trees/vbf_125_13TeV_GeneralDipho'
+    ggH:  'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
     DYMC: 'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
     Data: 'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
 

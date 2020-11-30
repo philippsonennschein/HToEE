@@ -6,33 +6,27 @@ signal_process:
 mc_file_dir:
     '/vols/cms/jwd18/HToEESamples/MC/'
 
-#.root MC files for all years (sig) should have this tree path:
-mc_tree_name_sig:
-    'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
-
-#.root MC files for all years (bkg) should have this tree path:
-mc_tree_name_bkg:
-    'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
-
-mc_file_names:
-    sig:
-        '2017':
-            'ggH_HToEE_2017.root'
-    bkg:
-        '2017':
-            'DYMC_2017.root'
-
 #.root Data files for all years should be kept in this dir:
 data_file_dir:
     '/vols/cms/jwd18/HToEESamples/Data/'
 
-#.root Data files for all years (data) should have this tree path:
-data_tree_name:
-    'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
+mc_file_names:
+    sig:
+        ggH:
+            '2017': 'ggH_HToEE_2017.root'
+    bkg:
+        DYMC:
+            '2017': 'DYMC_2017.root'
 
 data_file_names:
-    '2017':
-        'DYData_2017_PAS5.root'
+    Data:
+        '2017': 'DYData_2017_PAS5.root'
+
+#.root MC files for all years (bkg) should have this tree path:
+proc_to_tree_name:
+    ggH: 'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
+    DYMC: 'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
+    Data: 'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
 
 model_name:
     'ggH_vs_DYMC_clf'
@@ -44,7 +38,6 @@ train_vars:
       'CosPhi', 'vtxprob', 'sigmarv', 'sigmawv'] 
 
 vars_to_add:
-    
 
 #preselection that will be applied to all samples
 preselection:

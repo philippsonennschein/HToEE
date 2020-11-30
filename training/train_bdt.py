@@ -10,16 +10,16 @@ def main(options):
     #take options from the yaml config
     with open(options.config, 'r') as config_file:
         config        = yaml.load(config_file)
+        output_tag    = config['signal_process']
+
         mc_dir        = config['mc_file_dir']
-        mc_tree_sig   = config['mc_tree_name_sig']
-        mc_tree_bkg   = config['mc_tree_name_bkg']
         mc_fnames     = config['mc_file_names']
-        proc_tag      = config['signal_process']
   
         #data not needed yet, but stil specify in the config for compatibility with constructor
         data_dir      = config['data_file_dir']
         data_fnames   = config['data_file_names']
-        data_tree     = config['data_tree_name']
+
+        proc_to_tree_name = config['proc_to_tree_name']
 
         train_vars   = config['train_vars']
         vars_to_add  = config['vars_to_add']
@@ -28,18 +28,19 @@ def main(options):
                                            #Data handling stuff#
  
         #load the mc dataframe for all years
-        data_obj = ROOTHelpers(proc_tag, mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
+        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
-        for year, file_name in data_obj.mc_sig_year_fnames:
-            data_obj.load_mc(year, file_name, reload_samples=options.reload_samples)
-        for year, file_name in data_obj.mc_bkg_year_fnames:
-            data_obj.load_mc(year, file_name, bkg=True, reload_samples=options.reload_samples)
-        data_obj.concat_years()
+        for sig_obj in root_obj.sig_objects:
+            root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
+        for bkg_obj in root_obj.bkg_objects:
+            root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        root_obj.concat() #automatically conacat years if more than one detected
+  
 
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
-        bdt_hee = BDTHelpers(data_obj, train_vars, options.train_frac, options.eq_weights)
+        bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, options.eq_weights)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -53,7 +54,7 @@ def main(options):
                 bdt_hee.set_k_folds(options.k_folds)
                 for i_fold in range(options.k_folds):
                     bdt_hee.set_i_fold(i_fold)
-                    bdt_hee.train_classifier(data_obj.mc_dir, save=False)
+                    bdt_hee.train_classifier(root_obj.mc_dir, save=False)
                     bdt_hee.validation_rocs.append(bdt_hee.compute_roc())
                 with open('{}/bdt_hp_opt.txt'.format(mc_dir),'a+') as val_roc_file:
                     bdt_hee.compare_rocs(val_roc_file, options.hp_perm)
@@ -68,23 +69,23 @@ def main(options):
             bdt_hee.batch_gs_cv(k_folds=3)
 
         elif options.train_best:
-            proc_tag+='_best'
+            output_tag+='_best'
             with open('{}/bdt_hp_opt.txt'.format(mc_dir),'r') as val_roc_file:
                 hp_roc = val_roc_file.readlines()
                 best_params = hp_roc[-1].split(';')[0]
                 print 'Best classifier params are: {}'.format(best_params)
                 bdt_hee.set_hyper_parameters(best_params)
-                bdt_hee.train_classifier(data_obj.mc_dir, save=True, model_name=proc_tag)
+                bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag)
                 bdt_hee.compute_roc()
-                bdt_hee.plot_roc(proc_tag)
-                bdt_hee.plot_output_score(proc_tag)
+                bdt_hee.plot_roc(output_tag)
+                bdt_hee.plot_output_score(output_tag)
 
         #else just train BDT with default HPs
         else:
-            bdt_hee.train_classifier(data_obj.mc_dir, save=True, model_name=proc_tag+'_clf')
+            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
-            bdt_hee.plot_roc(proc_tag)
-            bdt_hee.plot_output_score(proc_tag)
+            bdt_hee.plot_roc(output_tag)
+            bdt_hee.plot_output_score(output_tag)
 
 if __name__ == "__main__":
 
