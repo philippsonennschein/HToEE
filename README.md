@@ -37,9 +37,9 @@ Once a model has been trained and optimised, you may use the output score to con
 This is done by splitting the signal + background events into boundaries defined by the output score, such that the average median significance (AMS) is optimised.
 To perform the optimisation, which also optimises the number of categories (defaults to between 1 and 4) the following command can be run:
 
-``python bdt_category_opt.py -c bdt_config.yaml -m models/clf.pickle.dat -d``
+`` python categoryOpt/bdt_category_opt.py -c configs/bdt_config_ggh.yaml -m models/ggH_clf.pickle.dat -d`` ,
 
-Note that the `-d` option replaces background simulated samples with data. The `-m` option specified the pre-trained BDT.
+which runs an optimisation for ggH categories. Note that the `-d` option replaces background simulated samples with data. The `-m` option specified the pre-trained BDT.
 
 ### To do:
 * fix adding variables (put it in a function that takes a string equation)

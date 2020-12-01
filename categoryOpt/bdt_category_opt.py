@@ -14,6 +14,7 @@ def main(options):
         mc_tree_sig   = config['mc_tree_name_sig']
         mc_tree_bkg   = config['mc_tree_name_bkg']
         mc_fnames     = config['mc_file_names']
+        proc_tag      = config['signal_process']
   
         data_dir      = config['data_file_dir']
         data_fnames   = config['data_file_names']
@@ -24,23 +25,22 @@ def main(options):
         presel       = config['preselection']
 
         #load the mc dataframe for all years
-        data_obj = ROOTHelpers(mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
+        data_obj = ROOTHelpers(proc_tag, mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
 
         for year, file_name in data_obj.mc_sig_year_fnames:
-            data_obj.load_mc(year, file_name, reload_data=options.reload_data)
+            data_obj.load_mc(year, file_name, reload_samples=options.reload_samples)
         for year, file_name in data_obj.mc_bkg_year_fnames:
-            data_obj.load_mc(year, file_name, bkg=True, reload_data=options.reload_data)
+            data_obj.load_mc(year, file_name, bkg=True, reload_samples=options.reload_samples)
         for year, file_name in data_obj.data_year_fnames:
-            data_obj.load_data(year, file_name, reload_data=options.reload_data)
+            data_obj.load_data(year, file_name, reload_samples=options.reload_samples)
         data_obj.concat_years()
 
         print 'loading classifier: {}'.format(options.model)
         clf = pickle.load(open("{}".format(options.model), "rb"))
 
-        #apply cut-based selection if not optimising BDT score (pred probs still evaluated for compatability w exisiting constructor)
-        if options.cut_based:
-            additonal_cuts = 'dijet_centrality>0.5 and dijet_Mjj>350 and dijet_minDRJetPho>1.5'
-            if len(additonal_cuts) != 0: data_obj.apply_more_cuts(additonal_cuts)
+        #apply cut-based selection if not optimising BDT score (pred probs still evaluated for compatability w exisiting constructor). 
+        if len(options.cut_based_str)>0:
+            data_obj.apply_more_cuts(options.cut_based_str)
 
         sig_weights   = data_obj.mc_df_sig['weight'].values
         sig_m_ee      = data_obj.mc_df_sig['dipho_mass'].values
@@ -58,15 +58,15 @@ def main(options):
 
         #set up optimiser ranges and no. categories to test if non-cut based
         ranges    = [ [0.3,1.] ]
-        names     = ['VBF_BDT_score'] #arbitrary
+        names     = ['{} BDT score'.format(proc_tag)] #arbitrary
         print_str = ''
         cats = [1,2,3,4]
 
-        #NB: just going to use class methods here. 
-        if options.cut_based:
+        #just to use class methods here
+        if len(options.cut_based_str)>0:
             optimiser = CatOptim(sig_weights, sig_m_ee, [pred_prob_sig], bkg_weights, bkg_m_ee, [pred_prob_bkg], 0, ranges, names)
             AMS = optimiser.cutBasedAMS()
-            print 'String for cut based optimimastion: {}'.format(additional_cuts)
+            print 'String for cut based optimimastion: {}'.format(options.cut_based_str)
             print 'Cut-based optimimsation gives AMS = {:1.8f}'.format(AMS)
 
         else:
@@ -85,9 +85,9 @@ if __name__ == "__main__":
     required_args.add_argument('-c','--config', action='store', required=True)
     required_args.add_argument('-m','--model', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
-    opt_args.add_argument('-r','--reload_data', action='store_true', default=False)
+    opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-i','--n_iters', action='store', default=3000, type=int)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)
-    opt_args.add_argument('-k','--cut_based', action='store_true', default=False)
+    opt_args.add_argument('-k','--cut_based_str', action='store',type=str, default='')
     options=parser.parse_args()
     main(options)
