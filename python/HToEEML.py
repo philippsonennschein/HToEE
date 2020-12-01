@@ -94,7 +94,7 @@ class ROOTHelpers(object):
         '''
         try: 
             if reload_samples: raise IOError
-            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames', 'data', year) )
+            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames/', 'data', year) )
         except IOError: 
             self.data_df.append( self.root_to_df(self.data_dir, file_name, self.data_trees, 'data', year) )
 
@@ -639,11 +639,9 @@ class Plotter(object):
         binned_data, bin_edges = np.histogram(var_sig, n_bins, weights=sig_weights)
         bkw_index=0
         sumw_all_bins=0
-        print 'var: {}'.format(var)
-        print 'binned data: {}'.format(binned_data)
         for ibin_sum in reversed(binned_data):
             sumw_all_bins+=ibin_sum
-            if sumw_all_bins < 0.001*np.sum(binned_data): bkw_index+=1
+            if sumw_all_bins < 0.01*np.sum(binned_data): bkw_index+=1
             else: break
         if bkw_index!=0: bin_edges = bin_edges[:-bkw_index]     
         bins = np.linspace(bin_edges[0], bin_edges[-1], n_bins)
@@ -682,12 +680,13 @@ class Plotter(object):
         axes.set_ylim((0,1))
         axes.legend(bbox_to_anchor=(0.97,0.97))
         self.plot_cms_labels(axes)
+        axes.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
         return fig
 
     def plot_output_score(self, y_test, y_pred_test, test_weights):
         fig  = plt.figure(1)
         axes = fig.gca()
-        bins = np.linspace(0,1,31)
+        bins = np.linspace(0,1,61)
 
         sig_scores = y_pred_test.ravel()  * (y_test==1)
         sig_w_true = test_weights.ravel() * (y_test==1)
