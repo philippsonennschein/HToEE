@@ -1,6 +1,8 @@
 # custom tag that will be added to all saved df's and models. 
+# useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
+# otherwise may get confused when training another clf like VBF
 signal_process:
-    'VBF'
+    'tag_seq_loose'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
@@ -14,35 +16,37 @@ mc_file_names:
     sig:
         VBF:
             '2017': 'VBF_HToEE_2017.root'
-            #'2017': 'VBF_HToEE_2017.root'
+        ggH:
+            '2017': 'ggH_HToEE_2017.root'
+            
     bkg:
         DYMC:
             '2017': 'DYMC_2017.root'
-            #'2018': 'DYMC_2018.root'
 
 data_file_names:
     Data:
         '2017': 'DYData_2017_PAS5.root'
-        #'2018': 'DYData_2018_PAS5.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     VBF:  'vbfTagDumper/trees/vbf_125_13TeV_GeneralDipho'
+    ggH:  'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
     DYMC: 'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
     Data: 'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
-    ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
-     #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
-     'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
-     'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
+    VBF:
+        ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+         #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
+         'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
+         'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
+    ggH:
+        ['dipho_leadIDMVA', 'dipho_subleadIDMVA', 'dipho_lead_ptoM', 'dipho_sublead_ptoM',
+         'dipho_leadEta', 'dipho_subleadEta',
+         'CosPhi', 'vtxprob', 'sigmarv', 'sigmawv'] 
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
     dijet_centrality:
         'np.exp(-4*((#dijet_Zep#/#dijet_abs_dEta#)**2))'
-
-#preselection that will be applied to all samples
-preselection:
-    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'
