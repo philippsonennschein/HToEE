@@ -1,6 +1,8 @@
 # custom tag that will be added to all saved df's and models. 
+# useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
+# otherwise may get confused when training another clf like VBF
 signal_process:
-    'VBF'
+    'tag_seq_loose'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
@@ -34,16 +36,17 @@ proc_to_tree_name:
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
-    ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
-     #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
-     'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
-     'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
+    VBF:
+        ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+         #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
+         'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
+         'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
+    ggH:
+        ['dipho_leadIDMVA', 'dipho_subleadIDMVA', 'dipho_lead_ptoM', 'dipho_sublead_ptoM',
+         'dipho_leadEta', 'dipho_subleadEta',
+         'CosPhi', 'vtxprob', 'sigmarv', 'sigmawv'] 
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
     dijet_centrality:
         'np.exp(-4*((#dijet_Zep#/#dijet_abs_dEta#)**2))'
-
-#preselection that will be applied to all samples
-preselection:
-    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.2 and dipho_subleadIDMVA > -0.2 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj>250 and dijet_LeadJPt>40 and dijet_SubJPt>30'

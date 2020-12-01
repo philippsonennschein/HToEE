@@ -32,7 +32,7 @@ from keras.utils import np_utils
 class SampleObject(object):
     '''
     Class to store attributes of each sample. One object to be used per year, per sample -
-    essentially per file
+    essentially per root file
     ''' 
 
     def __init__(self, proc_tag, year, file_name, tree_path):
@@ -48,25 +48,20 @@ class ROOTHelpers(object):
 
     :mc_dir: directory where root files for simulation are held. Files for all years should be in this directory
     :data_dir: directory where root files for data are held. Files for all years should be in this directory
-    :mc_trees_sig_str: name of the trees in simulated signal. Should be identical across years
-    :mc_trees_bkg_str: name of the trees in simulated background. Should be identical across years
-    :data_trees_str: name of the trees in data. Should be identical across years
-
-    :mc_sig_year_fnames: list of tuples for mc sig with format [ (yearX : sampleX), (yearY : sampleY), ... ]
     '''
   
-    def __init__(self, proc_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str):
+    def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str=''):
         #FIXME: write checks to see if all procs match with each other e.g. is "VBF" file name id also an id in proc_to_tree?
 
         self.years              = set()
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
 
-        self.proc_tag           = proc_tag
+        self.out_tag            = out_tag
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
         self.data_dir           = data_dir
        
         self.sig_procs          = []
-        self.sig_objects     = []
+        self.sig_objects        = []
         for proc, year_to_file in mc_fnames['sig'].items():
             if proc not in self.sig_procs: self.sig_procs.append(proc) 
             else: raise IOError('Multiple versions of same signal proc trying to be read')
@@ -110,11 +105,23 @@ class ROOTHelpers(object):
         '''
         try: 
             if reload_samples: raise IOError
-            elif not bkg: self.mc_df_sig.append( self.load_df(self.mc_dir+'DataFrames/', 'sig', sample_obj.year) )
-            else: self.mc_df_bkg.append( self.load_df(self.mc_dir+'DataFrames/', 'bkg', sample_obj.year) )
+            elif not bkg: self.mc_df_sig.append( self.load_df(self.mc_dir+'DataFrames/', sample_obj.proc_tag, sample_obj.year) )
+            else: self.mc_df_bkg.append( self.load_df(self.mc_dir+'DataFrames/', sample_obj.proc_tag, sample_obj.year) )
         except IOError: 
-            if not bkg: self.mc_df_sig.append( self.root_to_df(self.mc_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'sig', sample_obj.year) )
-            else: self.mc_df_bkg.append( self.root_to_df(self.mc_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'bkg', sample_obj.year) )
+            if not bkg: self.mc_df_sig.append( self.root_to_df(self.mc_dir, 
+                                                               sample_obj.proc_tag,
+                                                               sample_obj.file_name,
+                                                               sample_obj.tree_name,
+                                                               'sig', sample_obj.year
+                                                              )
+                                             )
+            else: self.mc_df_bkg.append( self.root_to_df(self.mc_dir,
+                                                         sample_obj.proc_tag,
+                                                         sample_obj.file_name, 
+                                                         sample_obj.tree_name,
+                                                         'bkg', sample_obj.year
+                                                        )
+                                       )
 
     def load_data(self, sample_obj, reload_samples=False):
         '''
@@ -123,15 +130,17 @@ class ROOTHelpers(object):
         '''
         try: 
             if reload_samples: raise IOError
-            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames', 'data', sample_obj.year) )
+            else: self.data_df.append( self.load_df(self.data_dir+'DataFrames/', 'Data', sample_obj.year) )
         except IOError: 
-            self.data_df.append( self.root_to_df(self.data_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'data', sample_obj.year) )
+            self.data_df.append( self.root_to_df(self.data_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'Data', sample_obj.year) )
 
-    def load_df(self, df_dir, flag, year):
-        df = pd.read_hdf('{}{}_{}_df_{}.h5'.format(df_dir, flag, self.proc_tag, year))
+    def load_df(self, df_dir, proc, year):
+        print 'loading {}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year)
+        df = pd.read_hdf('{}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
+
         missing_vars = [x for x in self.train_vars if x not in df.columns]
         if len(missing_vars)!=0: raise IOError('Missing variables in dataframe: {}. Reload with option -r and try again'.format(missing_vars))
-        print('Sucessfully loaded DataFrame: {}{}_{}_df_{}.h5'.format(df_dir, flag, self.proc_tag, year))
+        else: print('Sucessfully loaded DataFrame: {}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
         return df    
 
     def root_to_df(self, file_dir, proc_tag, file_name, tree_name, flag, year):
@@ -139,12 +148,16 @@ class ROOTHelpers(object):
         Load a single .root dataset for simulation. Apply any preselection and lumi scaling
         If reading in simulated samples, apply lumi scaling and read in gen-level variables too
         '''
-        print('Reading {} file: {}, for year: {}'.format(flag, file_dir+file_name, year))
+        print('Reading {} file: {}, for year: {}'.format(proc_tag, file_dir+file_name, year))
         df_file = upr.open(file_dir+file_name)
         df_tree = df_file[tree_name]
         del df_file
-        if (flag=='sig') or (flag=='bkg'): df = df_tree.pandas.df(self.nominal_vars + gen_vars).query(self.cut_string)
-        df = df_tree.pandas.df(self.nominal_vars).query(self.cut_string)
+        if len(self.cut_string)>0:
+            if (flag=='sig') or (flag=='bkg'): df = df_tree.pandas.df(self.nominal_vars + gen_vars).query(self.cut_string)
+            else: df = df_tree.pandas.df(self.nominal_vars).query(self.cut_string)
+        else:
+            if (flag=='sig') or (flag=='bkg'): df = df_tree.pandas.df(self.nominal_vars + gen_vars)
+            else: df = df_tree.pandas.df(self.nominal_vars)
 
         print('Reshuffling events')
         df = df.sample(frac=1).reset_index(drop=True)
@@ -159,7 +172,7 @@ class ROOTHelpers(object):
         # make general feature egineering here
         #literal_eval does not work ...
         df['dijet_centrality'] = np.exp(-4.*((df['dijet_Zep']/df['dijet_abs_dEta'])**2))
-        df[ ['dijet_lead_phi','dijet_sublead_phi'] ] = df.apply(self.add_jet_phis, axis=1, result_type='expand') #FIXME: phi's are not working!
+        df[ ['dijet_lead_phi','dijet_sublead_phi'] ] = df.apply(self.add_jet_phis, axis=1, result_type='expand') #FIXME: phi's are a bit dodgy. better to get from fgg!
         #for var_name, var_string in self.vars_to_add.iteritems():
         #    hash_counter=0
         #    safe_string = list(var_string)
@@ -174,12 +187,12 @@ class ROOTHelpers(object):
 
         #add some info that may be useful later e.g. in tag sequence 
         df['proc'] = proc_tag
-        df['year'] = year
+        #df['year'] = year
 
         #save everything
         Utils.check_dir(file_dir+'DataFrames/') 
-        df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', flag, self.proc_tag, year), 'df', mode='w', format='t')
-        print('Saved dataframe: {}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', flag, self.proc_tag, year))
+        df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year), 'df', mode='w', format='t')
+        print('Saved dataframe: {}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
 
         return df
 
@@ -261,9 +274,21 @@ class BDTHelpers(object):
         Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
 
         if not eq_weights:
-            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], 
+                                                                                  Z_tot['weight'],
+                                                                                  Z_tot['y'], 
+                                                                                  train_size=train_frac, 
+                                                                                  test_size=1-train_frac,
+                                                                                  shuffle=True, random_state=1357
+                                                                                 )
         else:
-            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], 
+                                                                                                       Z_tot['eq_weight'], Z_tot['y'],
+                                                                                                       train_size=train_frac, 
+                                                                                                       test_size=1-train_frac,
+                                                                                                       shuffle=True, 
+                                                                                                       random_state=1357
+                                                                                                      )
             self.train_weights_eq = train_eqw.values
             #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
       

@@ -41,4 +41,4 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.9 and dipho_subleadIDMVA > -0.9 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25 and dijet_Mjj<350'
+    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.9 and dipho_subleadIDMVA > -0.9 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25'

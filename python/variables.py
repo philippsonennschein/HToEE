@@ -11,4 +11,5 @@ nominal_vars = ['weight', 'dipho_leadIDMVA', 'dipho_subleadIDMVA','dipho_PToM', 
                 'gghMVA_leadDeltaPhi', 'gghMVA_subleadDeltaPhi',
                 'dijet_minDRJetPho', 'dijet_Zep']
 
-gen_vars     = ['HTXSstage1p2bin'] 
+gen_vars     = []  #dont need any gen vars for now
+#gen_vars     = ['HTXSstage1p2bin'] 
