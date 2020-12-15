@@ -2,65 +2,68 @@ import argparse
 import numpy as np
 import yaml
 import pickle
-from HToEEML import ROOTHelpers, BDTHelpers
+from HToEEML import ROOTHelpers, BDTHelpers, Plotter
 from catOptim import CatOptim
 
 def main(options):
 
     #take options from the yaml config
     with open(options.config, 'r') as config_file:
-        config        = yaml.load(config_file)
-        mc_dir        = config['mc_file_dir']
-        mc_tree_sig   = config['mc_tree_name_sig']
-        mc_tree_bkg   = config['mc_tree_name_bkg']
-        mc_fnames     = config['mc_file_names']
-        proc_tag      = config['signal_process']
-  
-        data_dir      = config['data_file_dir']
-        data_fnames   = config['data_file_names']
-        data_tree     = config['data_tree_name']
+        config            = yaml.load(config_file)
+        output_tag        = config['output_tag']
 
-        train_vars   = config['train_vars']
-        vars_to_add  = config['vars_to_add']
-        presel       = config['preselection']
+        mc_dir            = config['mc_file_dir']
+        mc_fnames         = config['mc_file_names']
+  
+        data_dir          = config['data_file_dir']
+        data_fnames       = config['data_file_names']
+
+        proc_to_tree_name = config['proc_to_tree_name']       
+
+        train_vars        = config['train_vars']
+        vars_to_add       = config['vars_to_add']
+        presel            = config['preselection']
 
         #load the mc dataframe for all years
-        data_obj = ROOTHelpers(proc_tag, mc_dir, mc_tree_sig, mc_tree_bkg, mc_fnames, data_dir, data_tree, data_fnames, train_vars, vars_to_add, presel)
+        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
-        for year, file_name in data_obj.mc_sig_year_fnames:
-            data_obj.load_mc(year, file_name, reload_samples=options.reload_samples)
-        for year, file_name in data_obj.mc_bkg_year_fnames:
-            data_obj.load_mc(year, file_name, bkg=True, reload_samples=options.reload_samples)
-        for year, file_name in data_obj.data_year_fnames:
-            data_obj.load_data(year, file_name, reload_samples=options.reload_samples)
-        data_obj.concat_years()
+        for sig_obj in root_obj.sig_objects:
+            root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
+        if not options.data_as_bkg:
+            for bkg_obj in root_obj.bkg_objects:
+                root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        else:
+            for data_obj in root_obj.data_objects:
+                root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+        root_obj.concat()
 
         print 'loading classifier: {}'.format(options.model)
         clf = pickle.load(open("{}".format(options.model), "rb"))
 
         #apply cut-based selection if not optimising BDT score (pred probs still evaluated for compatability w exisiting constructor). 
         if len(options.cut_based_str)>0:
-            data_obj.apply_more_cuts(options.cut_based_str)
+            root_obj.apply_more_cuts(options.cut_based_str)
 
-        sig_weights   = data_obj.mc_df_sig['weight'].values
-        sig_m_ee      = data_obj.mc_df_sig['dipho_mass'].values
-        pred_prob_sig = clf.predict_proba(data_obj.mc_df_sig[train_vars].values)[:,1:].ravel()
+        sig_weights   = root_obj.mc_df_sig['weight'].values
+        sig_m_ee      = root_obj.mc_df_sig['dielectronMass'].values
+        pred_prob_sig = clf.predict_proba(root_obj.mc_df_sig[train_vars].values)[:,1:].ravel()
 
         if options.data_as_bkg: 
-            bkg_weights   = data_obj.data_df['weight'].values
-            bkg_m_ee      = data_obj.data_df['dipho_mass'].values
-            pred_prob_bkg = clf.predict_proba(data_obj.data_df[train_vars].values)[:,1:].ravel()
+            bkg_weights   = root_obj.data_df['weight'].values
+            bkg_m_ee      = root_obj.data_df['dielectronMass'].values
+            pred_prob_bkg = clf.predict_proba(root_obj.data_df[train_vars].values)[:,1:].ravel()
 
         else: 
-            bkg_weights   = data_obj.mc_df_bkg['weight'].values
-            bkg_m_ee      = data_obj.mc_df_bkg['dipho_mass'].values
-            pred_prob_bkg = clf.predict_proba(data_obj.mc_df_bkg[train_vars].values)[:,1:].ravel()
+            bkg_weights   = root_obj.mc_df_bkg['weight'].values
+            bkg_m_ee      = root_obj.mc_df_bkg['dielectronMass'].values
+            pred_prob_bkg = clf.predict_proba(root_obj.mc_df_bkg[train_vars].values)[:,1:].ravel()
 
         #set up optimiser ranges and no. categories to test if non-cut based
         ranges    = [ [0.3,1.] ]
-        names     = ['{} BDT score'.format(proc_tag)] #arbitrary
+        names     = ['{} score'.format(output_tag)] #arbitrary
         print_str = ''
         cats = [1,2,3,4]
+        AMS  = []
 
         #just to use class methods here
         if len(options.cut_based_str)>0:
@@ -75,7 +78,12 @@ def main(options):
                 optimiser.optimise(1, options.n_iters) #set lumi to 1 as already scaled when loading in
                 print_str += 'Results for {} categories : \n'.format(n_cats)
                 print_str += optimiser.getPrintableResult()
+                AMS.append(optimiser.bests.totSignif)
             print '\n {}'.format(print_str)
+
+
+        #make nCat vs AMS plots
+        Plotter.cats_vs_ams(cats, AMS, output_tag)
 
 
 if __name__ == "__main__":

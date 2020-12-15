@@ -1,13 +1,13 @@
 models:
-    VBF: 'VBF_vs_DYMC.pickle.dat'
-    ggH: 'ggH_vs_DYMC.pickle.dat'
+    VBF: 'VBF_BDT_clf.pickle.dat'
+    ggH: 'ggH_BDT_clf.pickle.dat'
 
 boundaries:
-    VBF: #dummy for now
-        tag_0: 0.8
-        tag_1: 0.7
-    ggH: #dummy for now
-        tag_0: 0.85 
-        tag_1: 0.7 
-        tag_2: 0.55 
+    VBF: 
+        tag_0: 0.884
+        tag_1: 0.612
+    ggH:
+        tag_0: 0.751
+        tag_1: 0.554
+        tag_2: 0.331
 

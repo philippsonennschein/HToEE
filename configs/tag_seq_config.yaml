@@ -1,7 +1,7 @@
 # custom tag that will be added to all saved df's and models. 
 # useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
 # otherwise may get confused when training another clf like VBF
-signal_process:
+output_tag:
     'tag_seq_loose'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
@@ -15,38 +15,38 @@ data_file_dir:
 mc_file_names:
     sig:
         VBF:
-            '2017': 'VBF_HToEE_2017.root'
+            '2017': 'VBF_UL2017.root'
         ggH:
-            '2017': 'ggH_HToEE_2017.root'
+            '2017': 'ggH_UL2017.root'
             
     bkg:
         DYMC:
-            '2017': 'DYMC_2017.root'
+            '2017': 'DY_UL2017.root' #not used here!
 
 data_file_names:
     Data:
-        '2017': 'DYData_2017_PAS5.root'
+        '2017': 'Data_UL2017.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
-    VBF:  'vbfTagDumper/trees/vbf_125_13TeV_GeneralDipho'
-    ggH:  'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
-    DYMC: 'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
-    Data: 'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
+    VBF:  'Events'
+    ggH:  'Events'
+    DYMC: 'Events'
+    Data: 'Events'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     VBF:
-        ['dipho_lead_ptoM', 'dipho_sublead_ptoM', 
+        ['leadElectronIDMVA', 'subleadElectronIDMVA', 
          #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
-         'dijet_LeadJPt', 'dijet_SubJPt', 'dijet_abs_dEta', 'dijet_Mjj', 
-         'dijet_dphi', 'dijet_minDRJetPho', 'dijet_dipho_dphi_trunc', 'dijet_centrality']
+         'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
+         'dijetAbsDPhiTrunc', 'dijetCentrality']
     ggH:
-        ['dipho_leadIDMVA', 'dipho_subleadIDMVA', 'dipho_lead_ptoM', 'dipho_sublead_ptoM',
-         'dipho_leadEta', 'dipho_subleadEta',
-         'CosPhi', 'vtxprob', 'sigmarv', 'sigmawv'] 
+        ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
+         'leadElectronEta', 'subleadElectronEta',
+         'dielectronCosPhi'] 
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
-    dijet_centrality:
-        'np.exp(-4*((#dijet_Zep#/#dijet_abs_dEta#)**2))'
+    leadElectronPToM:
+    subleadElectronPToM:

@@ -9,21 +9,21 @@ def main(options):
 
     #take options from the yaml config
     with open(options.config, 'r') as config_file:
-        config        = yaml.load(config_file)
-        output_tag    = config['signal_process']
+        config            = yaml.load(config_file)
+        output_tag        = config['output_tag']
 
-        mc_dir        = config['mc_file_dir']
-        mc_fnames     = config['mc_file_names']
+        mc_dir            = config['mc_file_dir']
+        mc_fnames         = config['mc_file_names']
   
         #data not needed yet, but stil specify in the config for compatibility with constructor
-        data_dir      = config['data_file_dir']
-        data_fnames   = config['data_file_names']
+        data_dir          = config['data_file_dir']
+        data_fnames       = config['data_file_names']
 
         proc_to_tree_name = config['proc_to_tree_name']
 
-        train_vars   = config['train_vars']
-        vars_to_add  = config['vars_to_add']
-        presel       = config['preselection']
+        train_vars        = config['train_vars']
+        vars_to_add       = config['vars_to_add']
+        presel            = config['preselection']
 
                                            #Data handling stuff#
  
@@ -34,8 +34,13 @@ def main(options):
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
-        root_obj.concat() #automatically conacat years if more than one detected
+        for data_obj in root_obj.data_objects:
+            root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+        root_obj.concat() 
   
+        print 'unique procs in sig df: {}'.format(np.unique(root_obj.mc_df_sig['proc'].values))
+        print 'unique procs in bkg df: {}'.format(np.unique(root_obj.mc_df_bkg['proc'].values))
+        
 
                                                 #BDT stuff#
 

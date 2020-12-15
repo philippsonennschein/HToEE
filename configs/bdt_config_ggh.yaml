@@ -1,6 +1,8 @@
 # custom tag that will be added to all saved df's and models. 
-signal_process:
-    'ggH'
+# useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
+# otherwise may get confused when training another clf like VBF 
+output_tag:
+    'ggH_BDT'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
@@ -13,32 +15,37 @@ data_file_dir:
 mc_file_names:
     sig:
         ggH:
-            '2017': 'ggH_HToEE_2017.root'
+            '2017': 'ggH_UL2017.root'
     bkg:
         DYMC:
-            '2017': 'DYMC_2017.root'
+            '2017': 'DY_UL2017.root'
+        TT2L2Nu:
+            '2017': 'TTLNu_UL2017.root'
+        TTSemiL:
+            '2017': 'TTSemi_UL2017.root'
 
 data_file_names:
     Data:
-        '2017': 'DYData_2017_PAS5.root'
+        '2017': 'Data_UL2017.root'
 
-#.root MC files for all years (bkg) should have this tree path:
+#.root MC files for all years (bkg) should have these tree path:
 proc_to_tree_name:
-    ggH: 'vbfTagDumper/trees/ggh_125_13TeV_GeneralDipho'
-    DYMC: 'vbfTagDumper/trees/zee_13TeV_GeneralDipho'
-    Data: 'vbfTagDumper/trees/Data_13TeV_GeneralDipho'
-
-model_name:
-    'ggH_vs_DYMC_clf'
+    ggH: 'Events'
+    DYMC: 'Events'
+    Data: 'Events'
+    TT2L2Nu: 'Events'
+    TTSemiL: 'Events'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
-    ['dipho_leadIDMVA', 'dipho_subleadIDMVA', 'dipho_lead_ptoM', 'dipho_sublead_ptoM',
-     'dipho_leadEta', 'dipho_subleadEta',
-      'CosPhi', 'vtxprob', 'sigmarv', 'sigmawv'] 
+    ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
+     'leadElectronEta', 'subleadElectronEta',
+     'dielectronCosPhi'] #, 'vtxprob', 'sigmarv', 'sigmawv'] 
 
 vars_to_add:
+    leadElectronPToM:
+    subleadElectronPToM:
 
 #preselection that will be applied to all samples
 preselection:
-    'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.9 and dipho_subleadIDMVA > -0.9 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25'
+    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'

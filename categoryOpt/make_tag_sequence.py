@@ -5,13 +5,14 @@ import pickle
 from HToEEML import ROOTHelpers 
 import pandas as pd
 import root_pandas
+from os import path, system
 
 
 def main(options):
     
     with open(options.config, 'r') as config_file:
         config             = yaml.load(config_file)
-        output_tag         = config['signal_process']
+        output_tag         = config['output_tag']
 
         mc_dir             = config['mc_file_dir']
         mc_fnames          = config['mc_file_names']
@@ -30,11 +31,11 @@ def main(options):
 
                                            #Data handling stuff#
         #apply loosest selection (ggh) first, else memory requirements are ridiculous. Fine to do this since all cuts all looser than VBF (not removing events with higher priority)
-        loosest_selection = 'dipho_mass > 110 and dipho_mass < 150 and dipho_leadIDMVA > -0.9 and dipho_subleadIDMVA > -0.9 and dipho_lead_ptoM > 0.333 and dipho_sublead_ptoM > 0.25'
+        loosest_selection = 'dielectronMass > 110 and dielectronMass < 150'
  
         #load the mc dataframe for all years. Do not apply any specific preselection
         root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection) 
-
+        root_obj.no_lumi_scale()
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         if options.data_as_bkg:
@@ -53,22 +54,22 @@ def main(options):
 
     #decide sequence of tags and specify preselection for use with numpy.select:
     tag_sequence          = ['VBF','ggH']
-    proc_to_preselection  = {'VBF': [combined_df['dipho_mass'].gt(110) & 
-                                     combined_df['dipho_mass'].lt(150) &
-                                     combined_df['dipho_leadIDMVA'].gt(-0.2) &
-                                     combined_df['dipho_subleadIDMVA'].gt(-0.2) &
-                                     combined_df['dipho_lead_ptoM'].gt(0.333) &
-                                     combined_df['dipho_sublead_ptoM'].gt(0.25) &
-                                     combined_df['dijet_Mjj'].gt(350) &
-                                     combined_df['dijet_LeadJPt'].gt(40) &
-                                     combined_df['dijet_SubJPt'].gt(30)
+    proc_to_preselection  = {'VBF': [combined_df['dielectronMass'].gt(110) & 
+                                     combined_df['dielectronMass'].lt(150) &
+                                     #combined_df['leadElectronIDMVA'].gt(-0.2) &
+                                     #combined_df['subleadElectronIDMVA'].gt(-0.2) &
+                                     combined_df['leadElectronPToM'].gt(0.333) &
+                                     combined_df['subleadElectronPToM'].gt(0.25) &
+                                     combined_df['dijetMass'].gt(350) &
+                                     combined_df['leadJetPt'].gt(40) &
+                                     combined_df['subleadJetPt'].gt(30)
                                     ],
-                            'ggH':  [combined_df['dipho_mass'].gt(110) & 
-                                     combined_df['dipho_mass'].lt(150) &
-                                     combined_df['dipho_leadIDMVA'].gt(-0.9) &
-                                     combined_df['dipho_subleadIDMVA'].gt(-0.9) &
-                                     combined_df['dipho_lead_ptoM'].gt(0.333) &
-                                     combined_df['dipho_sublead_ptoM'].gt(0.25)
+                            'ggH':  [combined_df['dielectronMass'].gt(110) & 
+                                     combined_df['dielectronMass'].lt(150) &
+                                     #combined_df['dipho_leadIDMVA'].gt(-0.9) &
+                                     #combined_df['dipho_subleadIDMVA'].gt(-0.9) &
+                                     combined_df['leadElectronPToM'].gt(0.333) &
+                                     combined_df['subleadElectronPToM'].gt(0.25)
                                     ]       
                             }
 
@@ -126,8 +127,8 @@ def main(options):
 
         # FILL TREES BASED ON BOTH OF ABOVE  
         tree_vars = ['dZ', 'CMS_hgg_mass', 'weight']
-        combined_df['dZ'] = 0 
-        combined_df['CMS_hgg_mass'] = combined_df['dipho_mass'] 
+        combined_df['dZ'] = float(0.)
+        combined_df['CMS_hgg_mass'] = combined_df['dielectronMass'] 
 
         # FIXME: dont loop through events eventually but for now I cba to use numpy to vectorise it again
         #for true_proc in tag_sequence+['Data']: 
@@ -151,12 +152,16 @@ def main(options):
             for target_proc in tag_sequence:  #for all events that got the proc tag, which tag did they fall into?
                 for i_tag in range(len(proc_to_tags[target_proc].values())):#for each tag corresponding to the category we target, which events go in which tag
                      if true_proc is not 'Data': branch_names[true_proc].append('{}_125_13TeV_{}cat{}'.format(true_proc.lower(), target_proc.lower(), i_tag ))
-                     else: branch_names[true_proc].append('{}_125_13TeV_{}cat{}'.format(true_proc, target_proc.lower(), i_tag ))
+                     else: branch_names[true_proc].append('{}_13TeV_{}cat{}'.format(true_proc, target_proc.lower(), i_tag ))
 
         #debug_procs = ['dipho_mass', 'dipho_leadIDMVA', 'dipho_subleadIDMVA', 'dipho_lead_ptoM', 'dipho_sublead_ptoM', 'dijet_Mjj', 'dijet_LeadJPt', 'dijet_SubJPt', 'ggH_bdt', 'VBF_bdt', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag']
         debug_vars = ['proc', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag']
         combined_df['tree_name'] = combined_df.apply(assign_tree, axis=1)
         print combined_df[debug_vars+['tree_name']]
+
+        if not path.isdir('output_trees/'):
+            print 'making directory: {}'.format('output_trees/')
+            system('mkdir -p %s' %'output_trees/')
 
         #have to save individual trees then hadd procs together on the command line.
         for proc in tag_sequence+['Data']:
@@ -165,7 +170,7 @@ def main(options):
                 print bn
                 branch_selected_df = selected_df[selected_df.tree_name==bn]
                 print branch_selected_df[debug_vars+['tree_name']].head(20)
-                root_pandas.to_root(branch_selected_df[tree_vars], '{}.root'.format(bn), key=bn)
+                root_pandas.to_root(branch_selected_df[tree_vars], 'output_trees/{}.root'.format(bn), key=bn)
                 print
 
         #if worst comes to worst then just iter over df rows and fill a root tree the old school way
@@ -197,19 +202,17 @@ def assign_tree(row):
         #for all true ggh processes, which went in what analysis category
     elif row['proc'] == 'Data':
         if row['priority_tag'] == 'VBF':
-            if row['VBF_analysis_tag']==0 : return 'Data_125_13TeV_vbfcat0'
-            elif row['VBF_analysis_tag']==1 : return 'Data_125_13TeV_vbfcat1'
+            if row['VBF_analysis_tag']==0 : return 'Data_13TeV_vbfcat0'
+            elif row['VBF_analysis_tag']==1 : return 'Data_13TeV_vbfcat1'
         elif row['priority_tag'] == 'ggH':
-            if row['ggH_analysis_tag']==0 : return 'Data_125_13TeV_gghcat0'
-            elif row['ggH_analysis_tag']==1 : return 'Data_125_13TeV_gghcat1'
-            elif row['ggH_analysis_tag']==2 : return 'Data_125_13TeV_gghcat2'
+            if row['ggH_analysis_tag']==0 : return 'Data_13TeV_gghcat0'
+            elif row['ggH_analysis_tag']==1 : return 'Data_13TeV_gghcat1'
+            elif row['ggH_analysis_tag']==2 : return 'Data_13TeV_gghcat2'
         elif row['priority_tag'] == 'NOTAG': return 'NOTAG'
         else: raise KeyError('Did not have one of the correct tags')
         #for all true data processes, which went in what analysis category
 
-    else: raise KeyError('Did not have one of the correct prosc')
-            
-
+    else: raise KeyError('Did not have one of the correct procs')
 
 if __name__ == "__main__":
 

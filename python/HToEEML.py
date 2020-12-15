@@ -1,34 +1,40 @@
+#data handling imports
 import uproot as upr
 import numpy as np
 import pandas as pd
-import xgboost as xgb
 import os
 from ROOT import TLorentzVector as lv
 from numpy import pi
 from os import path, system
-#from ast import literal_eval
 from variables import nominal_vars, gen_vars
+
+#BDT imports
+import xgboost as xgb
 from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler
 import pickle
 import warnings
-import matplotlib.pyplot as plt
-try:
-     plt.style.use("cms10_6")
-except IOError:
-     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 
-#FIXME: might be best to migrate deep learning stuff to another file
+#NN imports. Will eventually migrate NN to separate file
 from keras.models import Sequential
 from keras.initializers import RandomNormal
-from keras.layers import *
+from keras.layers import Dense, Dropout, Activation
 from keras.optimizers import Nadam
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras.utils import np_utils
 
-#import tensorflow as tf #for creating custom metric
+#plotting imports
+import matplotlib.pyplot as plt
+try:
+     plt.style.use("cms10_6_HP")
+except IOError:
+     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
+import scipy.stats
+
+
+
 class SampleObject(object):
     '''
     Class to store attributes of each sample. One object to be used per year, per sample -
@@ -51,10 +57,11 @@ class ROOTHelpers(object):
     '''
   
     def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str=''):
-        #FIXME: write checks to see if all procs match with each other e.g. is "VBF" file name id also an id in proc_to_tree?
-
         self.years              = set()
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
+        self.lumi_scale         = True
+        self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57} #all in pb. also have BR for signals
+        self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. update if selection changes
 
         self.out_tag            = out_tag
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
@@ -97,6 +104,11 @@ class ROOTHelpers(object):
 
         self.cut_string         = presel_str
 
+    def no_lumi_scale(self):
+        ''' 
+        bool for lumi scale
+        '''
+        self.lumi_scale=False
 
     def load_mc(self, sample_obj, bkg=False, reload_samples=False):
         '''
@@ -140,6 +152,7 @@ class ROOTHelpers(object):
 
         missing_vars = [x for x in self.train_vars if x not in df.columns]
         if len(missing_vars)!=0: raise IOError('Missing variables in dataframe: {}. Reload with option -r and try again'.format(missing_vars))
+
         else: print('Sucessfully loaded DataFrame: {}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
         return df    
 
@@ -152,43 +165,41 @@ class ROOTHelpers(object):
         df_file = upr.open(file_dir+file_name)
         df_tree = df_file[tree_name]
         del df_file
-        if len(self.cut_string)>0:
-            if (flag=='sig') or (flag=='bkg'): df = df_tree.pandas.df(self.nominal_vars + gen_vars).query(self.cut_string)
-            else: df = df_tree.pandas.df(self.nominal_vars).query(self.cut_string)
+
+        if flag == 'Data':
+            #can cut on data now as dont need to run MC_norm
+            data_vars = self.nominal_vars
+            #needed for preselection and training
+            #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
+            #FIXME: temp fix until ptOm in samples
+            df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150')
+            df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
+            df['subleadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
+            df = df.query(self.cut_string)
+            df['weight'] = np.ones_like(df.shape[0])
         else:
-            if (flag=='sig') or (flag=='bkg'): df = df_tree.pandas.df(self.nominal_vars + gen_vars)
-            else: df = df_tree.pandas.df(self.nominal_vars)
+            #cant cut on sim now as need to run MC_norm and need sumW before selection!
+            df = df_tree.pandas.df(self.nominal_vars)
+            #needed for preselection and training
+            df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
+            df['subleadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
+            df['weight'] = df['genWeight']
 
-        print('Reshuffling events')
+
+        if len(self.cut_string)>0:
+            if flag != 'Data':
+                df = self.MC_norm(df, proc_tag, year)
+                df = df.query(self.cut_string)
+        else:
+            if flag != 'Data':
+                df = self.MC_norm(df, proc_tag, year)
+
         df = df.sample(frac=1).reset_index(drop=True)
-
-        print('dropping any NaNs. Check this doesnt remove too much!')
         df = df.dropna()
-
-        if (flag=='sig') or(flag=='bkg'): df = self.scale_by_lumi(file_name, df, year)
-        print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
-
-        #FIXME:
-        # make general feature egineering here
-        #literal_eval does not work ...
-        df['dijet_centrality'] = np.exp(-4.*((df['dijet_Zep']/df['dijet_abs_dEta'])**2))
-        df[ ['dijet_lead_phi','dijet_sublead_phi'] ] = df.apply(self.add_jet_phis, axis=1, result_type='expand') #FIXME: phi's are a bit dodgy. better to get from fgg!
-        #for var_name, var_string in self.vars_to_add.iteritems():
-        #    hash_counter=0
-        #    safe_string = list(var_string)
-        #    for index,char in enumerate(var_string):
-        #        if char=='#':
-        #            if hash_counter%2==0: safe_string[index] = "df['"
-        #            else: safe_string[index] =  "']"
-        #            hash_counter+=1
-        #    safe_string = "".join(safe_string)
-        #    print 'safe_string is: {}'.format(safe_string)
-        #    df[var_name] = literal_eval(safe_string)
-
-        #add some info that may be useful later e.g. in tag sequence 
         df['proc'] = proc_tag
         #df['year'] = year
 
+        print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
         #save everything
         Utils.check_dir(file_dir+'DataFrames/') 
         df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year), 'df', mode='w', format='t')
@@ -196,13 +207,23 @@ class ROOTHelpers(object):
 
         return df
 
-    def scale_by_lumi(self, file_name, df, year):
+    def MC_norm(self, df, proc_tag, year):
         '''
-        Scale simulation by the lumi of the year
+        normalisation to perform before prelection
         '''
-        print('scaling weights for file: {} from year: {}, by {}'.format(file_name, year, self.lumi_map[year]))
-        df['weight']*=self.lumi_map[year]
+        #Do scaling that used to happen in flashgg: XS * BR(for sig only) eff * acc
+        sum_w_initial = np.sum(df['weight'].values)
+        print 'scaling by {} by XS: {}'.format(proc_tag, self.XS_map[proc_tag])
+        df['weight'] *= (self.XS_map[proc_tag]) 
+        if self.lumi_scale: #should not be doing this in the final Tag producer
+            print 'scaling by {} by Lumi: {} * 1000 /pb'.format(proc_tag, self.lumi_map[year])
+            df['weight'] *= self.lumi_map[year]*1000 #lumi is added earlier but XS is in pb, so need * 1000
+        print 'scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[proc_tag])
+        df['weight'] *= (self.eff_acc[proc_tag])
+        df['weight'] /= sum_w_initial
+        print 'sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values))
         return df
+
 
     def apply_more_cuts(self, cut_string):
         '''
@@ -211,25 +232,6 @@ class ROOTHelpers(object):
         self.mc_df_sig          = self.mc_df_sig.query(cut_string)
         self.mc_df_bkg          = self.mc_df_bkg.query(cut_string)
         self.data_df            = self.data_df.query(cut_string)
-
-    def add_jet_phis(self, row):
-        leadPho = lv()
-        leadPho.SetPtEtaPhiM( row['dipho_lead_ptoM'] * row['dipho_mass'], row['dipho_leadEta'], row['dipho_leadPhi'], 0. )
-        subleadPho = lv()
-        subleadPho.SetPtEtaPhiM( row['dipho_sublead_ptoM'] * row['dipho_mass'], row['dipho_subleadEta'], row['dipho_subleadPhi'], 0. )
- 
-        diphoSystem = leadPho + subleadPho
- 
-        leadJetPhi    = row['gghMVA_leadDeltaPhi'] + diphoSystem.Phi()
-        subleadJetPhi = row['gghMVA_subleadDeltaPhi'] + diphoSystem.Phi()
- 
-        if leadJetPhi > pi: leadJetPhi = leadJetPhi - 2.*pi
-        elif leadJetPhi < -1.*pi: leadJetPhi = leadJetPhi + 2.*pi
- 
-        if subleadJetPhi > pi: subleadJetPhi = subleadJetPhi - 2.*pi
-        elif subleadJetPhi < -1.*pi: subleadJetPhi = subleadJetPhi + 2.*pi
- 
-        return [leadJetPhi, subleadJetPhi]
 
     def concat(self):
         '''
@@ -258,7 +260,12 @@ class BDTHelpers(object):
       
         #attributes for the dataset formation
         mc_df_sig = data_obj.mc_df_sig
+        self.sig_procs  = np.unique(mc_df_sig['proc']).tolist()
         mc_df_bkg = data_obj.mc_df_bkg
+        self.bkg_procs  = np.unique(mc_df_bkg['proc']).tolist()
+        df_data = data_obj.data_df
+
+        self.train_frac = train_frac
 
         #add y_target label (1 for signal, 0 for background)
         mc_df_sig['y'] = np.ones(mc_df_sig.shape[0]).tolist()
@@ -274,43 +281,50 @@ class BDTHelpers(object):
         Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
 
         if not eq_weights:
-            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], 
-                                                                                  Z_tot['weight'],
-                                                                                  Z_tot['y'], 
-                                                                                  train_size=train_frac, 
-                                                                                  test_size=1-train_frac,
-                                                                                  shuffle=True, random_state=1357
-                                                                                 )
+            X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[train_vars], 
+                                                                                               Z_tot['weight'],
+                                                                                               Z_tot['y'], Z_tot['proc'],
+                                                                                               train_size=train_frac, 
+                                                                                               test_size=1-train_frac,
+                                                                                               shuffle=True, random_state=1357
+                                                                                               )
         else:
-            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], 
-                                                                                                       Z_tot['eq_weight'], Z_tot['y'],
-                                                                                                       train_size=train_frac, 
-                                                                                                       test_size=1-train_frac,
-                                                                                                       shuffle=True, 
-                                                                                                       random_state=1357
-                                                                                                      )
+            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[train_vars], Z_tot['weight'], 
+                                                                                                                    Z_tot['eq_weight'], Z_tot['y'], Z_tot['proc'],
+                                                                                                                    train_size=train_frac, 
+                                                                                                                    test_size=1-train_frac,
+                                                                                                                    shuffle=True, 
+                                                                                                                    random_state=1357
+                                                                                                                    )
             self.train_weights_eq = train_eqw.values
-            #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
+            #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, 
+            #    because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
       
         self.train_vars       = train_vars
         self.X_train          = X_train.values
         self.y_train          = y_train.values
         self.train_weights    = train_w.values
         self.y_pred_train     = None
+        self.proc_arr_train   = proc_arr_train
 
         self.X_test           = X_test.values
         self.y_test           = y_test.values
         self.test_weights     = test_w.values
         self.y_pred_test      = None
+        self.proc_arr_test    = proc_arr_test
+
+        #get data test set for plotting bkg/data agreement
+        self.X_data_train, self.X_data_test = train_test_split(df_data[train_vars], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+
 
         self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=100, 
-                                                  eta=0.05, maxDepth=6, min_child_weight=0.5, 
+                                                  eta=0.05, maxDepth=4, min_child_weight=0.01, 
                                                   subsample=0.6, colsample_bytree=0.6, gamma=1)
 
         #attributes for the hp optmisation and cross validation
         self.hp_grid_rnge     = {'learning_rate': [0.01, 0.05, 0.1, 0.3],
                                  'max_depth':[x for x in range(3,10)],
-                                 'min_child_weight':[x for x in range(0,3)],
+                                 #'min_child_weight':[x for x in range(0,3)], #FIXME: probs not appropriate range for a small sumw!
                                  'gamma': np.linspace(0,5,6).tolist(),
                                  'subsample': [0.5, 0.8, 1.0],
                                  'n_estimators':[200,300,400,500]
@@ -325,7 +339,7 @@ class BDTHelpers(object):
         self.w_folds_validate = []
         self.validation_rocs  = []
 
-        self.plotter          = Plotter(data_obj, train_vars, sig_label=data_obj.proc_tag)
+        self.plotter          = Plotter(data_obj, train_vars)
         del data_obj
         
 
@@ -441,50 +455,28 @@ class BDTHelpers(object):
         print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
-    def plot_roc(self, proc_tag):
+    def plot_roc(self, out_tag):
         ''' 
         Method to plot the roc curve, using method from Plotter() class
         '''
         roc_fig = self.plotter.plot_roc(self.y_train, self.y_pred_train, self.train_weights, 
                                    self.y_test, self.y_pred_test, self.test_weights)
 
-        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), proc_tag))
-        roc_fig.savefig('{0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),proc_tag))
-        print('saving: {0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),proc_tag))
+        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), out_tag))
+        roc_fig.savefig('{0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),out_tag))
+        print('saving: {0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),out_tag))
         plt.close()
 
-    def plot_output_score(self, proc_tag):
+    def plot_output_score(self, out_tag):
         ''' 
-        Method to plot the roc curve and compute the integral of the roc as a 
-        performance metric
+        Method to plot the roc curve and compute the integral of the roc as a performance metric
         '''
-        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights)
+        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, self.proc_arr_test, self.clf.predict_proba(self.X_data_test.values)[:,1:])
 
-        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),proc_tag))
-        output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_BDT_output_score.pdf'.format(os.getcwd(), proc_tag))
-        print('saving: {0}/plotting/plots/{1}/{1}_BDT_output_score.pdf'.format(os.getcwd(), proc_tag))
+        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),out_tag))
+        output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
+        print('saving: {0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
         plt.close()
-     
-    def train_old_classifier(self, file_path, save=True):
-        '''
-        cross check the performance using DMatrix and xgb.train wrapper (mainly for sanity)
-        '''
-        training_matrix  = xgb.DMatrix(self.X_train, label=self.y_train, weight=self.train_weights, feature_names=self.train_vars)
-        if self.eq_train: 
-            alt_train_matrix = xgb.DMatrix(self.X_train, label=self.y_train, weight=self.train_weights_eq, feature_names=self.train_vars)
-        testing_matrix   = xgb.DMatrix(self.X_test,  label=self.y_test,  weight=self.test_weights,  feature_names=self.train_vars)
-
-        print 'Training classifier... '
-        if self.eq_train:
-            clf = xgb.train({'objective':'binary:logistic'}, alt_train_matrix)
-        else:
-            clf = xgb.train({'objective':'binary:logistic'}, training_matrix)
-        print 'Finished Training classifier!'
-        
-        y_pred_train = clf.predict(training_matrix)
-	print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, y_pred_train, sample_weight=self.train_weights*1000))
-        y_pred_test = clf.predict(testing_matrix)
-        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, y_pred_test, sample_weight=self.test_weights*1000))
 
 class LSTM_DNN(object):
     '''
@@ -534,193 +526,109 @@ class LSTM_DNN(object):
         #self.y_test           = np_utils.to_categorical(y_test.values, num_classes=2)
         #self.test_weights     = test_w.values
         #self.y_pred_test      = None
-
-class DNN_keras(object):
-    '''
-    Use the keras package to train a DNN for VBF/DY separation
-    '''
-    def __init__(self, data_obj, train_vars, train_frac, eq_weights=False):
-        #attributes for the dataset formation
-        mc_df_sig = data_obj.mc_df_sig
-        mc_df_bkg = data_obj.mc_df_bkg
-
-        #add y_target label (1 for signal, 0 for background)
-        mc_df_sig['y'] = np.ones(mc_df_sig.shape[0]).tolist()
-        mc_df_bkg['y'] = np.zeros(mc_df_bkg.shape[0]).tolist()
-
-        if eq_weights: 
-            b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
-            mc_df_sig['eq_weight'] = mc_df_sig['weight'] * b_to_s_ratio 
-            mc_df_bkg['eq_weight'] = mc_df_bkg['weight'] 
-            self.eq_train = True
-        else: self.eq_train = False
-
-        Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
-
-        if not eq_weights:
-            X_train, X_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
-        else:
-            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[train_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
-            self.train_weights_eq = train_eqw.values
-
-        self.train_vars       = train_vars
-
-        #develop scaler to standardise input features (and re-use to scale test data)
-        print ('Array contains NaN: ', np.isnan(X_train).any())
-        X_scaler = StandardScaler()
-        X_scaler.fit(X_train.values)
-        self.X_train          = X_scaler.transform(X_train)
-        self.y_train          = np_utils.to_categorical(y_train.values, num_classes=2)
-        self.train_weights    = train_w.values #needed for calc of train ROC even if training wth eq weights
-        self.y_pred_train     = None
-
-        self.X_test           = X_scaler.transform(X_test)
-        self.y_test           = np_utils.to_categorical(y_test.values, num_classes=2)
-        self.test_weights     = test_w.values
-        self.y_pred_test      = None
-
-        self.model            = Sequential()
-    
-    def set_model_params(self, hidden_n, num_layers, dropout):
-        for i,nodes in enumerate([hidden_n] * num_layers):
-            #first layer
-            if i==0:
-                self.model.add(
-                Dense( 
-                      nodes, #dim of output space
-                      kernel_initializer='glorot_normal',
-                      activation='relu',
-                      kernel_regularizer=l2(1e-5),
-                      input_dim=len(self.train_vars)
-                      )
-                )
-            else: #hidden layers
-                self.model.add(
-                Dense(
-                      nodes,
-                      kernel_initializer='glorot_normal',
-                      activation='relu',
-                      kernel_regularizer=l2(1e-5),
-                      )
-                )
-                self.model.add(Dropout(dropout))
-         
-        #final layer
-        self.model.add(
-        Dense(
-              2,
-              kernel_initializer='glorot_normal',
-              activation='softmax'
-             )
-        )
-         
-        self.model.compile(
-                loss='binary_crossentropy',
-                optimizer=Nadam(),
-                #metrics=['']
-                metrics=['accuracy']#change to area under roc curve
-        )
-        print 'model architecture:'
-        self.model.summary()
- 
-    def auroc(y_true, y_pred, weight):
-            return tf.py_func(roc_auc_score, (np.array(y_true), np.array(y_pred)), tf.double)
-
-    def fit(self, batch_size, epochs, validate=False):
-        if self.eq_train: train_weights = self.train_weights_eq
-        else: train_weights = self.train_weights
-      
-        if validate:
-            X_train, X_val, y_train, y_val, w_eq_train, _, _, w_val = train_test_split(self.X_train, self.y_train, train_weights, self.train_weights, train_size=0.7, shuffle=True, random_state=1357)
-
-
-            print 'Fitting on training + validation data'
-            history = self.model.fit( X_train,
-                                      y_train,
-                                      sample_weight=w_eq_train,
-                                      validation_data=(X_val, y_val, w_val),
-                                      batch_size=batch_size,
-                                      epochs = epochs,
-                                      shuffle=True,
-                                      callbacks=[EarlyStopping(patience=20)] #when validation inc
-                                    ) 
-            print 'Finished fitting on training data'
-
-        else:
-            print 'Fitting on training data'
-            history = self.model.fit( self.X_train,
-                                      self.y_train,
-                                      sample_weight=train_weights,
-                                      batch_size=batch_size,
-                                      epochs = epochs,
-                                      shuffle=True
-                                    ) 
-            print 'Finished fitting on training data'
-
-    def get_predictions(self):
-        y_pred_train = (self.model.predict(self.X_train)).argmax(axis=1)
-        print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train.argmax(axis=1), y_pred_train, sample_weight=self.train_weights))
-        y_pred_test = (self.model.predict(self.X_test)).argmax(axis=1)
-        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test.argmax(axis=1), y_pred_test, sample_weight=self.test_weights))
     
 
 class Plotter(object):
     '''
     Class to plot input variables and output scores
     '''
-    def __init__(self, data_obj, input_vars, sig_col='firebrick', sig_label='VBF', bkg_col='violet', bkg_label='DYMC',  normalise=True): 
+    #def __init__(self, data_obj, input_vars, sig_col='firebrick',  bkg_col='violet',  normalise=True): 
+    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, log=False, reweight=True): 
         self.sig_df     = data_obj.mc_df_sig
         self.bkg_df     = data_obj.mc_df_bkg
+        self.data_df    = data_obj.data_df
+        del data_obj
+
+        self.sig_labels = np.unique(self.sig_df['proc'].values).tolist()
+        self.bkg_labels = np.unique(self.bkg_df['proc'].values).tolist()
 
         self.sig_colour = sig_col
-        self.sig_label  = sig_label
-        self.bkg_colour = bkg_col
-        self.bkg_label  = bkg_label
+        self.bkg_colours= ['#91bfdb', '#ffffbf', '#fc8d59']
         self.normalise  = normalise
 
         self.input_vars = input_vars
-        del data_obj
+        self.sig_scaler = 5*10**8
+        self.log_axis   = log
+        self.reweight   = reweight
 
-    def plot_input(self, var, n_bins):
+    @classmethod 
+    def num_to_str(self, num):
+        ''' 
+        Convert basic number into scientific form e.g. 1000 -> 1 x 10^{3}.
+        Not considering decimal inputs for now
+        '''
+        str_rep = str(num) 
+        if str_rep[0] == 0: return num 
+        exponent = len(str_rep)-1
+        return r'$\times 10^{%s}$'%(exponent)
+
+    def plot_input(self, var, n_bins, out_label):
         fig  = plt.figure(1)
         axes = fig.gca()
+        bkg_stack      = []
+        bkg_w_stack    = []
+        bkg_proc_stack = []
         
         var_sig     = self.sig_df[var].values
         sig_weights = self.sig_df['weight'].values
-        var_bkg     = self.bkg_df[var].values
-        bkg_weights = self.bkg_df['weight'].values
+        for bkg in self.bkg_labels:
+            var_bkg     = self.bkg_df[self.bkg_df.proc==bkg][var].values
+            bkg_weights = self.bkg_df[self.bkg_df.proc==bkg]['weight'].values
+            bkg_stack.append(var_bkg)
+            bkg_w_stack.append(bkg_weights)
+            bkg_proc_stack.append(bkg)
 
         if self.normalise:
             sig_weights /= np.sum(sig_weights)
-            bkg_weights /= np.sum(bkg_weights)
+            bkg_weights /= np.sum(bkg_weights) #FIXME: set this up for multiple bkgs
 
-        #plot with np first to get consistent ranges and modify last bin to avoid relatively empty X-axis space 
+        #plot with np first to get consistent ranges and modify last bin to avoid empty space at end of x-axis
         binned_data, bin_edges = np.histogram(var_sig, n_bins, weights=sig_weights)
         bkw_index=0
         sumw_all_bins=0
         for ibin_sum in reversed(binned_data):
             sumw_all_bins+=ibin_sum
-            if sumw_all_bins < 0.01*np.sum(binned_data): bkw_index+=1
+            if sumw_all_bins < 0.02*np.sum(binned_data): bkw_index+=1
             else: break
         if bkw_index!=0: bin_edges = bin_edges[:-bkw_index]     
         bins = np.linspace(bin_edges[0], bin_edges[-1], n_bins)
 
-        axes.hist(var_sig, bins=bins, label=self.sig_label, weights=sig_weights, histtype='step', color=self.sig_colour)
-        axes.hist(var_bkg, bins=bins, label=self.bkg_label, weights=bkg_weights, histtype='step', color=self.bkg_colour)
+        #add sig mc
+        axes.hist(var_sig, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) '+self.num_to_str(self.sig_scaler), weights=sig_weights*(self.sig_scaler), histtype='step', color=self.sig_colour, zorder=10)
+
+        #data
+        data_binned, bin_edges = np.histogram(self.data_df[var].values, bins=bins)
+        bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+        x_err    = (bin_edges[-1] - bin_edges[-2])/2
+        data_down, data_up = self.poisson_interval(data_binned, data_binned)
+        axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
+
+        #add stacked bkg
+        if self.reweight: 
+            rew_stack = []
+            k_factor = np.sum(self.data_df['weight'].values)/np.sum(self.bkg_df['weight'].values)
+            for w_arr in bkg_w_stack:
+                rew_stack.append(w_arr*k_factor)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+        else: axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+
 
         var_name_safe = var.replace('_',' ')
         axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
-        axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+ 
+        if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+        else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=0, top=current_top*1.2)
+        axes.set_ylim(bottom=10, top=current_top*1.2)
         axes.legend(bbox_to_anchor=(0.97,0.97))
         self.plot_cms_labels(axes)
        
-        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),self.sig_label))
-        fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(),self.sig_label,var))
+        Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), out_label))
+        fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(), out_label, var))
         plt.close()
 
+    @classmethod 
     def plot_cms_labels(self, axes, label='Work in progress', energy='(13 TeV)'):
         axes.text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes.transAxes, size=14)
         axes.text(1, 1.01, r'{}'.format(energy), ha='right', va='bottom', transform=axes.transAxes, size=14)
@@ -740,12 +648,17 @@ class Plotter(object):
         axes.legend(bbox_to_anchor=(0.97,0.97))
         self.plot_cms_labels(axes)
         axes.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
+        self.fig = fig
         return fig
 
-    def plot_output_score(self, y_test, y_pred_test, test_weights):
+    def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test):
         fig  = plt.figure(1)
         axes = fig.gca()
-        bins = np.linspace(0,1,61)
+        bins = np.linspace(0,1,41)
+
+        bkg_stack      = []
+        bkg_w_stack    = []
+        bkg_proc_stack = []
 
         sig_scores = y_pred_test.ravel()  * (y_test==1)
         sig_w_true = test_weights.ravel() * (y_test==1)
@@ -757,16 +670,80 @@ class Plotter(object):
             sig_w_true /= np.sum(sig_w_true)
             bkg_w_true /= np.sum(bkg_w_true)
 
-        axes.hist(sig_scores, bins=bins, label=self.sig_label, weights=sig_w_true, histtype='step', color=self.sig_colour)
-        axes.hist(bkg_scores, bins=bins, label=self.bkg_label, weights=bkg_w_true, histtype='step', color=self.bkg_colour)
-        axes.legend(bbox_to_anchor=(0.97,0.97))
+        for bkg in self.bkg_labels:
+            bkg_score     = bkg_scores * (proc_arr_test==bkg)
+            bkg_weights   = bkg_w_true * (proc_arr_test==bkg)
+            bkg_stack.append(bkg_score)
+            bkg_w_stack.append(bkg_weights)
+            bkg_proc_stack.append(bkg)
+
+        #sig
+        axes.hist(sig_scores, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) '+self.num_to_str(self.sig_scaler), weights=sig_w_true*(self.sig_scaler), histtype='step', color=self.sig_colour)
+
+        #data - need to take test frac of data
+        data_binned, bin_edges = np.histogram(data_pred_test, bins=bins)
+        bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+        x_err    = (bin_edges[-1] - bin_edges[-2])/2
+        data_down, data_up = self.poisson_interval(data_binned, data_binned)
+        axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
+
+        #axes.hist(bkg_scores, bins=bins, label='Background', weights=bkg_w_true, histtype='step', color=self.bkg_colours)
+        if self.reweight: 
+            rew_stack = []
+            k_factor = np.sum(np.ones_like(data_pred_test))/np.sum(bkg_w_true)
+            for w_arr in bkg_w_stack:
+                rew_stack.append(w_arr*k_factor)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+        else: axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+        axes.legend(bbox_to_anchor=(0.98,0.98), ncol=2)
 
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=0, top=current_top*1.2)
-        axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+        axes.set_ylim(bottom=0, top=current_top*1.5)
+        if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+        else: axes.set_ylabel('Events', ha='right', y=1, size=13)
         axes.set_xlabel('BDT Score', ha='right', x=1, size=13)
         self.plot_cms_labels(axes)
+        #ggH
+        #axes.axvline(0.751, ymax=0.75, color='black', linestyle='--')
+        #axes.axvline(0.554, ymax=0.75, color='black', linestyle='--')
+        #axes.axvline(0.331, ymax=0.75, color='black', linestyle='--')
+        #axes.axvspan(0, 0.331, ymax=0.75, color='grey', alpha=0.7)
+        #VBF
+        #axes.axvline(0.884, ymax=0.75, color='black', linestyle='--')
+        #axes.axvline(0.612, ymax=0.75, color='black', linestyle='--')
+        #axes.axvspan(0, 0.612, ymax=0.75, color='grey', alpha=0.6)
         return fig
+
+    @classmethod
+    def cats_vs_ams(self, cats, AMS, out_tag):
+        fig  = plt.figure(1)
+        axes = fig.gca()
+        axes.plot(cats,AMS, 'ro')
+        axes.set_xlim((0, cats[-1]+1))
+        axes.set_xlabel('$N_{\mathrm{cat}}$', ha='right', x=1, size=13)
+        axes.set_ylabel('Combined AMS', ha='right', y=1, size=13)
+        Plotter.plot_cms_labels(axes)
+        fig.savefig('{}/categoryOpt/nCats_vs_AMS_{}.pdf'.format(os.getcwd(), out_tag))
+
+    def poisson_interval(self, x, variance, level=0.68):                                                                      
+        neff = x**2/variance
+        scale = x/neff
+     
+        # CMS statcomm recommendation
+        l = scipy.stats.gamma.interval(
+            level, neff, scale=scale,
+        )[0]
+        u = scipy.stats.gamma.interval(
+            level, neff+1, scale=scale
+        )[1]
+     
+        # protect against no effecitve entries
+        l[neff==0] = 0.
+     
+        # protect against no variance
+        l[variance==0.] = 0.
+        u[variance==0.] = np.inf
+        return l, u
 
 
 class Utils(object):
@@ -805,9 +782,3 @@ class Utils(object):
                     f_sub.write(line)
         system( 'qsub -o {} -e {} -q hep.q -l h_rt=1:00:00 -l h_vmem=4G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
 
-
-class Logger(object):
-    '''
-    Class to log info for training and to print options/training configs
-    '''
-    def __init__(self): pass
