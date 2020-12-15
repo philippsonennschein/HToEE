@@ -484,48 +484,91 @@ class LSTM_DNN(object):
     '''
 
     def __init__(self, data_obj, low_level_vars, high_level_vars, train_frac, eq_weights=False):
-        #attributes for the dataset formation
+
         mc_df_sig = data_obj.mc_df_sig
         mc_df_bkg = data_obj.mc_df_bkg
 
         self.low_vars    = low_level_vars
         self.high_vars   = high_level_vars
 
-        #add y_target label (1 for signal, 0 for background)
-        mc_df_sig['y'] = np.ones(mc_df_sig.shape[0]).tolist()
-        mc_df_bkg['y'] = np.zeros(mc_df_bkg.shape[0]).tolist()
-
-        if eq_weights: 
+        if eq_weights: #not sure if we will use this in the end but lets see
             b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
             mc_df_sig['eq_weight'] = mc_df_sig['weight'] * b_to_s_ratio 
             mc_df_bkg['eq_weight'] = mc_df_bkg['weight'] 
             self.eq_train = True
         else: self.eq_train = False
 
-        Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+        #print ('Array contains NaN: ', np.isnan(Z_tot).any())
+        X_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+
+        #add y_target label (1 for signal, 0 for background). Keep separate from X-train until after scaling
+        y_sig = np.ones(mc_df_sig.shape[0])
+        y_bkg = np.zeros(mc_df_bkg.shape[0])
+        y_tot = np.concatenate((y_sig,y_bkg))
+
+        #pre-prop 1: log scale GeV vars to standardise inputs
+        for var in gev_vars:
+            if var in (low_level_vars+high_level_vars):
+                X_tot[var] = np.log(X_tot[var].values)
+
 
         if not eq_weights:
-            low_vars_train, low_vars_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[low_level_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
-            high_vars_train, high_vars_test, train_w, test_w, y_train, y_test, = train_test_split(Z_tot[high_level_vars], Z_tot['weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            all_X_vars_train, all_X_vars_test, train_w, test_w, y_train, y_test, = train_test_split(X_tot[low_level_vars+high_level_vars], 
+                                                                                                X_tot['weight'], 
+                                                                                                y_tot,
+                                                                                                train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
         else:
-            low_vars_train, low_vars_test, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[low_level_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
-            high_vars_train, high_vars_test, train_eqw, test_eqw, y_train, y_test, = train_test_split(Z_tot[high_level_vars], Z_tot['weight'], Z_tot['eq_weight'], Z_tot['y'], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            all_X_vars_train, all_X_vars_test, train_eqw, test_eqw, y_train, y_test, = train_test_split(X_tot[low_level_vars+high_level_vars], 
+                                                                                                    X_tot['weight'],
+                                                                                                    X_tot['eq_weight'], 
+                                                                                                    y_tot, 
+                                                                                                    train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
             self.train_weights_eq = train_eqw.values
 
+        #pre-prop 2: scale X features to zero mean and unit std. Derive on train set and transform test set. pandas re-conversion is annoying but needed
+        X_scaler = StandardScaler()
+        X_scaler.fit(all_X_vars_train.values)
 
-        #develop scaler to standardise input features (and re-use to scale test data)
-        #print ('Array contains NaN: ', np.isnan(X_train).any())
-        #X_scaler = StandardScaler()
-        #X_scaler.fit(X_train.values)
-        #self.X_train          = X_scaler.transform(X_train)
-        #self.y_train          = np_utils.to_categorical(y_train.values, num_classes=2)
-        #self.train_weights    = train_w.values #needed for calc of train ROC even if training wth eq weights
-        #self.y_pred_train     = None
+        X_scaled_all_vars_train = X_scaler.transform(all_X_vars_train)
+        self.X_scaled_all_vars_train = pd.DataFrame(X_scaled_all_vars_train, columns=low_level_vars+high_level_vars)
+     
+        #self.X_train_low_level      = self.X_scaled_all_vars_train[low_level_vars]
+        #self.X_train_high_level     = self.X_scaled_all_vars_train[high_level_vars]
+        self.y_train                = np_utils.to_categorical(y_train, num_classes=2)
+        self.train_weights          = train_w.values #needed for calc of train ROC even if training wth eq weights
+        self.y_pred_train           = None
 
-        #self.X_test           = X_scaler.transform(X_test)
-        #self.y_test           = np_utils.to_categorical(y_test.values, num_classes=2)
-        #self.test_weights     = test_w.values
-        #self.y_pred_test      = None
+        X_scaled_all_vars_test      = X_scaler.transform(all_X_vars_test)
+        self.X_scaled_all_vars_test = pd.DataFrame(X_scaled_all_vars_test, columns=low_level_vars+high_level_vars)
+
+        #self.X_test_low_level       = self.X_scaled_all_vars_test[low_level_vars]
+        #self.X_test_high_level      = self.X_scaled_all_vars_test[high_level_vars]
+        self.y_test                 = np_utils.to_categorical(y_test, num_classes=2)
+        self.test_weights           = test_w.values
+        self.y_pred_test            = None
+
+        del data_obj
+
+
+
+    def join_objects(self, n_objects):
+        for object_feature in self.low_vars:
+            self.X_train[''] = [feature for feature in self.X_train]
+ 
+        #should be able to get the number of features from this object. Number of objects needs to be decided by hand
+        
+    
+    def set_model(self, n_lstm_layers, n_lstm_nodes):
+        #Input() requires shape of object tensor for a single event: [n objects,n_features in object]
+        #in the first layer, we need to tell keras out input dimsion per event
+        #for lstm layers, each physics object hits an LSTM learner, so its important we provide n_objects as first tensor dimension. Can compare object ~ words in NLP
+        #each object then has its own features, so we give this as the second tensor dimension. Can compare feature ~ letters in words. Stitching the words togther gives your full compound train object
+
+        input_objects = keras.layers.Input(shape=(n_objects, n_features))
+        lstm = keras.layers.Input(shape=())
+        for i_layer in range(n_lstm_layers):
+            lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm) #could add some regularisation
+
     
 
 class Plotter(object):
