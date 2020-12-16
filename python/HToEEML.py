@@ -6,7 +6,7 @@ import os
 from ROOT import TLorentzVector as lv
 from numpy import pi
 from os import path, system
-from variables import nominal_vars, gen_vars
+from variables import nominal_vars, gen_vars, gev_vars
 
 #BDT imports
 import xgboost as xgb
@@ -17,6 +17,7 @@ import pickle
 import warnings
 
 #NN imports. Will eventually migrate NN to separate file
+import keras
 from keras.models import Sequential
 from keras.initializers import RandomNormal
 from keras.layers import Dense, Dropout, Activation
@@ -487,9 +488,11 @@ class LSTM_DNN(object):
 
         mc_df_sig = data_obj.mc_df_sig
         mc_df_bkg = data_obj.mc_df_bkg
+        del data_obj
 
-        self.low_vars    = low_level_vars
-        self.high_vars   = high_level_vars
+        self.low_vars  = low_level_vars
+        low_level_vars_flat  = [var for sublist in low_level_vars for var in sublist]
+        self.high_vars = high_level_vars
 
         if eq_weights: #not sure if we will use this in the end but lets see
             b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
@@ -508,21 +511,23 @@ class LSTM_DNN(object):
 
         #pre-prop 1: log scale GeV vars to standardise inputs
         for var in gev_vars:
-            if var in (low_level_vars+high_level_vars):
+            if var in (low_level_vars_flat+high_level_vars):
                 X_tot[var] = np.log(X_tot[var].values)
 
 
         if not eq_weights:
-            all_X_vars_train, all_X_vars_test, train_w, test_w, y_train, y_test, = train_test_split(X_tot[low_level_vars+high_level_vars], 
-                                                                                                X_tot['weight'], 
-                                                                                                y_tot,
-                                                                                                train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            all_X_vars_train, all_X_vars_test, train_w, test_w, y_train, y_test = train_test_split(X_tot[low_level_vars_flat+high_level_vars], 
+                                                                                                   X_tot['weight'], 
+                                                                                                   y_tot,
+                                                                                                   train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357
+                                                                                                  )
         else:
-            all_X_vars_train, all_X_vars_test, train_eqw, test_eqw, y_train, y_test, = train_test_split(X_tot[low_level_vars+high_level_vars], 
-                                                                                                    X_tot['weight'],
-                                                                                                    X_tot['eq_weight'], 
-                                                                                                    y_tot, 
-                                                                                                    train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
+            all_X_vars_train, all_X_vars_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test = train_test_split(X_tot[low_level_vars_flat+high_level_vars], 
+                                                                                                       X_tot['weight'],
+                                                                                                       X_tot['eq_weight'], 
+                                                                                                       y_tot, 
+                                                                                                       train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357
+                                                                                                      )
             self.train_weights_eq = train_eqw.values
 
         #pre-prop 2: scale X features to zero mean and unit std. Derive on train set and transform test set. pandas re-conversion is annoying but needed
@@ -530,45 +535,115 @@ class LSTM_DNN(object):
         X_scaler.fit(all_X_vars_train.values)
 
         X_scaled_all_vars_train = X_scaler.transform(all_X_vars_train)
-        self.X_scaled_all_vars_train = pd.DataFrame(X_scaled_all_vars_train, columns=low_level_vars+high_level_vars)
+        X_scaled_all_vars_train = pd.DataFrame(X_scaled_all_vars_train, columns=low_level_vars_flat+high_level_vars)
      
-        #self.X_train_low_level      = self.X_scaled_all_vars_train[low_level_vars]
-        #self.X_train_high_level     = self.X_scaled_all_vars_train[high_level_vars]
-        self.y_train                = np_utils.to_categorical(y_train, num_classes=2)
+        self.X_train_low_level      = X_scaled_all_vars_train[low_level_vars_flat]
+        self.X_train_high_level     = X_scaled_all_vars_train[high_level_vars]
+        self.y_train                = y_train
         self.train_weights          = train_w.values #needed for calc of train ROC even if training wth eq weights
         self.y_pred_train           = None
 
-        X_scaled_all_vars_test      = X_scaler.transform(all_X_vars_test)
-        self.X_scaled_all_vars_test = pd.DataFrame(X_scaled_all_vars_test, columns=low_level_vars+high_level_vars)
+        X_scaled_all_vars_test      = X_scaler.transform(all_X_vars_test) #important to use scaler tuned on X train
+        X_scaled_all_vars_test      = pd.DataFrame(X_scaled_all_vars_test, columns=low_level_vars_flat+high_level_vars)
 
-        #self.X_test_low_level       = self.X_scaled_all_vars_test[low_level_vars]
-        #self.X_test_high_level      = self.X_scaled_all_vars_test[high_level_vars]
-        self.y_test                 = np_utils.to_categorical(y_test, num_classes=2)
+        self.X_test_low_level       = X_scaled_all_vars_test[low_level_vars_flat]
+        self.X_test_high_level      = X_scaled_all_vars_test[high_level_vars]
+        self.y_test                 = y_test
         self.test_weights           = test_w.values
         self.y_pred_test            = None
 
-        del data_obj
+        self.low_level_vars_flat    = low_level_vars_flat
 
+    def join_objects(self):
+        '''
+        Function take take all low level objects for each event, and compactify into a matrix:
+           [ [jet1-pt, jet1-eta, ...,
+              jet2-pt, jet2-eta, ...,
+              jet3-pt, jet3-eta, ... ]_evt1 ,
 
+             [jet1-pt, jet1-eta, ...,
+              jet2-pt, jet2-eta, ...,
+              jet3-pt, jet3-eta, ...]_evt2 ,
 
-    def join_objects(self, n_objects):
-        for object_feature in self.low_vars:
-            self.X_train[''] = [feature for feature in self.X_train]
- 
-        #should be able to get the number of features from this object. Number of objects needs to be decided by hand
+             ...
+           ]
         
-    
-    def set_model(self, n_lstm_layers, n_lstm_nodes):
+        Note that the order of the low level inputs is v important, and should be jet objects in descending pT
+        '''
+
+        print 'Creating 2D train object vars...'
+        l_to_convert = []
+        for index, row in self.X_train_low_level.iterrows(): #very slow
+            l_event = []
+            for i_object_list in self.low_vars:
+                l_object = []
+                for i_var in i_object_list:
+                    l_object.append(row[i_var])
+                l_event.append(l_object)
+            l_to_convert.append(l_event)
+        self.X_train_low_level = np.array(l_to_convert, np.float32)
+        print 'Finished creating train object vars'
+
+        print 'Creating 2D test object vars...'
+        l_to_convert = []
+        for index, row in self.X_test_low_level.iterrows(): #vey slow
+            l_event = []
+            for i_object_list in self.low_vars:
+                l_object = []
+                for i_var in i_object_list:
+                    l_object.append(row[i_var])
+                l_event.append(l_object)
+            l_to_convert.append(l_event)
+        self.X_test_low_level = np.array(l_to_convert, np.float32)
+        print 'Finished creating test object vars'
+        
+    def set_model(self, n_lstm_layers=3, n_lstm_nodes=150, n_dense_1=1, n_nodes_dense_1=300, n_dense_2=2, n_nodes_dense_2=200, dropout_rate=0.2, batch_norm=False, learning_rate=0.001):
+
         #Input() requires shape of object tensor for a single event: [n objects,n_features in object]
         #in the first layer, we need to tell keras out input dimsion per event
         #for lstm layers, each physics object hits an LSTM learner, so its important we provide n_objects as first tensor dimension. Can compare object ~ words in NLP
         #each object then has its own features, so we give this as the second tensor dimension. Can compare feature ~ letters in words. Stitching the words togther gives your full compound train object
 
-        input_objects = keras.layers.Input(shape=(n_objects, n_features))
-        lstm = keras.layers.Input(shape=())
+        input_objects = keras.layers.Input(shape=(2, len(self.low_vars[0])), name='input_objects') #FIXME: get first dim from input matrix (too hardcoded atm)
+        input_global  = keras.layers.Input(shape=(len(self.high_vars),), name='input_global')
+        lstm = input_objects
         for i_layer in range(n_lstm_layers):
-            lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm) #could add some regularisation
+            lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm)
+            #FIXME: add some regularisation e.g. lstm = keras_layer_normalization.LayerNormalization()(lstm)
 
+        #inputs to dense layers are output of lstm and global-event variables
+        dense = keras.layers.concatenate([input_global, lstm])
+        for i in range(n_dense_1):
+            dense = keras.layers.Dense(n_nodes_dense_1, activation = 'elu', name = 'dense1_%d' % i)(dense)
+            #if batch_norm:
+                #dense = keras.layers.BatchNormalization(momentum = batch_momentum, name = 'dense_batch_norm1_%d' % i)(dense)
+        dense = keras.layers.Dropout(rate = dropout_rate, name = 'dense_dropout1_%d' % i)(dense)
+
+        for i in range(n_dense_2):
+            dense = keras.layers.Dense(n_nodes_dense_2, activation = 'elu', name = 'dense2_%d' % i)(dense)
+            #if batch_norm and i < (n_dense_2 - 1):
+            #  dense = keras.layers.BatchNormalization(momentum = batch_momentum, name = 'dense_batch_norm2_%d' % i)(dense) 
+            if i < (n_dense_2 - 1):
+              dense = keras.layers.Dropout(rate = dropout_rate, name = 'dense_dropout2_%d' % i)(dense)
+
+        output = keras.layers.Dense(1, activation = 'sigmoid', name = 'output')(dense)
+        optimizer = keras.optimizers.Adam(lr = learning_rate)
+
+        model = keras.models.Model(inputs = [input_global, input_objects], outputs = [output])
+        model.compile(optimizer = optimizer, loss = 'binary_crossentropy')
+        model.summary()
+        self.model = model
+
+    def train_network(self, batch_size=64, epochs=5):
+        #can think about doing what ttH do and change parameters during training (loop over epochs
+        # and test loss against conditions)
+        if self.eq_train: self.model.fit([self.X_train_high_level.values, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights_eq)       
+        else: self.model.fit([self.X_train_high_level.values, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights)       
+
+        self.y_pred_train = self.model.predict([self.X_train_high_level.values, self.X_train_low_level], batch_size=batch_size)
+        print 'ROC train score: {}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights))
+        self.y_pred_test = self.model.predict([self.X_test_high_level.values, self.X_test_low_level], batch_size=batch_size)
+        print 'ROC test score: {}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
     
 
 class Plotter(object):

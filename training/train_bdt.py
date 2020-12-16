@@ -38,10 +38,6 @@ def main(options):
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat() 
   
-        print 'unique procs in sig df: {}'.format(np.unique(root_obj.mc_df_sig['proc'].values))
-        print 'unique procs in bkg df: {}'.format(np.unique(root_obj.mc_df_bkg['proc'].values))
-        
-
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
