@@ -40,11 +40,20 @@ proc_to_tree_name:
 object_vars:
     [['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL'], #add lead jet en
      ['subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL'], #add sublead jet en
-     #['subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] #add subsublead jet en
+     ['subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] #add subsublead jet en
     ]
 
 event_vars:
     ['leadElectronPToM', 'leadElectronIDMVA',
+     'subleadElectronPToM', 'subleadElectronIDMVA',
+     'dijetAbsDEta', 'dijetMass', 
+     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
+
+train_vars: #for plotting inputs
+    ['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
+     'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
+     'leadElectronPToM', 'leadElectronIDMVA',
      'subleadElectronPToM', 'subleadElectronIDMVA',
      'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in

@@ -57,21 +57,21 @@ def main(options):
                     bdt_hee.set_i_fold(i_fold)
                     bdt_hee.train_classifier(root_obj.mc_dir, save=False)
                     bdt_hee.validation_rocs.append(bdt_hee.compute_roc())
-                with open('{}/bdt_hp_opt.txt'.format(mc_dir),'a+') as val_roc_file:
+                with open('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag),'a+') as val_roc_file:
                     bdt_hee.compare_rocs(val_roc_file, options.hp_perm)
                     val_roc_file.close()
            
         elif options.opt_hps:
             #FIXME: add warning that many jobs are about to be submiited
             if options.k_folds<2: raise ValueError('K-folds option must be at least 2')
-            if path.isfile('{}/bdt_hp_opt.txt'.format(mc_dir)): 
-                system('rm {}/bdt_hp_opt.txt'.format(mc_dir))
-                print ('deleting: {}/bdt_hp_opt.txt'.format(mc_dir))
-            bdt_hee.batch_gs_cv(k_folds=3)
+            if path.isfile('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag)): 
+                system('rm {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
+                print ('deleting: {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
+            bdt_hee.batch_gs_cv(k_folds=options.k_folds)
 
         elif options.train_best:
             output_tag+='_best'
-            with open('{}/bdt_hp_opt.txt'.format(mc_dir),'r') as val_roc_file:
+            with open('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag),'r') as val_roc_file:
                 hp_roc = val_roc_file.readlines()
                 best_params = hp_roc[-1].split(';')[0]
                 print 'Best classifier params are: {}'.format(best_params)

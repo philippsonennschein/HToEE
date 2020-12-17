@@ -9,7 +9,7 @@ The first thing to do is: `source setup.sh`. This appends the appropriate pacaka
 ## BDT Training
 
 To separate the VBF or ggH HToEE signal from the dominant Drell-Yan background, we may use a Boosted Decision Tree (BDT).
-For this, you may use the `train_bdt.py` script. This requires a configuration file `-c bdt_config_<vbf/ggh>.yaml` which specifies: 
+For this, you may use the `training/train_bdt.py` script. This requires a configuration file `-c bdt_config_<vbf/ggh>.yaml` which specifies: 
 
 * whether we are training on ggH or VBF processes
 * the sample options (files dirs and names, tree names, years, ...)
@@ -28,9 +28,21 @@ You will notice that the performance training this simple BDT is poor; the class
 
 Now the model predicts are much better, but typically we see some overtraining. To fix these, we can alter the model hyperparameters. To optimise the HPs, use the option `-o`. This submits ~6000 jobs to the IC computing cluster, one for each hyper parameter configuration. If you want to change the HP space, modify the `BDT()` class constructor inside `HToEEML.py`. Each model is cross validated; the number of folds can be specified with the `-k` option.
 Note that to keep the optimisation fair, you should not run with the `-r` option, since this re-loads and *reshuffles* the dataset; we want each model to use the same sample set.
-If you want to re-run the optimisation again, delete the generated text file first (`bdt_hp_opt.txt`).
 
 Once the best model has been found, you may train/test on the full sample by running with option `-b`. This will produce plots of the ROC score for the train and test set, and save it in the working directory in a `plots` folder. The output score for the two classes is also plot.
+
+## LSTM training
+
+To use an LSTM neural network to perform separate VBF signal from background, we use the script `training/train_lstm.py`. This takes a separate config, similar to the BDT, but with a nested list of low-level variables to be used in the LSTM layers. High level variables may also be used, and interfaced with the outputs of the LSTM units, in FC layers. For an example config, see: `configs/lstm_config.yaml`.
+
+The training can be run with the same syntax used in the BDT training. For example, to train a simple LSTM with default architecture and equalised class weights:
+
+```
+python training/train_lstm.py -c configs/lstm_config_vbf.yaml -t 0.7 -w
+```
+
+To optimise network hyper paramters, add rhe `-o` option; this may take up to a day per job, since we perform a k-fold cross validation. Following the optimisation, if all jobs have finished, add `-b` to train with the best model and produce ROC plots for the classifier.
+
 
 ## Category Optimisation
 Once a model has been trained and optimised, you may use the output score to construct categories targeting VBF production.

@@ -44,8 +44,7 @@ def main(options):
  
         #set up X, w and y, train-test 
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour)
-        #for var in train_vars:
-        for var in ['leadElectronIDMVA', 'subleadElectronIDMVA']:
+        for var in train_vars:
             plotter.plot_input(var, options.n_bins, output_tag)
 
 
