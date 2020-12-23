@@ -176,7 +176,7 @@ class ROOTHelpers(object):
             data_vars = self.nominal_vars
             #needed for preselection and training
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
-            #FIXME: temp fix until ptOm in samples. Then can just do normal query string again
+            #FIXME: temp fix until ptOm in samples. Then can just do normal query string again (which is set up to to only read wider mass range if pT reweighting)
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
             df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
             df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
@@ -267,16 +267,16 @@ class ROOTHelpers(object):
         pt_bins = np.linspace(0,250,51)
         scaled_list = []
 
-        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
+        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110'.format(bkg_proc,year))
         bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
 
-        data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
+        data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110'.format(year))       
         data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
         scale_factors = data_pt_binned/bkg_pt_binned
 
         #now apply the proc targeting selection on all dfs, and re-save 
         self.apply_more_cuts(presel)
-        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, scale_factors])
+        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, scale_factors, False])
         self.save_modified_dfs(year)
 
 
@@ -303,10 +303,10 @@ class ROOTHelpers(object):
 
         #now apply the proc targeting selection on all dfs, and re-save 
         self.apply_more_cuts(presel)
-        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map])
+        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True])
         self.save_modified_dfs(year)
          
-    def pt_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors):
+    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, n_jets):
         '''
         Tests which pT a bkg proc is, and if it is the proc to reweight, before
         applying a pT dependent scale factor to apply (derived from CR)
@@ -314,24 +314,11 @@ class ROOTHelpers(object):
         If dielectron pT is above the max pT bin, just return the nominal weight
         '''
         if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
+            if n_jets: rew_factors = scale_factors[row['nJets']]
+            else: rew_factors = scale_factors
             for i_bin in range(len(bin_edges)):
                 if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
-                    return row['weight'] * scale_factors[i_bin]
-        else:
-            return row['weight']
-
-    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors):
-        '''
-        Tests which pT a bkg proc is, and if it is the proc to reweight, before
-        applying a pT dependent scale factor to apply (derived from CR)
-        
-        If dielectron pT is above the max pT bin, just return the nominal weight
-        '''
-        if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
-            n_jet_scale_factors = scale_factors[row['nJets']]
-            for i_bin in range(len(bin_edges)):
-                if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
-                    return row['weight'] * n_jet_scale_factors[i_bin]
+                    return row['weight'] * rew_factors[i_bin]
         else:
             return row['weight']
 

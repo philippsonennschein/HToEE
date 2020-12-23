@@ -39,7 +39,7 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['leadElectronIDMVA', 'subleadElectronIDMVA', 
-     #'dijet_jet1_QGL', 'dijet_jet2_QGL', 
+     #'leadJetQGL', 'subleadJetQGL', 
      'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more info
 
@@ -51,3 +51,6 @@ vars_to_add:
 #preselection that will be applied to all samples
 preselection:
     'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'
+
+reweight_cr:
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'

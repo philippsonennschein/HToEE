@@ -40,7 +40,7 @@ proc_to_tree_name:
 train_vars:
     ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
      'leadElectronEta', 'subleadElectronEta',
-     'dielectronCosPhi'] #, 'vtxprob', 'sigmarv', 'sigmawv'] 
+     'dielectronCosPhi', 'dielectronPt']
 
 vars_to_add:
     leadElectronPToM:
