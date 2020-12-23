@@ -9,6 +9,7 @@ from os import path, system
 from variables import nominal_vars, gen_vars, gev_vars
 import yaml
 
+
 #BDT imports
 import xgboost as xgb
 from sklearn.model_selection import train_test_split, KFold
@@ -28,6 +29,8 @@ from keras.callbacks import EarlyStopping
 from keras.utils import np_utils
 
 #plotting imports
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 try:
      plt.style.use("cms10_6_HP")
@@ -173,8 +176,9 @@ class ROOTHelpers(object):
             data_vars = self.nominal_vars
             #needed for preselection and training
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
-            #FIXME: temp fix until ptOm in samples
-            df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150')
+            #FIXME: temp fix until ptOm in samples. Then can just do normal query string again
+            #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
+            df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
             df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
             df['subleadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
             df = df.query(self.cut_string)
@@ -186,6 +190,7 @@ class ROOTHelpers(object):
             df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
             df['subleadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
             df['weight'] = df['genWeight']
+            #dont apply cuts yet as need to do MC norm!
 
 
         if len(self.cut_string)>0:
@@ -199,7 +204,7 @@ class ROOTHelpers(object):
         df = df.sample(frac=1).reset_index(drop=True)
         df = df.dropna()
         df['proc'] = proc_tag
-        #df['year'] = year
+        df['year'] = year
 
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
         #save everything
@@ -253,7 +258,104 @@ class ROOTHelpers(object):
         if len(self.data_df) == 1: self.data_df = self.data_df[0] 
         elif len(self.data_df) == 0 : pass
         else: self.data_df = pd.concat(self.data_df)
+   
+    def pt_reweight(self, bkg_proc, year, presel):
+        '''
+        Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee),
+        to map bkg process to Data. Then apply this in the signal region
+        '''
+        pt_bins = np.linspace(0,250,51)
+        scaled_list = []
 
+        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
+        bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
+
+        data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
+        data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
+        scale_factors = data_pt_binned/bkg_pt_binned
+
+        #now apply the proc targeting selection on all dfs, and re-save 
+        self.apply_more_cuts(presel)
+        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, scale_factors])
+        self.save_modified_dfs(year)
+
+
+    def pt_njet_reweight(self, bkg_proc, year, presel):
+        '''
+        Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee) and nJets,
+        to map bkg process to Data. Then apply this in the signal region
+        '''
+        pt_bins = np.linspace(0,250,51)
+        jet_bins = [0,1,2]
+        n_jets_to_sfs_map = {}
+
+        for n_jets in jet_bins:
+            if not n_jets==[-1]: 
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(year,n_jets))       
+            else: 
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(year,n_jets))       
+
+            bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
+            data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
+            n_jets_to_sfs_map[n_jets] = data_pt_binned/bkg_pt_binned
+
+        #now apply the proc targeting selection on all dfs, and re-save 
+        self.apply_more_cuts(presel)
+        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map])
+        self.save_modified_dfs(year)
+         
+    def pt_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors):
+        '''
+        Tests which pT a bkg proc is, and if it is the proc to reweight, before
+        applying a pT dependent scale factor to apply (derived from CR)
+        
+        If dielectron pT is above the max pT bin, just return the nominal weight
+        '''
+        if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
+            for i_bin in range(len(bin_edges)):
+                if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
+                    return row['weight'] * scale_factors[i_bin]
+        else:
+            return row['weight']
+
+    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors):
+        '''
+        Tests which pT a bkg proc is, and if it is the proc to reweight, before
+        applying a pT dependent scale factor to apply (derived from CR)
+        
+        If dielectron pT is above the max pT bin, just return the nominal weight
+        '''
+        if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
+            n_jet_scale_factors = scale_factors[row['nJets']]
+            for i_bin in range(len(bin_edges)):
+                if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
+                    return row['weight'] * n_jet_scale_factors[i_bin]
+        else:
+            return row['weight']
+
+
+    def save_modified_dfs(self,year):
+        '''
+        Save dataframes again. Useful if modifications were made since reading in and saving e.g. pT reweighting or applying more selection
+        (or both).
+        '''
+
+        print 'saving modified dataframes...'
+        for sig_proc in self.sig_procs:
+            sig_df = self.mc_df_sig[np.logical_and(self.mc_df_sig.proc==sig_proc, self.mc_df_sig.year==year)]
+            sig_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year), 'df', mode='w', format='t')
+            print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+
+        for bkg_proc in self.bkg_procs:
+            bkg_df = self.mc_df_bkg[np.logical_and(self.mc_df_bkg.proc==bkg_proc,self.mc_df_bkg.year==year)]
+            bkg_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year), 'df', mode='w', format='t')
+            print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+
+        data_df = self.data_df[self.data_df.year==year]
+        data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
+        print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
 
 class BDTHelpers(object):
 
@@ -469,11 +571,13 @@ class BDTHelpers(object):
         print('saving: {0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),out_tag))
         plt.close()
 
-    def plot_output_score(self, out_tag):
+    def plot_output_score(self, out_tag, ratio_plot=False, norm_to_data=False):
         ''' 
         Method to plot the roc curve and compute the integral of the roc as a performance metric
         '''
-        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, self.proc_arr_test, self.clf.predict_proba(self.X_data_test.values)[:,1:])
+        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, 
+                                                          self.proc_arr_test, self.clf.predict_proba(self.X_data_test.values)[:,1:],
+                                                          ratio_plot=ratio_plot, norm_to_data=norm_to_data)
 
         Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),out_tag))
         output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
@@ -832,24 +936,22 @@ class Plotter(object):
     '''
     Class to plot input variables and output scores
     '''
-    #def __init__(self, data_obj, input_vars, sig_col='firebrick',  bkg_col='violet',  normalise=True): 
-    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, log=False, reweight=True): 
-        self.sig_df     = data_obj.mc_df_sig
-        self.bkg_df     = data_obj.mc_df_bkg
-        self.data_df    = data_obj.data_df
+    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, log=False, norm_to_data=False): 
+        self.sig_df       = data_obj.mc_df_sig
+        self.bkg_df       = data_obj.mc_df_bkg
+        self.data_df      = data_obj.data_df
         del data_obj
 
-        self.sig_labels = np.unique(self.sig_df['proc'].values).tolist()
-        self.bkg_labels = np.unique(self.bkg_df['proc'].values).tolist()
+        self.sig_labels   = np.unique(self.sig_df['proc'].values).tolist()
+        self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
 
-        self.sig_colour = sig_col
-        self.bkg_colours= ['#91bfdb', '#ffffbf', '#fc8d59']
-        self.normalise  = normalise
+        self.sig_colour   = sig_col
+        self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59']
+        self.normalise    = normalise
 
-        self.input_vars = input_vars
-        self.sig_scaler = 5*10**7
-        self.log_axis   = log
-        self.reweight   = reweight
+        self.input_vars   = input_vars
+        self.sig_scaler   = 5*10**7
+        self.log_axis     = log
 
         #get xrange from yaml config
         with open('plotting/var_to_xrange.yaml', 'r') as plot_config_file:
@@ -869,9 +971,17 @@ class Plotter(object):
         exponent = len(str_rep)-1
         return r'$\times 10^{%s}$'%(exponent)
 
-    def plot_input(self, var, n_bins, out_label):
-        fig  = plt.figure(1)
-        axes = fig.gca()
+    def plot_input(self, var, n_bins, out_label, ratio_plot=False, norm_to_data=False):
+        if ratio_plot: 
+            plt.rcParams.update({'figure.figsize':(6,5.8)})
+            fig, axes = plt.subplots(nrows=2, ncols=1, dpi=200, sharex=True,
+                                     gridspec_kw ={'height_ratios':[3,0.8], 'hspace':0.08})   
+            ratio = axes[1]
+            axes = axes[0]
+        else:
+            fig  = plt.figure(1)
+            axes = fig.gca()
+
         bkg_stack      = []
         bkg_w_stack    = []
         bkg_proc_stack = []
@@ -902,25 +1012,33 @@ class Plotter(object):
         axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
 
         #add stacked bkg
-        if self.reweight: 
+        if norm_to_data: 
             rew_stack = []
             k_factor = np.sum(self.data_df['weight'].values)/np.sum(self.bkg_df['weight'].values)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
-        else: axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+        else: 
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
 
-
-        var_name_safe = var.replace('_',' ')
-        axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
- 
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=10, top=current_top*1.3)
+        axes.set_ylim(bottom=10, top=current_top*1.4)
         axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
         self.plot_cms_labels(axes)
+           
+        var_name_safe = var.replace('_',' ')
+        if ratio_plot:
+            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), fmt='o', ms=4, color='black', capsize=0)
+            ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
+            ratio.set_ylim(0, 2)
+            ratio.grid(True, linestyle='dotted')
+        else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
+ 
        
         Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), out_label))
         fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(), out_label, var))
@@ -949,9 +1067,17 @@ class Plotter(object):
         self.fig = fig
         return fig
 
-    def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test, MVA='BDT'):
-        fig  = plt.figure(1)
-        axes = fig.gca()
+    def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test, MVA='BDT', ratio_plot=False, norm_to_data=False):
+        if ratio_plot: 
+            plt.rcParams.update({'figure.figsize':(6,5.8)})
+            fig, axes = plt.subplots(nrows=2, ncols=1, dpi=200, sharex=True,
+                                     gridspec_kw ={'height_ratios':[3,0.8], 'hspace':0.08})   
+            ratio = axes[1]
+            axes = axes[0]
+        else:
+            fig  = plt.figure(1)
+            axes = fig.gca()
+
         bins = np.linspace(0,1,41)
 
         bkg_stack      = []
@@ -985,22 +1111,31 @@ class Plotter(object):
         data_down, data_up = self.poisson_interval(data_binned, data_binned)
         axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
 
-        #axes.hist(bkg_scores, bins=bins, label='Background', weights=bkg_w_true, histtype='step', color=self.bkg_colours)
-        if self.reweight: 
+        if norm_to_data: 
             rew_stack = []
             k_factor = np.sum(np.ones_like(data_pred_test))/np.sum(bkg_w_true)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
-        else: axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+        else: 
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
         axes.legend(bbox_to_anchor=(0.98,0.98), ncol=2)
 
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=0, top=current_top*1.5)
+        axes.set_ylim(bottom=0, top=current_top*1.3)
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
-        axes.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
+
+        if ratio_plot:
+            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), fmt='o', ms=4, color='black', capsize=0)
+            ratio.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
+            ratio.set_ylim(0, 2)
+            ratio.grid(True, linestyle='dotted')
+        else: axes.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
         self.plot_cms_labels(axes)
+
         #ggH
         #axes.axvline(0.751, ymax=0.75, color='black', linestyle='--')
         #axes.axvline(0.554, ymax=0.75, color='black', linestyle='--')

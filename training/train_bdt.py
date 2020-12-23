@@ -28,7 +28,11 @@ def main(options):
                                            #Data handling stuff#
  
         #load the mc dataframe for all years
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
+        if options.pt_reweight: 
+            cr_selection = config['reweight_cr']
+            output_tag += '_pt_reweighted'
+            root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, cr_selection)
+        else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -38,6 +42,13 @@ def main(options):
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat() 
   
+        #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
+        # is applied here and all df's are resaved for smaller mem
+        if options.pt_reweight and options.reload_samples: 
+            for year in root_obj.years:
+                root_obj.pt_reweight('DYMC', year, presel)
+
+
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
@@ -79,14 +90,14 @@ def main(options):
                 bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag)
                 bdt_hee.compute_roc()
                 bdt_hee.plot_roc(output_tag)
-                bdt_hee.plot_output_score(output_tag)
+                bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
         #else just train BDT with default HPs
         else:
             bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
-            bdt_hee.plot_output_score(output_tag)
+            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
 if __name__ == "__main__":
 
@@ -101,5 +112,6 @@ if __name__ == "__main__":
     opt_args.add_argument('-k','--k_folds', action='store', default=3, type=int)
     opt_args.add_argument('-b','--train_best', action='store_true', default=False)
     opt_args.add_argument('-t','--train_frac', action='store', default=0.7, type=float)
+    opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
     options=parser.parse_args()
     main(options)

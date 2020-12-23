@@ -13,7 +13,7 @@ nominal_vars = ['genWeight', 'leadElectronIDMVA', 'subleadElectronIDMVA','leadEl
 #for MVA training, hence not including masses
 gev_vars =     ['leadJetEn', 'leadJetPt', 'subleadJetEn', 'subleadJetPt', 'subsubleadJetEn', 'subsubleadJetPt', 
                 'leadElectronEn', 'leadElectronPt', 'subleadElectronEn', 'subleadElectronPt',
-                'leadElectronPToM', 'subleadElectronPToM', 'dijetMass'
+                'leadElectronPToM', 'subleadElectronPToM', 'dijetMass', 'dielectronPt'
                ]
 
 

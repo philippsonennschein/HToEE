@@ -49,3 +49,7 @@ vars_to_add:
 #preselection that will be applied to all samples
 preselection:
     'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
+
+#need looser cut to for re-weighting in 80 < m_ee < 100 GeV
+reweight_cr:
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'

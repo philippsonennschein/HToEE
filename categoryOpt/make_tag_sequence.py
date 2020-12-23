@@ -56,8 +56,6 @@ def main(options):
     tag_sequence          = ['VBF','ggH']
     proc_to_preselection  = {'VBF': [combined_df['dielectronMass'].gt(110) & 
                                      combined_df['dielectronMass'].lt(150) &
-                                     #combined_df['leadElectronIDMVA'].gt(-0.2) &
-                                     #combined_df['subleadElectronIDMVA'].gt(-0.2) &
                                      combined_df['leadElectronPToM'].gt(0.333) &
                                      combined_df['subleadElectronPToM'].gt(0.25) &
                                      combined_df['dijetMass'].gt(350) &
@@ -66,8 +64,6 @@ def main(options):
                                     ],
                             'ggH':  [combined_df['dielectronMass'].gt(110) & 
                                      combined_df['dielectronMass'].lt(150) &
-                                     #combined_df['dipho_leadIDMVA'].gt(-0.9) &
-                                     #combined_df['dipho_subleadIDMVA'].gt(-0.9) &
                                      combined_df['leadElectronPToM'].gt(0.333) &
                                      combined_df['subleadElectronPToM'].gt(0.25)
                                     ]       

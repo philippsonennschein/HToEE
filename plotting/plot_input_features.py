@@ -30,7 +30,11 @@ def main(options):
                                            #Data handling stuff#
 
         #load the mc dataframe for all years
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
+        if options.pt_reweight: 
+            cr_selection = config['reweight_cr']
+            output_tag += '_pt_reweighted'
+            root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, cr_selection)
+        else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -40,12 +44,16 @@ def main(options):
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat()
 
+        if options.pt_reweight and options.reload_samples: 
+            for year in root_obj.years:
+                root_obj.pt_reweight('DYMC', year, presel)
+
                                             #Plotter stuff#
  
         #set up X, w and y, train-test 
-        plotter = Plotter(root_obj, train_vars, sig_col=sig_colour)
-        for var in train_vars:
-            plotter.plot_input(var, options.n_bins, output_tag)
+        plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
+        for var in train_vars+['dielectronMass','dielectronPt']:
+            plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=(not options.pt_reweight))
 
 
 if __name__ == "__main__":
@@ -56,5 +64,7 @@ if __name__ == "__main__":
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-b','--n_bins',  default=26, type=int)
+    opt_args.add_argument('-P','--pt_reweight',  action='store_true', default=False)
+    opt_args.add_argument('-R','--ratio_plot',  action='store_true', default=False)
     options=parser.parse_args()
     main(options)
