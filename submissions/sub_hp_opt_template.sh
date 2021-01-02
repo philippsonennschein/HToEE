@@ -14,6 +14,7 @@ cd scratch_$RAND
 cp -p $MYDIR/python/*.py .
 cp -p $MYDIR/training/*.py .
 cp -p $MYDIR/configs/*.yaml .
+cp -r $MYDIR/plotting/ .
 
 echo "DEBUG: dir is::"
 echo ${CWD}

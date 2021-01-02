@@ -66,3 +66,4 @@ To produce the trees with the category information needed for final fits, we use
 
 ### To do:
 * assert cut string vars are in nominal vars
+* break plotting class up to avoid duplicating code

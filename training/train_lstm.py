@@ -41,7 +41,7 @@ def main(options):
 
                                                 #LSTM stuff#
 
-        LSTM = LSTM_DNN(root_obj, object_vars, event_vars, options.train_frac, options.eq_weights)
+        LSTM = LSTM_DNN(root_obj, object_vars, event_vars, options.train_frac, options.eq_weights, options.batch_boost)
 
         #functions called in subbed job, if options.opt_hps was true
         if options.hp_perm is not None:
@@ -50,25 +50,19 @@ def main(options):
             elif options.opt_hps and options.hp_perm:
                 raise Exception('opt_hps option submits scripts with the hp_perm option; Cannot submit a script with both!')
             else: 
-                print 'About to train + validate on dataset with {} fold splitting'.format(options.k_folds)
                 LSTM.set_hyper_parameters(options.hp_perm)
                 LSTM.model.summary()
-                LSTM.set_k_folds(options.k_folds) #handles train/valid/test data manip into list attributes
-                for i_fold in range(options.k_folds):
-                    LSTM.set_i_fold(i_fold)
-                    LSTM.train_network(root_obj.mc_dir, save=False)
-                    LSTM.validation_rocs.append(LSTM.compute_roc(batch_size=64))
+                LSTM.train_w_batch_boost(out_tag=output_tag)
                 with open('{}/lstm_hp_opt_{}.txt'.format(mc_dir, output_tag),'a+') as val_roc_file:
                     LSTM.compare_rocs(val_roc_file, options.hp_perm)
                     val_roc_file.close()
 
         elif options.opt_hps:
             #FIXME: add warning that many jobs are about to be submiited
-            if options.k_folds<2: raise ValueError('K-folds option must be at least 2')
             if path.isfile('{}/lstm_hp_opt_{}.txt'.format(mc_dir, output_tag)): 
                 system('rm {}/lstm_hp_opt_{}.txt'.format(mc_dir, output_tag))
                 print ('deleting: {}/lstm_hp_opt_{}.txt'.format(mc_dir, output_tag))
-            LSTM.batch_gs_cv(k_folds=options.k_folds)
+            LSTM.batch_gs_cv()
 
         elif options.train_best:
             output_tag+='_best'
@@ -78,22 +72,28 @@ def main(options):
                 print 'Best classifier params are: {}'.format(best_params)
                 LSTM.set_hyper_parameters(best_params)
                 LSTM.model.summary()
-                LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
-                LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
-                LSTM.train_network(root_obj.mc_dir, save=True)
-                LSTM.compute_roc(batch_size=64)
+                #need to manip data to X low train and test manually here
+                #LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
+                #LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
+                LSTM.train_w_batch_boost(out_tag=output_tag)
+                #compute final roc on test set
+                LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
                 LSTM.plot_roc(output_tag)
-                LSTM.plot_output_score(output_tag, batch_size=14)
+                LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight)) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
 
         #else train with basic parameters/architecture
         else: 
            LSTM.model.summary()
-           LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
            LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
-           LSTM.train_network(root_obj.mc_dir, epochs=5, save=True)
-           LSTM.compute_roc(batch_size=64)
+           if options.batch_boost: #type of model selection so need validation set
+               LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set
+           else: #do not batch evolution
+               LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
+               LSTM.train_network(epochs=5, batch_size=1024, out_tag=output_tag, save=True)
+           LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
+           #compute final roc on test set
            LSTM.plot_roc(output_tag)
-           LSTM.plot_output_score(output_tag, batch_size=64)
+           LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight)) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
 
 if __name__ == "__main__":
 
@@ -105,9 +105,10 @@ if __name__ == "__main__":
     opt_args.add_argument('-w','--eq_weights', help='equalise the sum weights between signala nd background classes', action='store_true', default=False)
     opt_args.add_argument('-o','--opt_hps', action='store_true', default=False)
     opt_args.add_argument('-H','--hp_perm', action='store', default=None)
-    opt_args.add_argument('-k','--k_folds', action='store', default=3, type=int)
     opt_args.add_argument('-b','--train_best', action='store_true', default=False)
     opt_args.add_argument('-t','--train_frac', help='fraction of events used for training. 1-test_frac used for testing', action='store', default=0.7, type=float)
+    opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
+    opt_args.add_argument('-B','--batch_boost', action='store_true',default=False)
     #opt_args.add_argument('-L', '--no_lstm', help='dont use object-level features (LSTM layers)', action='store_true', default=False)
     #opt_args.add_argument('-G', '--no_global', help='dont use event-level features', action='store_true', default=False)
 

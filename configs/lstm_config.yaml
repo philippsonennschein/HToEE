@@ -49,7 +49,7 @@ event_vars:
      'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
 
-train_vars: #for plotting inputs
+train_vars: #all vars for plotting inputs
     ['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
      'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
      'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',

@@ -285,36 +285,54 @@ class ROOTHelpers(object):
         Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee) and nJets,
         to map bkg process to Data. Then apply this in the signal region
         '''
-        pt_bins = np.linspace(0,250,51)
+
+        #can remove this once nJets is put in ntuples from dumper
+        outcomes_mc_bkg = [ self.mc_df_bkg['leadJetPt'].lt(0),
+                            self.mc_df_bkg['leadJetPt'].gt(0) & self.mc_df_bkg['subleadJetPt'].lt(0), 
+                            self.mc_df_bkg['leadJetPt'].gt(0) & self.mc_df_bkg['subleadJetPt'].gt(0)
+                          ]
+
+        outcomes_data   = [ self.data_df['leadJetPt'].lt(0),
+                            self.data_df['leadJetPt'].gt(0) & self.data_df['subleadJetPt'].lt(0), 
+                            self.data_df['leadJetPt'].gt(0) & self.data_df['subleadJetPt'].gt(0)
+                          ]
+        jets    = [0, 1, 2] # 2 really means nJet >= 2
+
+        self.mc_df_bkg['nJets'] = np.select(outcomes_mc_bkg, jets) 
+        self.data_df['nJets'] = np.select(outcomes_data, jets) 
+
+        #apply re-weighting
+        pt_bins = np.linspace(0,200,101)
         jet_bins = [0,1,2]
         n_jets_to_sfs_map = {}
 
+        #derive pt and njet based SFs
         for n_jets in jet_bins:
-            if not n_jets==[-1]: 
-                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(bkg_proc,year, n_jets))
-                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(year,n_jets))       
+            if not n_jets==jet_bins[-1]: 
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets=={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets=={}'.format(year,n_jets))       
             else: 
-                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(bkg_proc,year, n_jets))
-                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(year,n_jets))       
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(year,n_jets))       
 
             bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
             data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
             n_jets_to_sfs_map[n_jets] = data_pt_binned/bkg_pt_binned
 
-        #now apply the proc targeting selection on all dfs, and re-save 
+        #now apply the proc targeting selection on all dfs, and re-save. Then apply derived SFs
         self.apply_more_cuts(presel)
         self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True])
         self.save_modified_dfs(year)
          
-    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, n_jets):
+    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, do_jets):
         '''
         Tests which pT a bkg proc is, and if it is the proc to reweight, before
         applying a pT dependent scale factor to apply (derived from CR)
         
-        If dielectron pT is above the max pT bin, just return the nominal weight
+        If dielectron pT is above the max pT bin, just return the nominal weight (very small num of events)
         '''
         if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
-            if n_jets: rew_factors = scale_factors[row['nJets']]
+            if do_jets: rew_factors = scale_factors[row['nJets']]
             else: rew_factors = scale_factors
             for i_bin in range(len(bin_edges)):
                 if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
@@ -574,14 +592,18 @@ class BDTHelpers(object):
 class LSTM_DNN(object):
     '''
     Train a DNN that uses LSTM and fully connected layers
+
+    :batch_boost: option to increase batch size based on ROC improvement. Needed for HP opt.
     '''
 
-    def __init__(self, data_obj, low_level_vars, high_level_vars, train_frac, eq_weights=True):
+    def __init__(self, data_obj, low_level_vars, high_level_vars, train_frac, eq_weights=True, batch_boost=False):
 
         self.low_vars  = low_level_vars
         low_level_vars_flat  = [var for sublist in low_level_vars for var in sublist]
         self.low_level_vars_flat    = low_level_vars_flat
         self.high_vars = high_level_vars
+        self.batch_boost = batch_boost #needed for HP opt
+        self.max_epochs = 100
 
         #assign plotter attribute before data_obj is deleted for mem
         self.plotter = Plotter(data_obj, low_level_vars_flat+high_level_vars)
@@ -681,7 +703,7 @@ class LSTM_DNN(object):
         self.proc_arr_test          = proc_arr_test #used for plotting
         self.y_pred_test            = None
 
-        #re-test and train X low levels into 2D array for each event
+        #re-cast test and train X low levels into 2D array for Data only (need this plotting) #FIXME dont need to do this for hp opt!
         X_scaled_data_all_vars_train = X_scaler.transform(all_X_data_train)
         X_scaled_data_all_vars_train = pd.DataFrame(X_scaled_data_all_vars_train, columns=low_level_vars_flat+high_level_vars)
         self.X_data_train_low_level  = self.join_objects(X_scaled_data_all_vars_train[low_level_vars_flat])
@@ -693,31 +715,25 @@ class LSTM_DNN(object):
         self.X_data_test_high_level  = X_scaled_data_all_vars_test[high_level_vars].values
 
 
+        #baseline set shows no little overtraining and good performance:
+        #self.set_model(n_lstm_layers=1, n_lstm_nodes=150, n_dense_1=2, n_nodes_dense_1=300, 
+        #               n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.2,
+        #               learning_rate=0.00001, batch_norm=True, batch_momentum=0.99)
 
-        # model opt stuff
-        self.set_model(n_lstm_layers=3, n_lstm_nodes=150, n_dense_1=1, n_nodes_dense_1=300, 
-                       n_dense_2=4, n_nodes_dense_2=200, dropout_rate=0.1,
+        self.set_model(n_lstm_layers=1, n_lstm_nodes=150, n_dense_1=2, n_nodes_dense_1=300, 
+                       n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.2,
                        learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
-        self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
-                                       'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
-                                       'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
-                                       'dropout_rate':[0.1,0.2,0.3]
+        #self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
+        #                               'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
+        #                               'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
+        #                               'dropout_rate':[0.1,0.2,0.3]
+        #                              }
+        self.hp_grid_rnge           = {'n_lstm_layers': [1], 'n_lstm_nodes':[150,200], 
+                                       'n_dense_1':[2], 'n_nodes_dense_1':[100],
+                                       'n_dense_2':[2], 'n_nodes_dense_2':[100], 
+                                       'dropout_rate':[0.3]
                                       }
-
-        self.X_folds_train_high     = []
-        self.X_folds_train_low      = []
-        self.y_folds_train          = []
-
-        self.X_folds_validate_high  = []
-        self.X_folds_validate_low   = []
-        self.y_folds_validate       = []
-
-        self.w_folds_train          = []
-        self.w_folds_train_eq       = []
-        self.w_folds_validate       = []
-
-        self.validation_rocs        = []
 
 
     def join_objects(self, X_low_level):
@@ -734,7 +750,7 @@ class LSTM_DNN(object):
              ...
            ]
         
-        Note that the order of the low level inputs is v important, and should be jet objects in descending pT
+        Note that the order of the low level inputs is important, and should be jet objects in descending pT
         '''
 
         print 'Creating 2D object vars...'
@@ -777,18 +793,85 @@ class LSTM_DNN(object):
 
         output = keras.layers.Dense(1, activation = 'sigmoid', name = 'output')(dense)
         optimiser = keras.optimizers.Nadam(lr = learning_rate)
+        #optimiser = keras.optimizers.Adam(lr = learning_rate)
 
         model = keras.models.Model(inputs = [input_global, input_objects], outputs = [output])
         model.compile(optimizer = optimiser, loss = 'binary_crossentropy')
         self.model = model
 
-    def train_network(self, mc_dir, save=True, batch_size=64, epochs=5):
-        #can think about doing what ttH do and change parameters during training (loop over epochs
-        # and test loss against conditions, So batch size and epochs are tuned independent of other HPs!)
+    def train_w_batch_boost(self, k_folds=3, out_tag='my_lstm', save=True, auc_threshold=0.01, max_bad_epochs=5):
+        '''
+        Increase the batch size during training, if the improvement in (1-AUC) is above some threshold.
+        Terminate the training if no improvement is seen after max batch size update
+        '''
+
+        best_auc           = 0.5
+        current_batch_size = 1024
+        max_batch_size     = 50000 #memory constraint. FIXME: see what this can be really pushed to
+
+        epoch_counter      = 0 # num epochs elapsed during training
+        best_epoch         = 1 # epoch was best validation score
+
+        self.create_train_valid_set()
+        keep_training = True
+        Utils.check_dir('./models/')
+
+        while keep_training:
+            epoch_counter += 1
+            print('beginning training iteration for epoch {}'.format(epoch_counter))
+            self.train_network(epochs=1, batch_size=current_batch_size, out_tag=out_tag)
+
+            self.model.save_weights('./models/{}_model_epoch_{}.hdf5'.format(out_tag, epoch_counter))
+            val_roc = self.compute_roc(batch_size=current_batch_size, valid_set=True)  #FIXME: what is the best BS here? final BS from batch boost... initial BS? current BS??
+
+            #get average of validation rocs and clear list entries 
+            improvement  = ((1-best_auc) - (1-val_roc)) / (1-best_auc)
+
+            #FIXME: if the validation roc does not improve after n bad "epochs", then update the batch size accordingly. Rest bad epochs to zero each time the batch size increases, if it does
+
+            #do checks to see if batch size needs to change etc
+            if improvement > auc_threshold:
+                print('Improvement in (1-AUC) of {:.4f} percent. Keeping batch size at {}'.format(improvement*100, current_batch_size))
+                best_auc = val_roc
+                best_epoch = epoch_counter
+            elif current_batch_size*4 < max_batch_size:
+                print('Improvement in (1-AUC) of only {:.4f} percent. Increasing batch size to {}'.format(improvement*100, current_batch_size*4))
+                current_batch_size *= 4
+                if val_roc > best_auc: 
+                    best_auc = val_roc
+                    best_epoch = epoch_counter
+            elif current_batch_size < max_batch_size: 
+                print('Improvement in (1-AUC) of only {:.4f} percent. Increasing to max batch size of {}'.format(improvement*100, max_batch_size))
+                current_batch_size = max_batch_size
+                if val_roc > best_auc: 
+                    best_auc = val_roc
+                    best_epoch = epoch_counter
+            elif improvement > 0:
+                print('Improvement in (1-AUC) of only {:.4f} percent. Cannot increase batch further'.format(improvement*100))
+                best_auc = val_roc
+                best_epoch = epoch_counter
+            else: 
+                print('AUC did not improve and batch size cannot be increased further. Stopping training...')
+                keep_training = False
+
+            if epoch_counter > self.max_epochs:
+                print('At the maximum number of training epochs ({}). Stopping training...'.format(self.max_epochs))
+                keep_training = False
+                best_epoch = self.max_epochs
+            
+        print 'best_epoch was: {}'.format(best_epoch)
+        print 'best_auc was: {}'.format(best_auc)
+        self.val_roc = best_auc
+
+        #delete all models that aren't from the best training
+        for epoch in range(1,epoch_counter+1):
+            if epoch is not best_epoch:
+                os.system('rm {}/models/{}_model_epoch_{}.hdf5'.format(os.getcwd(), out_tag, epoch))
+        os.system('mv {0}/models/{1}_model_epoch_{2}.hdf5 {0}/models/{1}_model.hdf5'.format(os.getcwd(), out_tag, best_epoch))
+
+    def train_network(self, batch_size, epochs, out_tag='my_lstm'):
         if self.eq_train: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights_eq)       
         else: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights)       
-
-        if save: pass #save self.model at end of epoch stuff. Use mc_dir
     
     def set_hyper_parameters(self, hp_string):
         hp_dict = {}
@@ -800,84 +883,81 @@ class LSTM_DNN(object):
             hp_dict[hp_name] = hp_value
             self.set_model(**hp_dict)
 
-    def set_k_folds(self, k_folds):
+    def create_train_valid_set(self):
         '''
-        Partition the X and Y matrix into folds = k_folds, and append to list (X and y separate) attribute for the class, from the training samples (i.e. X_train -> X_train + X_validate, and same for y and w)
-        Used in conjunction with the get_i_fold function to pull one fold out for training+validating
+        Partition the X and Y training matrix into a train + validation set (i.e. X_train -> X_train + X_validate, and same for y and w)
         Note that validation weights should always be the nominal MC weights
+        This also means turning ordinary arrays into 2D arrays
         '''
 
-        kf = KFold(n_splits=k_folds)
-        for train_index, valid_index in kf.split(self.X_train_high_level): #can also get this from low level since same dims at this point
-            self.X_folds_train_high.append(self.X_train_high_level[train_index])
-            self.X_folds_train_low.append(self.join_objects(self.X_train_low_level[train_index]))
+        if not self.eq_train:
+            X_train_high_level, X_valid_high_level, X_train_low_level, X_valid_low_level, train_w, valid_w, y_train, y_valid  = train_test_split(self.X_train_high_level, self.X_train_low_level, self.train_weights, self.y_train,
+                                                                                                                                                 train_size=0.7, test_size=0.3
+                                                                                                                                                 )
+        else:
+            X_train_high_level, X_valid_high_level, X_train_low_level, X_valid_low_level, train_w, valid_w, w_train_eq, w_valid_eq, y_train, y_valid  = train_test_split(self.X_train_high_level, self.X_train_low_level,
+                                                                                                                                                                         self.train_weights, self.train_weights_eq, self.y_train,
+                                                                                                                                                                         train_size=0.7, test_size=0.3
+                                                                                                                                                                        )
+            self.train_weights_eq = w_train_eq
 
-            self.X_folds_validate_high.append(self.X_train_high_level[valid_index])
-            self.X_folds_validate_low.append(self.join_objects(self.X_train_low_level[valid_index]))
+        #FIXME: need to re-equalise weights in each folds as sumW_sig != sumW_bkg anymroe!
+        self.train_weights = train_w
+        self.valid_weights = valid_w #validation weights should never be equalised weights!
 
-            self.y_folds_train.append(self.y_train[train_index])
-            self.y_folds_validate.append(self.y_train[valid_index])
+        self.X_train_high_level = X_train_high_level
+        self.X_train_low_level  = self.join_objects(X_train_low_level)
 
-            #deal with two possible train weight scenarios
-            self.w_folds_train.append(self.train_weights[train_index])
-            if self.eq_train:
-                self.w_folds_train_eq.append(self.train_weights_eq[train_index])
+        self.X_valid_high_level = X_valid_high_level
+        self.X_valid_low_level  = self.join_objects(X_valid_low_level)
 
-            self.w_folds_validate.append(self.train_weights[valid_index])
+        self.y_train            = y_train
+        self.y_valid            = y_valid
 
-    def set_i_fold(self, i_fold):
-        '''
-        Gets the training and validation fold for a given CV iteration from class attribute,
-        and overwrites the self.X_train, self.y_train and self.X_train, self.y_train respectively, and the weights, to train
-        Note that for these purposes, our "test" sets are really the "validation" sets
-        '''
-        self.X_train_high_level = self.X_folds_train_high[i_fold]
-        self.X_train_low_level  = self.X_folds_train_low[i_fold]
-        self.train_weights      = self.w_folds_train[i_fold] #nominal MC weights needed for computing roc on train set (overtraining test)
-        if self.eq_train:
-            self.train_weights_eq = self.w_folds_train_eq[i_fold] 
-        self.y_train            = self.y_folds_train[i_fold]
 
-        self.X_test_high_level  = self.X_folds_validate_high[i_fold]
-        self.X_test_low_level   = self.X_folds_validate_low[i_fold]
-        self.y_test             = self.y_folds_validate[i_fold]
-        self.test_weights       = self.w_folds_validate[i_fold]
-
-    def compute_roc(self, batch_size=64):
+    def compute_roc(self, batch_size=64, valid_set=False):
         '''
         Compute the area under the associated ROC curve, with usual mc weights
+
+        Return the score on the test set (validation set if performing any model selection)
         '''
 
-        self.y_pred_train = self.model.predict([self.X_train_high_level, self.X_train_low_level], batch_size=batch_size)
-        print 'ROC train score: {}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights))
+        self.y_pred_train = self.model.predict([self.X_train_high_level, self.X_train_low_level], batch_size=batch_size).flatten()
+        roc_train = roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights)
+        print 'ROC train score: {}'.format(roc_train)
 
-        self.y_pred_test = self.model.predict([self.X_test_high_level, self.X_test_low_level], batch_size=batch_size)
-        print 'ROC test score: {}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
-        #append output to ROC list attribute in wrapper script
-        return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
+        if valid_set:
+            self.y_pred_valid = self.model.predict([self.X_valid_high_level, self.X_valid_low_level], batch_size=batch_size).flatten()
+            roc_test  = roc_auc_score(self.y_valid, self.y_pred_valid, sample_weight=self.valid_weights)
+            print 'ROC valid score: {}'.format(roc_test)
+        else:
+            self.y_pred_test = self.model.predict([self.X_test_high_level, self.X_test_low_level], batch_size=batch_size).flatten()
+            roc_test  = roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
+            print 'ROC test score: {}'.format(roc_test)
+
+        return roc_test
 
     def compare_rocs(self, roc_file, hp_string):
         hp_roc = roc_file.readlines()
-        avg_val_auc = np.average(self.validation_rocs)
-        print 'avg. validation roc is: {}'.format(avg_val_auc)
+        val_auc = self.val_roc
+        print 'validation roc is: {}'.format(val_auc)
         if len(hp_roc)==0: 
-            roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
-        elif float(hp_roc[-1].split(';')[-1]) < avg_val_auc:
+            roc_file.write('{};{:.4f}'.format(hp_string, val_auc))
+        elif float(hp_roc[-1].split(';')[-1]) < val_auc:
             roc_file.write('\n')
-            roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
+            roc_file.write('{};{:.4f}'.format(hp_string, val_auc))
 
-    def batch_gs_cv(self, k_folds=3):
+    def batch_gs_cv(self):
         '''
         Submit a sets of hyperparameters permutations (based on attribute hp_grid_rnge) to the IC batch.
-        Perform k-fold cross validation; take care to separate training weights, which
-        may be modified w.r.t nominal weights, and the weights used when evaluating on the
-        validation set which should be the nominal weights
+        Take care to separate training weights, which may be modified w.r.t nominal weights, 
+        and the weights used when evaluating on the validation set which should be the nominal weights
         '''
         #get all possible HP sets from permutations of the above dict
         hp_perms = self.get_hp_perms()
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
-            Utils.sub_lstm_hp_script(self.eq_train, hp_string, k_folds)
+            Utils.sub_lstm_hp_script(self.eq_train, self.batch_boost, hp_string)
 
     def get_hp_perms(self):
         from itertools import product
@@ -908,11 +988,13 @@ class LSTM_DNN(object):
         print('saving: {0}/plotting/plots/{1}/{1}_ROC_curve.pdf'.format(os.getcwd(),out_tag))
         plt.close()
 
-    def plot_output_score(self, out_tag, batch_size=64):
+    def plot_output_score(self, out_tag, batch_size=64, ratio_plot=False, norm_to_data=False):
         ''' 
         Method to plot the roc curve and compute the integral of the roc as a performance metric
         '''
-        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, self.proc_arr_test, self.model.predict([self.X_data_test_high_level, self.X_data_test_low_level], batch_size=batch_size), MVA='DNN')
+        output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, self.proc_arr_test,
+                                                          self.model.predict([self.X_data_test_high_level, self.X_data_test_low_level], batch_size=batch_size).flatten(),
+                                                          MVA='DNN', ratio_plot=ratio_plot, norm_to_data=norm_to_data)
 
         Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),out_tag))
         output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
@@ -936,7 +1018,6 @@ class Plotter(object):
         self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59']
         self.normalise    = normalise
 
-        self.input_vars   = input_vars
         self.sig_scaler   = 5*10**7
         self.log_axis     = log
 
@@ -1134,6 +1215,7 @@ class Plotter(object):
         #axes.axvspan(0, 0.612, ymax=0.75, color='grey', alpha=0.6)
         return fig
 
+
     @classmethod
     def cats_vs_ams(self, cats, AMS, out_tag):
         fig  = plt.figure(1)
@@ -1203,10 +1285,10 @@ class Utils(object):
         system( 'qsub -o {} -e {} -q hep.q -l h_rt=1:00:00 -l h_vmem=4G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
 
     @classmethod 
-    def sub_lstm_hp_script(self, eq_weights, hp_string, k_folds, job_dir='{}/submissions/lstm_hp_opts_jobs'.format(os.getcwd())):
+    def sub_lstm_hp_script(self, eq_weights, batch_boost, hp_string, job_dir='{}/submissions/lstm_hp_opts_jobs'.format(os.getcwd())):
         '''
         Submits train_bdt.py with option -H hp_string -k, to IC batch
-        When run this way, a BDT gets trained with HPs = hp_string, and cross validated on k_folds 
+        When run this way, a LSTM gets trained with HPs = hp_string
         '''
 
         file_safe_string = hp_string
@@ -1216,13 +1298,14 @@ class Utils(object):
         system('mkdir -p {}'.format(job_dir))
         sub_file_name = '{}/sub_lstm_hp_{}.sh'.format(job_dir,file_safe_string)
         #FIXME: add config name as a function argument to make it general. Do not need file paths here as copt everything into one dir
-        sub_command   = "python train_lstm.py -c lstm_config.yaml -H {} -k {}".format(hp_string, k_folds)
+        sub_command   = "python train_lstm.py -c lstm_config.yaml -H {}".format(hp_string)
         if eq_weights: sub_command += ' -w'
+        if batch_boost: sub_command += ' -B'
         with open('{}/submissions/sub_hp_opt_template.sh'.format(os.getcwd())) as f_template:
             with open(sub_file_name,'w') as f_sub:
                 for line in f_template.readlines():
                     if '!CWD!' in line: line = line.replace('!CWD!', os.getcwd())
                     if '!CMD!' in line: line = line.replace('!CMD!', '"{}"'.format(sub_command))
                     f_sub.write(line)
-        system( 'qsub -o {} -e {} -q hep.q -l h_rt=12:00:00 -l h_vmem=4G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
+        system( 'qsub -o {} -e {} -q hep.q -l h_rt=12:00:00 -l h_vmem=12G {}'.format(sub_file_name.replace('.sh','.out'), sub_file_name.replace('.sh','.err'), sub_file_name ) )
 

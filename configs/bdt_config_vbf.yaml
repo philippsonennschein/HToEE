@@ -39,7 +39,7 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     ['leadElectronIDMVA', 'subleadElectronIDMVA', 
-     #'leadJetQGL', 'subleadJetQGL', 
+     'leadJetQGL', 'subleadJetQGL', 
      'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more info
 

@@ -47,12 +47,18 @@ def main(options):
         if options.pt_reweight and options.reload_samples: 
             for year in root_obj.years:
                 root_obj.pt_reweight('DYMC', year, presel)
+                #root_obj.pt_njet_reweight('DYMC', year, presel)
 
+        #totW = np.sum(root_obj.mc_df_bkg['weight'])
+        #print 'sumW 0J: {}'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets==0]['weight'])/totW)
+        #print 'sumW 1J: {}'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets==1]['weight'])/totW)
+        #print 'sumW 2+ J {}:'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets>=2]['weight'])/totW)
 
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, options.eq_weights)
+        #bdt_hee.apply_mass_res_weight()
 
         #submit the HP search if option true
         if options.hp_perm is not None:
