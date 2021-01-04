@@ -40,7 +40,14 @@ proc_to_tree_name:
 train_vars:
     ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
      'leadElectronEta', 'subleadElectronEta',
-     'dielectronCosPhi', 'dielectronPt']
+     'dielectronCosPhi', 'dielectronPt',
+     'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi',
+     'dijetAbsDEta','dijetAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+
+#original ggH vars
+#    ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
+#     'leadElectronEta', 'subleadElectronEta',
+#     'dielectronCosPhi', 'dielectronPt']
 
 vars_to_add:
     leadElectronPToM:

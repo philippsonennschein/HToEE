@@ -52,7 +52,7 @@ def main(options):
             else: 
                 LSTM.set_hyper_parameters(options.hp_perm)
                 LSTM.model.summary()
-                LSTM.train_w_batch_boost(out_tag=output_tag)
+                LSTM.train_w_batch_boost(out_tag=output_tag, save=False)
                 with open('{}/lstm_hp_opt_{}.txt'.format(mc_dir, output_tag),'a+') as val_roc_file:
                     LSTM.compare_rocs(val_roc_file, options.hp_perm)
                     val_roc_file.close()
@@ -74,7 +74,7 @@ def main(options):
                 LSTM.model.summary()
                 #need to manip data to X low train and test manually here
                 #LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
-                #LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
+                LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
                 LSTM.train_w_batch_boost(out_tag=output_tag)
                 #compute final roc on test set
                 LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
@@ -84,12 +84,12 @@ def main(options):
         #else train with basic parameters/architecture
         else: 
            LSTM.model.summary()
-           LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
+           LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level) #need to convert flat low level into 2SD low level
            if options.batch_boost: #type of model selection so need validation set
                LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set
            else: #do not batch evolution
                LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
-               LSTM.train_network(epochs=5, batch_size=1024, out_tag=output_tag, save=True)
+               LSTM.train_network(epochs=10, batch_size=1024, out_tag=output_tag)
            LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
            #compute final roc on test set
            LSTM.plot_roc(output_tag)

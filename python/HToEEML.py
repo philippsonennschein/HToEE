@@ -724,16 +724,16 @@ class LSTM_DNN(object):
                        n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.2,
                        learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
-        #self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
-        #                               'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
-        #                               'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
-        #                               'dropout_rate':[0.1,0.2,0.3]
-        #                              }
-        self.hp_grid_rnge           = {'n_lstm_layers': [1], 'n_lstm_nodes':[150,200], 
-                                       'n_dense_1':[2], 'n_nodes_dense_1':[100],
-                                       'n_dense_2':[2], 'n_nodes_dense_2':[100], 
-                                       'dropout_rate':[0.3]
+        self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
+                                       'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
+                                       'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
+                                       'dropout_rate':[0.1,0.2,0.3]
                                       }
+        #self.hp_grid_rnge           = {'n_lstm_layers': [1], 'n_lstm_nodes':[150,200], 
+        #                               'n_dense_1':[2], 'n_nodes_dense_1':[100],
+        #                               'n_dense_2':[2], 'n_nodes_dense_2':[100], 
+        #                               'dropout_rate':[0.3]
+        #                              }
 
 
     def join_objects(self, X_low_level):
@@ -805,23 +805,25 @@ class LSTM_DNN(object):
         Terminate the training if no improvement is seen after max batch size update
         '''
 
+        self.create_train_valid_set()
+
+        #paramaters that control batch size
         best_auc           = 0.5
         current_batch_size = 1024
-        max_batch_size     = 50000 #memory constraint. FIXME: see what this can be really pushed to
+        max_batch_size     = 50000
 
-        epoch_counter      = 0 # num epochs elapsed during training
-        best_epoch         = 1 # epoch was best validation score
+        #keep track of epochs for plotting loss vs epoch, and for gettint best model
+        epoch_counter      = 0 
+        best_epoch         = 1 
 
-        self.create_train_valid_set()
         keep_training = True
-        Utils.check_dir('./models/')
 
         while keep_training:
             epoch_counter += 1
             print('beginning training iteration for epoch {}'.format(epoch_counter))
             self.train_network(epochs=1, batch_size=current_batch_size, out_tag=out_tag)
 
-            self.model.save_weights('./models/{}_model_epoch_{}.hdf5'.format(out_tag, epoch_counter))
+            self.save_model(epoch_counter, out_tag)
             val_roc = self.compute_roc(batch_size=current_batch_size, valid_set=True)  #FIXME: what is the best BS here? final BS from batch boost... initial BS? current BS??
 
             #get average of validation rocs and clear list entries 
@@ -859,20 +861,39 @@ class LSTM_DNN(object):
                 keep_training = False
                 best_epoch = self.max_epochs
             
-        print 'best_epoch was: {}'.format(best_epoch)
-        print 'best_auc was: {}'.format(best_auc)
+        print 'best epoch was: {}'.format(best_epoch)
+        print 'best validation auc was: {}'.format(best_auc)
         self.val_roc = best_auc
+      
 
-        #delete all models that aren't from the best training
+        #delete all models that aren't from the best training. Re-load best model for predicting on test set 
         for epoch in range(1,epoch_counter+1):
             if epoch is not best_epoch:
                 os.system('rm {}/models/{}_model_epoch_{}.hdf5'.format(os.getcwd(), out_tag, epoch))
+                os.system('rm {}/models/{}_model_architecture_epoch_{}.json'.format(os.getcwd(), out_tag, epoch))
         os.system('mv {0}/models/{1}_model_epoch_{2}.hdf5 {0}/models/{1}_model.hdf5'.format(os.getcwd(), out_tag, best_epoch))
+        os.system('mv {0}/models/{1}_model_architecture_epoch_{2}.json {0}/models/{1}_model_architecture.json'.format(os.getcwd(), out_tag, best_epoch))
 
+        #reset model state and load in best weights
+        with open('{}/models/{}_model_architecture.json'.format(os.getcwd(), out_tag), 'r') as model_json:
+            best_model_architecture = model_json.read()
+        self.model = keras.models.model_from_json(best_model_architecture)
+        self.model.load_weights('{}/models/{}_model.hdf5'.format(os.getcwd(), out_tag))
+
+        if not save:
+            os.system('rm {}/models/{}_model_architecture.json'.format(os.getcwd(), out_tag))
+            os.system('rm {}/models/{}_model.hdf5'.format(os.getcwd(), out_tag))
+        
     def train_network(self, batch_size, epochs, out_tag='my_lstm'):
         if self.eq_train: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights_eq)       
         else: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights)       
     
+    def save_model(self, epoch, out_tag):
+        Utils.check_dir('./models/')
+        self.model.save_weights('{}/models/{}_model_epoch_{}.hdf5'.format(os.getcwd(), out_tag, epoch))
+        with open("{}/models/{}_model_architecture_epoch_{}.json".format(os.getcwd(), out_tag, epoch), "w") as f_out:
+            f_out.write(self.model.to_json())
+
     def set_hyper_parameters(self, hp_string):
         hp_dict = {}
         for params in hp_string.split(','):
@@ -1106,7 +1127,6 @@ class Plotter(object):
             ratio.set_ylim(0, 2)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
- 
        
         Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), out_label))
         fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(), out_label, var))

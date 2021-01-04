@@ -41,7 +41,7 @@ train_vars:
     ['leadElectronIDMVA', 'subleadElectronIDMVA', 
      'leadJetQGL', 'subleadJetQGL', 
      'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
-     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more info
+     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: min dijet_dipho_dphi_trunc. see variables.py for more info
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
