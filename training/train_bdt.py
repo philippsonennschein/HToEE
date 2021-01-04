@@ -49,16 +49,12 @@ def main(options):
                 root_obj.pt_reweight('DYMC', year, presel)
                 #root_obj.pt_njet_reweight('DYMC', year, presel)
 
-        #totW = np.sum(root_obj.mc_df_bkg['weight'])
-        #print 'sumW 0J: {}'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets==0]['weight'])/totW)
-        #print 'sumW 1J: {}'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets==1]['weight'])/totW)
-        #print 'sumW 2+ J {}:'.format(np.sum(root_obj.mc_df_bkg[root_obj.mc_df_bkg.nJets>=2]['weight'])/totW)
 
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
-        bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, options.eq_weights)
-        #bdt_hee.apply_mass_res_weight()
+        bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
+        bdt_hee.create_X_and_y(mass_res_reweight=False)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -112,7 +108,7 @@ if __name__ == "__main__":
     required_args.add_argument('-c','--config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
-    opt_args.add_argument('-w','--eq_weights', action='store_true', default=False)
+    opt_args.add_argument('-w','--eq_train', action='store_true', default=False)
     opt_args.add_argument('-o','--opt_hps', action='store_true', default=False)
     opt_args.add_argument('-H','--hp_perm', action='store', default=None)
     opt_args.add_argument('-k','--k_folds', action='store', default=3, type=int)

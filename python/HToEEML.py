@@ -231,7 +231,6 @@ class ROOTHelpers(object):
         print 'sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values))
         return df
 
-
     def apply_more_cuts(self, cut_string):
         '''
         Apply some additional cut, after nominal preselection when file is read in
@@ -362,75 +361,35 @@ class ROOTHelpers(object):
         data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
         print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
 
+
+
 class BDTHelpers(object):
 
-    def __init__(self, data_obj, train_vars, train_frac, eq_weights=False):
-        #if using multiple years, should be concatted by now and in ROOTHelpers data_object argument
-      
-        #attributes for the dataset formation
-        mc_df_sig = data_obj.mc_df_sig
-        self.sig_procs  = np.unique(mc_df_sig['proc']).tolist()
-        mc_df_bkg = data_obj.mc_df_bkg
-        self.bkg_procs  = np.unique(mc_df_bkg['proc']).tolist()
-        df_data = data_obj.data_df
-
-        self.train_frac = train_frac
-
-        #add y_target label (1 for signal, 0 for background)
-        mc_df_sig['y'] = np.ones(mc_df_sig.shape[0]).tolist()
-        mc_df_bkg['y'] = np.zeros(mc_df_bkg.shape[0]).tolist()
-
-        if eq_weights: 
-            b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
-            mc_df_sig['eq_weight']  = mc_df_sig['weight'] * b_to_s_ratio
-            mc_df_bkg['eq_weight'] = mc_df_bkg['weight']
-            self.eq_train = True
-        else: self.eq_train = False
-
-        Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
-
-        if not eq_weights:
-            X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[train_vars], 
-                                                                                               Z_tot['weight'],
-                                                                                               Z_tot['y'], Z_tot['proc'],
-                                                                                               train_size=train_frac, 
-                                                                                               test_size=1-train_frac,
-                                                                                               shuffle=True, random_state=1357
-                                                                                               )
-        else:
-            X_train, X_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[train_vars], Z_tot['weight'], 
-                                                                                                                    Z_tot['eq_weight'], Z_tot['y'], Z_tot['proc'],
-                                                                                                                    train_size=train_frac, 
-                                                                                                                    test_size=1-train_frac,
-                                                                                                                    shuffle=True, 
-                                                                                                                    random_state=1357
-                                                                                                                    )
-            self.train_weights_eq = train_eqw.values
-            #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, 
-            #    because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
-      
+    def __init__(self, data_obj, train_vars, train_frac, eq_train=True):
+        #attributes train/test X and y datasets
+        self.data_obj         = data_obj
         self.train_vars       = train_vars
-        self.X_train          = X_train.values
-        self.y_train          = y_train.values
-        self.train_weights    = train_w.values
+        self.train_frac       = train_frac
+        self.eq_train         = eq_train
+
+        self.X_train          = None
+        self.y_train          = None
+        self.train_weights    = None
+        self.train_weights_eq = None
         self.y_pred_train     = None
-        self.proc_arr_train   = proc_arr_train
+        self.proc_arr_train   = None
 
-        self.X_test           = X_test.values
-        self.y_test           = y_test.values
-        self.test_weights     = test_w.values
+        self.X_test           = None
+        self.y_test           = None
+        self.test_weights     = None
         self.y_pred_test      = None
-        self.proc_arr_test    = proc_arr_test
+        self.proc_arr_test    = None
 
-        #get data test set for plotting bkg/data agreement
-        self.X_data_train, self.X_data_test = train_test_split(df_data[train_vars], train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357)
-
-
+        #attributes for the hp optmisation and cross validation
         self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=100, 
                                                   eta=0.05, maxDepth=4, min_child_weight=0.01, 
                                                   subsample=0.6, colsample_bytree=0.6, gamma=1)
 
-        #attributes for the hp optmisation and cross validation
         self.hp_grid_rnge     = {'learning_rate': [0.01, 0.05, 0.1, 0.3],
                                  'max_depth':[x for x in range(3,10)],
                                  #'min_child_weight':[x for x in range(0,3)], #FIXME: probs not appropriate range for a small sumw!
@@ -448,9 +407,81 @@ class BDTHelpers(object):
         self.w_folds_validate = []
         self.validation_rocs  = []
 
+        #attributes for plotting. 
         self.plotter          = Plotter(data_obj, train_vars)
+        self.sig_procs        = np.unique(data_obj.mc_df_sig['proc']).tolist()
+        self.bkg_procs        = np.unique(data_obj.mc_df_bkg['proc']).tolist()
         del data_obj
         
+    def create_X_and_y(self, mass_res_reweight=True):
+        '''
+        Create X train/test and y train/test
+
+        mass_res_reweight scales the signal by its mass resolution. This is done before self.eq_train, which scales the signal by its mass resolution
+        '''
+        mc_df_sig = self.data_obj.mc_df_sig
+        mc_df_bkg = self.data_obj.mc_df_bkg
+
+        #add y_target label (1 for signal, 0 for background)
+        mc_df_sig['y'] = np.ones(self.data_obj.mc_df_sig.shape[0]).tolist()
+        mc_df_bkg['y'] = np.zeros(self.data_obj.mc_df_bkg.shape[0]).tolist()
+
+
+        if self.eq_train: 
+            if mass_res_reweight:
+                #be careful not to change the real weight variable, or test scores will be invalid
+                mc_df_sig['MoM_weight'] = (mc_df_sig['weight']) * (1./mc_df_sig['dielectronSigmaMoM'])
+                b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['MoM_weight'].values)
+                mc_df_sig['eq_weight'] = (mc_df_sig['MoM_weight']) * (b_to_s_ratio)
+            else: 
+                 b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
+                 mc_df_sig['eq_weight'] = (mc_df_sig['weight']) * (b_to_s_ratio) 
+            mc_df_bkg['eq_weight'] = mc_df_bkg['weight']
+
+            Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+            X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
+                                                                                                                                         Z_tot['eq_weight'], Z_tot['y'], Z_tot['proc'],
+                                                                                                                                         train_size=self.train_frac, 
+                                                                                                                                         test_size=1-self.train_frac,
+                                                                                                                                         shuffle=True, 
+                                                                                                                                         random_state=1357
+                                                                                                                                         )
+            #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, 
+            #    because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
+            self.train_weights_eq = train_w_eqw.values
+        elif mass_res_reweight:
+           mc_df_sig['MoM_weight'] = (mc_df_sig['weight']) * (1./mc_df_sig['dielectronSigmaMoM'])
+           Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+           X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
+                                                                                                                                        Z_tot['MoM_weight'], Z_tot['y'], Z_tot['proc'],
+                                                                                                                                        train_size=self.train_frac, 
+                                                                                                                                        test_size=1-self.train_frac,
+                                                                                                                                        shuffle=True, 
+                                                                                                                                        random_state=1357
+                                                                                                                                        )
+           self.train_weights_eq = train_w_eqw.values
+           self.eq_train = True #use alternate weight in training. could probs rename this to something better
+        else:
+           print 'not applying any reweighting...'
+           Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+           X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], 
+                                                                                                               Z_tot['weight'],
+                                                                                                               Z_tot['y'], Z_tot['proc'],
+                                                                                                               train_size=self.train_frac, 
+                                                                                                               test_size=1-self.train_frac,
+                                                                                                               shuffle=True, random_state=1357
+                                                                                                               )
+        self.X_train          = X_train.values
+        self.y_train          = y_train.values
+        self.train_weights    = train_w.values
+        self.proc_arr_train   = proc_arr_train
+
+        self.X_test           = X_test.values
+        self.y_test           = y_test.values
+        self.test_weights     = test_w.values
+        self.proc_arr_test    = proc_arr_test
+
+        self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
 
     def train_classifier(self, file_path, save=False, model_name='my_model'):
         if self.eq_train: train_weights = self.train_weights_eq
@@ -588,6 +619,7 @@ class BDTHelpers(object):
         output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
         print('saving: {0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
         plt.close()
+
 
 class LSTM_DNN(object):
     '''
