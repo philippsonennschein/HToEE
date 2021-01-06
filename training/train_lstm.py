@@ -20,11 +20,11 @@ def main(options):
  
         proc_to_tree_name = config['proc_to_tree_name']
 
-        object_vars   = config['object_vars']
-        flat_obj_vars = [var for i_object in object_vars for var in i_object]
-        event_vars    = config['event_vars']
-        vars_to_add   = config['vars_to_add']
-        presel        = config['preselection']
+        object_vars       = config['object_vars']
+        flat_obj_vars     = [var for i_object in object_vars for var in i_object]
+        event_vars        = config['event_vars']
+        vars_to_add       = config['vars_to_add']
+        presel            = config['preselection']
 
                                            #Data handling stuff#
  
@@ -42,6 +42,12 @@ def main(options):
                                                 #LSTM stuff#
 
         LSTM = LSTM_DNN(root_obj, object_vars, event_vars, options.train_frac, options.eq_weights, options.batch_boost)
+        LSTM.var_transform(do_data=True)
+        X_tot, y_tot = LSTM.create_X_y(mass_res_reweight=True)
+        LSTM.split_X_y(X_tot, y_tot, do_data=True)
+        LSTM.get_X_scaler(LSTM.all_vars_X_train, out_tag=output_tag)
+        LSTM.X_scale_train_test(do_data=True)
+        LSTM.set_low_level_2D_test_train(do_data=True, ignore_train=options.batch_boost) 
 
         #functions called in subbed job, if options.opt_hps was true
         if options.hp_perm is not None:
@@ -72,9 +78,6 @@ def main(options):
                 print 'Best classifier params are: {}'.format(best_params)
                 LSTM.set_hyper_parameters(best_params)
                 LSTM.model.summary()
-                #need to manip data to X low train and test manually here
-                #LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
-                LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level)
                 LSTM.train_w_batch_boost(out_tag=output_tag)
                 #compute final roc on test set
                 LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
@@ -84,11 +87,9 @@ def main(options):
         #else train with basic parameters/architecture
         else: 
            LSTM.model.summary()
-           LSTM.X_test_low_level  = LSTM.join_objects(LSTM.X_test_low_level) #need to convert flat low level into 2SD low level
            if options.batch_boost: #type of model selection so need validation set
-               LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set
-           else: #do not batch evolution
-               LSTM.X_train_low_level = LSTM.join_objects(LSTM.X_train_low_level)
+               LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set and 2D vars
+           else: 
                LSTM.train_network(epochs=10, batch_size=1024, out_tag=output_tag)
            LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
            #compute final roc on test set

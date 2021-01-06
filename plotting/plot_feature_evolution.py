@@ -48,7 +48,6 @@ def main(options):
         proc_to_tree_name = config['proc_to_tree_name']
         colours           = ['#d7191c', '#fdae61', '#f2f229', '#abdda4', '#2b83ba']
 
- 
                                            #Data handling stuff#
 
         #load the mc dataframe for all years
@@ -81,8 +80,8 @@ def main(options):
         bkg_df['bdt_score'] = clf.predict_proba(bkg_df[train_vars].values)[:,1:].ravel()
  
         plotter  = Plotter(root_obj, train_vars, norm_to_data=True)
-        #for VBF, good set is: [0.3 0.5 0.7 0.8 0.9 1.0]
-        #for ggH, good set is: [0.1 0.3 0.45 0.53 0.60 0.8]
+        #for VBF, good set is: [0.30 0.50 0.70 0.80 0.90 1.0]
+        #for ggH, good set is: [0.10 0.30 0.45 0.53 0.60 0.8]
         bdt_bins = np.array(options.boundaries)
         Utils.check_dir('{}/plotting/plots/{}_sig_bkg_evo'.format(os.getcwd(), output_tag))
         i_hist = 0

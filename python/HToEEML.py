@@ -27,6 +27,7 @@ from keras.optimizers import Nadam
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras.utils import np_utils
+from pickle import load, dump
 
 #plotting imports
 import matplotlib
@@ -625,129 +626,52 @@ class LSTM_DNN(object):
     '''
     Train a DNN that uses LSTM and fully connected layers
 
-    :batch_boost: option to increase batch size based on ROC improvement. Needed for HP opt.
     '''
 
     def __init__(self, data_obj, low_level_vars, high_level_vars, train_frac, eq_weights=True, batch_boost=False):
+        '''
+        :batch_boost: option to increase batch size based on ROC improvement. Needed for HP opt.
+        '''
+        self.data_obj            = data_obj
+        self.low_level_vars      = low_level_vars
+        self.low_level_vars_flat = [var for sublist in low_level_vars for var in sublist]
+        self.high_level_vars     = high_level_vars
+        self.train_frac          = train_frac
+        self.batch_boost         = batch_boost #needed for HP opt
+        self.eq_train            = eq_weights
+        self.max_epochs          = 100
 
-        self.low_vars  = low_level_vars
-        low_level_vars_flat  = [var for sublist in low_level_vars for var in sublist]
-        self.low_level_vars_flat    = low_level_vars_flat
-        self.high_vars = high_level_vars
-        self.batch_boost = batch_boost #needed for HP opt
-        self.max_epochs = 100
+        self.X_tot               = None
+        self.y_tot               = None
 
-        #assign plotter attribute before data_obj is deleted for mem
-        self.plotter = Plotter(data_obj, low_level_vars_flat+high_level_vars)
+        self.X_train_low_level   = None
+        self.X_train_high_level  = None
+        self.y_train             = None
+        self.train_weights       = None
+        self.train_eqw           = None
+        self.proc_arr_train      = None
+        self.y_pred_train        = None
 
-        mc_df_sig = data_obj.mc_df_sig
-        mc_df_bkg = data_obj.mc_df_bkg
-        df_data = data_obj.data_df
-        del data_obj
+        self.X_test_low_level    = None
+        self.X_test_high_level   = None
+        self.y_test              = None
+        self.test_weights        = None
+        self.proc_arr_test       = None
+        self.y_pred_test         = None
 
+        self.X_train_low_level   = None
+        self.X_valid_low_level   = None
+        self.y_valid             = None
+        self.valid_weights       = None
 
-        if eq_weights: #not sure if we will use this in the end but lets see
-            b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
-            mc_df_sig['eq_weight'] = mc_df_sig['weight'] * b_to_s_ratio 
-            mc_df_bkg['eq_weight'] = mc_df_bkg['weight'] 
-            self.eq_train = True
-        else: self.eq_train = False
+        self.X_data_train_low_level  = None
+        self.X_data_train_high_level = None
 
-        X_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
-        #print ('Array contains NaN: ', np.isnan(X_tot.values).any())
-
-
-        #add y_target label (1 for signal, 0 for background). Keep separate from X-train until after scaling
-        y_sig = np.ones(mc_df_sig.shape[0])
-        y_bkg = np.zeros(mc_df_bkg.shape[0])
-        y_tot = np.concatenate((y_sig,y_bkg))
-
-        #pre-prop 1: change all potential -9999 variables to 
-        if 'subsubleadJetPt' in X_tot.columns:
-            X_tot['subsubleadJetPt']    = X_tot['subsubleadJetPt'].replace(-9999., 1) #zero after logging
-            df_data['subsubleadJetPt']  = df_data['subsubleadJetPt'].replace(-9999., 1) #zero after logging
-        #X_tot['subsubleadJetEta'] = X_tot['subsubleadJetEta'].replace(-9999., -10) #angles can't be zero because its still meaningfull
-        #X_tot['subsubleadJetPhi'] = X_tot['subsubleadJetPhi'].replace(-9999., -10)
-        #X_tot['subsubleadJetQGL'] = X_tot['subsubleadJetQGL'].replace(-9999., -10) 
+        self.X_data_test_low_level   = None
+        self.X_data_test_high_level  = None
         
 
-        #pre-prop 2: log scale GeV vars to standardise inputs
-        for var in gev_vars:
-            if var in (low_level_vars_flat+high_level_vars):
-                X_tot[var]   = np.log(X_tot[var].values)
-                df_data[var] = np.log(df_data[var].values)
-
-        #print ('Array contains NaN: ', np.isnan(X_tot[['subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']].values).any())
-        #print ('Array contains Inf: ', np.isinf(X_tot[['subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']].values).any())
-
-
-        if not eq_weights:
-            all_X_vars_train, all_X_vars_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(X_tot[low_level_vars_flat+high_level_vars], 
-                                                                                                                  X_tot['weight'], 
-                                                                                                                  y_tot,
-                                                                                                                  X_tot['proc'],
-                                                                                                                  train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357
-                                                                                                                 )
-        else:
-            all_X_vars_train, all_X_vars_test, train_w, test_w, train_eqw, test_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(X_tot[low_level_vars_flat+high_level_vars], 
-                                                                                                                                      X_tot['weight'],
-                                                                                                                                      X_tot['eq_weight'], 
-                                                                                                                                      y_tot, 
-                                                                                                                                      X_tot['proc'],
-                                                                                                                                      train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357
-                                                                                                                                     )
-            self.train_weights_eq = train_eqw.values
-
-        
-            all_X_vars_train, all_X_vars_test, train_w, test_w, y_train, y_test = train_test_split(X_tot[low_level_vars_flat+high_level_vars], 
-                                                                                                   X_tot['weight'], 
-                                                                                                   y_tot,
-                                                                                                   train_size=train_frac, test_size=1-train_frac, shuffle=True, random_state=1357
-                                                                                                  )
-
-        #get data test set for plotting bkg/data agreement
-        all_X_data_train, all_X_data_test  = train_test_split(df_data[low_level_vars_flat+high_level_vars],
-                                                              train_size=train_frac, 
-                                                              test_size=1-train_frac, shuffle=True, random_state=1357)
-
-
-        #pre-prop 3: scale X features to zero mean and unit std. Derive on train set and transform test set. pandas re-conversion is annoying but needed
-        X_scaler = StandardScaler()
-        X_scaler.fit(all_X_vars_train.values)
-
-        X_scaled_all_vars_train = X_scaler.transform(all_X_vars_train) #returns np array so need to re-cast into pandas to get colums/variables
-        X_scaled_all_vars_train = pd.DataFrame(X_scaled_all_vars_train, columns=low_level_vars_flat+high_level_vars)
-     
-        self.X_train_low_level      = X_scaled_all_vars_train[low_level_vars_flat].values #will get changed to 2D arrays later
-        self.X_train_high_level     = X_scaled_all_vars_train[high_level_vars].values
-        self.y_train                = y_train
-        self.train_weights          = train_w.values #needed for calc of train ROC even if training wth eq weights
-        self.proc_arr_train         = proc_arr_train
-        self.y_pred_train           = None
-
-        X_scaled_all_vars_test      = X_scaler.transform(all_X_vars_test) #important to use scaler tuned on X train
-        X_scaled_all_vars_test      = pd.DataFrame(X_scaled_all_vars_test, columns=low_level_vars_flat+high_level_vars)
-
-        self.X_test_low_level       = X_scaled_all_vars_test[low_level_vars_flat].values
-        self.X_test_high_level      = X_scaled_all_vars_test[high_level_vars].values
-        self.y_test                 = y_test
-        self.test_weights           = test_w.values
-        self.proc_arr_test          = proc_arr_test #used for plotting
-        self.y_pred_test            = None
-
-        #re-cast test and train X low levels into 2D array for Data only (need this plotting) #FIXME dont need to do this for hp opt!
-        X_scaled_data_all_vars_train = X_scaler.transform(all_X_data_train)
-        X_scaled_data_all_vars_train = pd.DataFrame(X_scaled_data_all_vars_train, columns=low_level_vars_flat+high_level_vars)
-        self.X_data_train_low_level  = self.join_objects(X_scaled_data_all_vars_train[low_level_vars_flat])
-        self.X_data_train_high_level = X_scaled_data_all_vars_train[high_level_vars].values
-
-        X_scaled_data_all_vars_test  = X_scaler.transform(all_X_data_test)
-        X_scaled_data_all_vars_test  = pd.DataFrame(X_scaled_data_all_vars_test, columns=low_level_vars_flat+high_level_vars)
-        self.X_data_test_low_level   = self.join_objects(X_scaled_data_all_vars_test[low_level_vars_flat])
-        self.X_data_test_high_level  = X_scaled_data_all_vars_test[high_level_vars].values
-
-
-        #baseline set shows no little overtraining and good performance:
+        #baseline set:  shows little overtraining and good performance
         #self.set_model(n_lstm_layers=1, n_lstm_nodes=150, n_dense_1=2, n_nodes_dense_1=300, 
         #               n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.2,
         #               learning_rate=0.00001, batch_norm=True, batch_momentum=0.99)
@@ -766,6 +690,132 @@ class LSTM_DNN(object):
         #                               'n_dense_2':[2], 'n_nodes_dense_2':[100], 
         #                               'dropout_rate':[0.3]
         #                              }
+
+        #assign plotter attribute before data_obj is deleted for mem
+        self.plotter = Plotter(data_obj, self.low_level_vars_flat+self.high_level_vars)
+        del data_obj
+
+    def var_transform(self, do_data=False):
+        '''
+        Takes pandas dataframe of X features. Apply natural log to GeV variables, and change empty variable default values
+        '''
+        if 'subsubleadJetPt' in (self.low_level_vars_flat+self.high_level_vars):
+            self.data_obj.mc_df_sig['subsubleadJetPt'] = self.data_obj.mc_df_sig['subsubleadJetPt'].replace(-9999., 1) #zero after logging
+            self.data_obj.mc_df_bkg['subsubleadJetPt'] = self.data_obj.mc_df_bkg['subsubleadJetPt'].replace(-9999., 1) #zero after logging
+            if do_data: self.data_obj.data_df['subsubleadJetPt'] = self.data_obj.data_df['subsubleadJetPt'].replace(-9999., 1) #zero after logging
+
+        #df['subsubleadJetEta'] = df['subsubleadJetEta'].replace(-9999., -10) #angles can't be zero because its still meaningfull. ?
+        #df['subsubleadJetPhi'] = df['subsubleadJetPhi'].replace(-9999., -10)
+        #df['subsubleadJetQGL'] = df['subsubleadJetQGL'].replace(-9999., -10) 
+
+        for var in gev_vars:
+            if var in (self.low_level_vars_flat+self.high_level_vars):
+                self.data_obj.mc_df_sig[var] = np.log(self.data_obj.mc_df_sig[var].values)
+                self.data_obj.mc_df_bkg[var] = np.log(self.data_obj.mc_df_bkg[var].values)
+                if do_data: self.data_obj.data_df[var]   = np.log(self.data_obj.data_df[var].values)
+
+    def create_X_y(self, mass_res_reweight=True):
+        '''
+        Create X and y matrices for training and testing. Apply Z-scaling, and save scaler that is for on train data, for use later
+
+        :do_data: option to also create train and test matrices for data. Used only for plotting, even if running cat opt!
+        :mass_res_reweight: re-weight signal events by 1/sigma(m_ee), in training only
+        '''
+        
+        if self.eq_train:
+            b_to_s_ratio = np.sum(self.data_obj.mc_df_bkg['weight'].values)/np.sum(self.data_obj.mc_df_sig['weight'].values)
+            self.data_obj.mc_df_sig['eq_weight'] = self.data_obj.mc_df_sig['weight'] * b_to_s_ratio 
+            self.data_obj.mc_df_bkg['eq_weight'] = self.data_obj.mc_df_bkg['weight'] 
+        self.data_obj.mc_df_sig.reset_index(drop=True, inplace=True)
+        self.data_obj.mc_df_bkg.reset_index(drop=True, inplace=True)
+        X_tot = pd.concat([self.data_obj.mc_df_sig, self.data_obj.mc_df_bkg], ignore_index=True)
+
+        #add y_target label (1 for signal, 0 for background). Keep separate from X-train until after Z-scaling
+        y_sig = np.ones(self.data_obj.mc_df_sig.shape[0])
+        y_bkg = np.zeros(self.data_obj.mc_df_bkg.shape[0])
+        y_tot = np.concatenate((y_sig,y_bkg))
+        
+
+        return X_tot, y_tot
+
+    def split_X_y(self, X_tot, y_tot, do_data=False):
+        if not self.eq_train:
+            self.all_vars_X_train, self.all_vars_X_test, self.train_weights, self.test_weights, self.y_train, self.y_test, self.proc_arr_train, self.proc_arr_test =  train_test_split(X_tot[self.low_level_vars_flat+self.high_level_vars], 
+                                                                                                                                                           X_tot['weight'], 
+                                                                                                                                                           y_tot,
+                                                                                                                                                           X_tot['proc'],
+                                                                                                                                                           train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357
+                                                                                                                                                          )
+        else:
+            self.all_vars_X_train, self.all_vars_X_test, self.train_weights, self.test_weights, self.train_eqw, self.test_eqw, self.y_train, self.y_test, self.proc_arr_train, self.proc_arr_test = train_test_split(X_tot[self.low_level_vars_flat+self.high_level_vars], 
+                                                                                                                                                                                        X_tot['weight'],
+                                                                                                                                                                                        X_tot['eq_weight'], 
+                                                                                                                                                                                        y_tot, 
+                                                                                                                                                                                        X_tot['proc'],
+                                                                                                                                                                                        train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357
+                                                                                                                                                                                        )
+            self.train_weights_eq = self.train_eqw.values
+
+
+        if do_data: #for plotting purposes
+            self.all_X_data_train, self.all_X_data_test  = train_test_split(self.data_obj.data_df[self.low_level_vars_flat+self.high_level_vars],
+                                                                  train_size=self.train_frac, 
+                                                                  test_size=1-self.train_frac, shuffle=True, random_state=1357)
+
+    def get_X_scaler(self, X_train, out_tag='lstm_scaler'):
+        '''
+        derive transform on X features to give to zero mean and unit std. Derive on train set. Save for use later
+        '''
+
+        X_scaler = StandardScaler()
+        X_scaler.fit(X_train.values)
+        self.X_scaler = X_scaler
+        print('saving X scaler: models/{}_X_scaler.pkl'.format(out_tag))
+        dump(X_scaler, open('models/{}_X_scaler.pkl'.format(out_tag),'wb'))
+
+    def load_X_scaler(self, out_tag='lstm_scaler'): 
+        '''
+        load X feature scaler, where the transform has been derived from training sample
+        '''
+
+        self.X_scaler = load(open('models/{}_X_scaler.pkl'.format(out_tag),'rb'))
+    
+    def X_scale_train_test(self, do_data=False):
+        '''
+        scale train and test X matrices to give zero mean and unit std. Annoying conversions between numpy <-> pandas but necessary for keeping feature names
+        '''
+
+        X_scaled_all_vars_train     = self.X_scaler.transform(self.all_vars_X_train) #returns np array so need to re-cast into pandas to get colums/variables
+        X_scaled_all_vars_train     = pd.DataFrame(X_scaled_all_vars_train, columns=self.low_level_vars_flat+self.high_level_vars)
+        self.X_train_low_level      = X_scaled_all_vars_train[self.low_level_vars_flat].values #will get changed to 2D arrays later
+        self.X_train_high_level     = X_scaled_all_vars_train[self.high_level_vars].values
+
+        X_scaled_all_vars_test      = self.X_scaler.transform(self.all_vars_X_test) #important to use scaler tuned on X train
+        X_scaled_all_vars_test      = pd.DataFrame(X_scaled_all_vars_test, columns=self.low_level_vars_flat+self.high_level_vars)
+        self.X_test_low_level       = X_scaled_all_vars_test[self.low_level_vars_flat].values #will get changed to 2D arrays later
+        self.X_test_high_level      = X_scaled_all_vars_test[self.high_level_vars].values
+
+        if do_data: #for plotting purposes
+            X_scaled_data_all_vars_train      = self.X_scaler.transform(self.all_X_data_train)
+            X_scaled_data_all_vars_train      = pd.DataFrame(X_scaled_data_all_vars_train, columns=self.low_level_vars_flat+self.high_level_vars)
+            self.X_data_train_high_level      = X_scaled_data_all_vars_train[self.high_level_vars].values 
+            self.X_data_train_low_level       = X_scaled_data_all_vars_train[self.low_level_vars_flat].values
+
+            X_scaled_data_all_vars_test       = self.X_scaler.transform(self.all_X_data_test)
+            X_scaled_data_all_vars_test       = pd.DataFrame(X_scaled_data_all_vars_test, columns=self.low_level_vars_flat+self.high_level_vars)
+            self.X_data_test_high_level       = X_scaled_data_all_vars_test[self.high_level_vars].values
+            self.X_data_test_low_level        = X_scaled_data_all_vars_test[self.low_level_vars_flat].values
+       
+    def set_low_level_2D_test_train(self, do_data=False, ignore_train=False):
+        '''
+        Ignore train means do not join 2D train objects. useful if we want to keep low level as a 1D array
+        when splitting train into train+validate. We may do 2D transform on output 1D train and valid sets
+        '''
+        if not ignore_train: self.X_train_low_level = self.join_objects(self.X_train_low_level)
+        self.X_test_low_level   = self.join_objects(self.X_test_low_level)
+        if do_data:
+            self.X_data_train_low_level  = self.join_objects(self.X_data_train_low_level)
+            self.X_data_test_low_level   = self.join_objects(self.X_data_test_low_level)
 
 
     def join_objects(self, X_low_level):
@@ -789,7 +839,7 @@ class LSTM_DNN(object):
         l_to_convert = []
         for index, row in pd.DataFrame(X_low_level, columns=self.low_level_vars_flat).iterrows(): #very slow
             l_event = []
-            for i_object_list in self.low_vars:
+            for i_object_list in self.low_level_vars:
                 l_object = []
                 for i_var in i_object_list:
                     l_object.append(row[i_var])
@@ -801,8 +851,8 @@ class LSTM_DNN(object):
         
     def set_model(self, n_lstm_layers=3, n_lstm_nodes=150, n_dense_1=1, n_nodes_dense_1=300, n_dense_2=4, n_nodes_dense_2=200, dropout_rate=0.1, learning_rate=0.001, batch_norm=True, batch_momentum=0.99):
 
-        input_objects = keras.layers.Input(shape=(len(self.low_vars), len(self.low_vars[0])), name='input_objects') 
-        input_global  = keras.layers.Input(shape=(len(self.high_vars),), name='input_global')
+        input_objects = keras.layers.Input(shape=(len(self.low_level_vars), len(self.low_level_vars[0])), name='input_objects') 
+        input_global  = keras.layers.Input(shape=(len(self.high_level_vars),), name='input_global')
         lstm = input_objects
         for i_layer in range(n_lstm_layers):
             lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm)
@@ -938,9 +988,10 @@ class LSTM_DNN(object):
 
     def create_train_valid_set(self):
         '''
-        Partition the X and Y training matrix into a train + validation set (i.e. X_train -> X_train + X_validate, and same for y and w)
+        Partition the X and y training matrix into a train + validation set (i.e. X_train -> X_train + X_validate, and same for y and w)
         Note that validation weights should always be the nominal MC weights
-        This also means turning ordinary arrays into 2D arrays
+        This also means turning ordinary arrays into 2D arrays, which we should be careful to keep as 1D arrays earlier
+
         '''
 
         if not self.eq_train:
