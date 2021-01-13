@@ -80,9 +80,9 @@ def main(options):
                 LSTM.model.summary()
                 LSTM.train_w_batch_boost(out_tag=output_tag)
                 #compute final roc on test set
-                LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
+                LSTM.compute_roc(batch_size=1024) 
                 LSTM.plot_roc(output_tag)
-                LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight)) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
+                LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
         #else train with basic parameters/architecture
         else: 
@@ -90,11 +90,11 @@ def main(options):
            if options.batch_boost: #type of model selection so need validation set
                LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set and 2D vars
            else: 
-               LSTM.train_network(epochs=10, batch_size=1024, out_tag=output_tag)
-           LSTM.compute_roc(batch_size=1024) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
+               LSTM.train_network(epochs=20, batch_size=1024)
+           LSTM.compute_roc(batch_size=1024)
            #compute final roc on test set
            LSTM.plot_roc(output_tag)
-           LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight)) #FIXME: what is the best BS here? final BS from batch boost... initial BS?
+           LSTM.plot_output_score(output_tag, batch_size=1024, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
 if __name__ == "__main__":
 

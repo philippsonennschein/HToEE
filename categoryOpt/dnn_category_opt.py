@@ -22,11 +22,11 @@ def main(options):
 
         proc_to_tree_name = config['proc_to_tree_name']       
 
-        object_vars   = config['object_vars']
-        flat_obj_vars = [var for i_object in object_vars for var in i_object]
-        event_vars    = config['event_vars']
-        vars_to_add   = config['vars_to_add']
-        presel        = config['preselection']
+        object_vars       = config['object_vars']
+        flat_obj_vars     = [var for i_object in object_vars for var in i_object]
+        event_vars        = config['event_vars']
+        vars_to_add       = config['vars_to_add']
+        presel            = config['preselection']
                  
                                            #Data handling stuff#
                  
@@ -49,6 +49,8 @@ def main(options):
         if len(options.cut_based_str)>0:
             root_obj.apply_more_cuts(options.cut_based_str)
 
+                                           # DNN evaluation stuff #
+
         #load architecture and model weights
         print 'loading DNN: {}'.format(options.model_architecture)
         with open('{}'.format(options.model_architecture), 'r') as model_json:
@@ -58,29 +60,32 @@ def main(options):
 
         LSTM = LSTM_DNN(root_obj, object_vars, event_vars, 1.0, False, True)
 
-        # set up X and y Matrices 
+        # set up X and y Matrices. Log variables that have GeV units
         LSTM.var_transform(do_data=False)  
         X_tot, y_tot     = LSTM.create_X_y()
-
         X_tot            = X_tot[flat_obj_vars+event_vars] #filter unused vars
+
+        #scale X_vars to mean=0 and std=1. Use scaler fit during previous dnn training
         LSTM.load_X_scaler(out_tag=output_tag)
         X_tot            = LSTM.X_scaler.transform(X_tot)
 
+        #make 2D vars for LSTM layers
         X_tot            = pd.DataFrame(X_tot, columns=flat_obj_vars+event_vars)
         X_tot_high_level = X_tot[event_vars].values
         X_tot_low_level  = LSTM.join_objects(X_tot[flat_obj_vars])
+
+        #predict probs
         pred_prob_tot    = model.predict([X_tot_high_level, X_tot_low_level], batch_size=1024).flatten()
 
         sig_weights   = root_obj.mc_df_sig['weight'].values
         sig_m_ee      = root_obj.mc_df_sig['dielectronMass'].values
-        pred_prob_sig = pred_prob_tot[y_tot==1] #makes unhelpful zeros!
-        #pred_prob_sig = pred_prob_tot[:root_obj.mc_df_sig.shape[0]]
+        pred_prob_sig = pred_prob_tot[y_tot==1] 
 
         bkg_weights   = root_obj.data_df['weight'].values
         bkg_m_ee      = root_obj.data_df['dielectronMass'].values
         pred_prob_bkg = pred_prob_tot[y_tot==0]
-        #pred_prob_bkg = pred_prob_tot[root_obj.mc_df_sig.shape[0]:] 
 
+                                             #category optimisation stuff#
 
         #set up optimiser ranges and no. categories to test if non-cut based
         ranges    = [ [0.3,1.] ]

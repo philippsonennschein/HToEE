@@ -1,7 +1,16 @@
 import argparse
 import numpy as np
 import yaml
-from HToEEML import ROOTHelpers, Plotter
+from HToEEML import ROOTHelpers, Plotter, Utils
+import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+try:
+     plt.style.use("cms10_6_HP")
+except IOError:
+     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
+import scipy.stats
 
 def main(options):
 
@@ -23,8 +32,8 @@ def main(options):
 
         proc_to_tree_name = config['proc_to_tree_name']
 
-        sig_colour        = 'forestgreen'
-        #sig_colour        = 'red'
+        #sig_colour        = 'forestgreen'
+        sig_colour        = 'red'
         bkg_colour        = 'violet'
  
                                            #Data handling stuff#
@@ -40,8 +49,6 @@ def main(options):
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
-        for data_obj in root_obj.data_objects:
-            root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat()
 
         if options.pt_reweight and options.reload_samples: 
@@ -49,11 +56,43 @@ def main(options):
                 root_obj.pt_reweight('DYMC', year, presel)
 
                                             #Plotter stuff#
+        with open('plotting/var_to_xrange.yaml', 'r') as plot_config_file:
+            plot_config        = yaml.load(plot_config_file)
+            var_to_xrange      = plot_config['var_to_xrange']
  
         #set up X, w and y, train-test 
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
-        for var in train_vars+['dielectronMass','dielectronPt']:
-            plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=(not options.pt_reweight))
+        for var in train_vars:
+
+            fig  = plt.figure(1)
+            axes = fig.gca()
+
+            var_sig     = root_obj.mc_df_sig[var].values
+            sig_weights = root_obj.mc_df_sig['weight'].values
+            var_bkg     = root_obj.mc_df_bkg[var].values
+            bkg_weights = root_obj.mc_df_bkg['weight'].values
+
+            sig_weights /= np.sum(sig_weights)
+            bkg_weights /= np.sum(bkg_weights) 
+
+            bins = np.linspace(var_to_xrange[var][0], var_to_xrange[var][1], 56)
+
+            #add sig mc
+            axes.hist(var_sig, bins=bins, label=plotter.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$)', weights=sig_weights, histtype='stepfilled', color='red', zorder=10, alpha=0.4)
+            axes.hist(var_bkg, bins=bins, label='Simulated background', weights=bkg_weights, histtype='stepfilled', color='blue', zorder=0, alpha=0.4)
+
+            axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+            axes.set_ylim(bottom=0)
+            axes.legend(bbox_to_anchor=(0.97,0.97), ncol=1)
+            plotter.plot_cms_labels(axes)
+               
+            var_name_safe = var.replace('_',' ')
+            axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
+
+            Utils.check_dir('{}/plotting/plots/{}/normed/'.format(os.getcwd(), output_tag))
+            fig.savefig('{0}/plotting/plots/{1}/normed/{1}_{2}_normalised.pdf'.format(os.getcwd(), output_tag, var))
+            plt.close()
+
 
 
 if __name__ == "__main__":
@@ -65,7 +104,5 @@ if __name__ == "__main__":
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-b','--n_bins',  default=26, type=int)
     opt_args.add_argument('-P','--pt_reweight',  action='store_true', default=False)
-    opt_args.add_argument('-R','--ratio_plot',  action='store_true', default=False)
-    opt_args.add_argument('-D','--no_data',  action='store_true', default=False)
     options=parser.parse_args()
     main(options)
