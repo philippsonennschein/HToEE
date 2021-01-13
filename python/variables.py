@@ -6,14 +6,14 @@ nominal_vars = ['genWeight', 'leadElectronIDMVA', 'subleadElectronIDMVA','leadEl
                 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', #add jet en
                 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #add sublead jet en
                 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #add subsublead jet en
-                'dijetAbsDEta', 'dijetMass', 'dijetAbsDPhiTrunc', # FIXME: dijetAbsDPhiTrunc is actually dijet_dphi. Still need 'dijet_dipho_dphi_trunc'
-                'dijetMinDRJetEle', 'dijetCentrality'
+                'dijetAbsDEta', 'dijetMass', 'dijetAbsDPhiTrunc', # FIXME: dijetAbsDPhiTrunc is actually dijet_dphi. Still need 'dijet_dipho_dphi_trunc' (min dphi I think it is)
+                'dijetMinDRJetEle', 'dijetCentrality', 'dielectronSigmaMoM'
                ]
 
 #for MVA training, hence not including masses
 gev_vars =     ['leadJetEn', 'leadJetPt', 'subleadJetEn', 'subleadJetPt', 'subsubleadJetEn', 'subsubleadJetPt', 
                 'leadElectronEn', 'leadElectronPt', 'subleadElectronEn', 'subleadElectronPt',
-                'leadElectronPToM', 'subleadElectronPToM', 'dijetMass'
+                'leadElectronPToM', 'subleadElectronPToM', 'dijetMass', 'dielectronPt'
                ]
 
 

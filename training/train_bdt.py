@@ -28,7 +28,11 @@ def main(options):
                                            #Data handling stuff#
  
         #load the mc dataframe for all years
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
+        if options.pt_reweight: 
+            cr_selection = config['reweight_cr']
+            output_tag += '_pt_reweighted'
+            root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, cr_selection)
+        else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -38,10 +42,19 @@ def main(options):
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat() 
   
+        #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
+        # is applied here and all df's are resaved for smaller mem
+        if options.pt_reweight and options.reload_samples: 
+            for year in root_obj.years:
+                root_obj.pt_reweight('DYMC', year, presel)
+                #root_obj.pt_njet_reweight('DYMC', year, presel)
+
+
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
-        bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, options.eq_weights)
+        bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
+        bdt_hee.create_X_and_y(mass_res_reweight=False)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -57,21 +70,21 @@ def main(options):
                     bdt_hee.set_i_fold(i_fold)
                     bdt_hee.train_classifier(root_obj.mc_dir, save=False)
                     bdt_hee.validation_rocs.append(bdt_hee.compute_roc())
-                with open('{}/bdt_hp_opt.txt'.format(mc_dir),'a+') as val_roc_file:
+                with open('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag),'a+') as val_roc_file:
                     bdt_hee.compare_rocs(val_roc_file, options.hp_perm)
                     val_roc_file.close()
            
         elif options.opt_hps:
             #FIXME: add warning that many jobs are about to be submiited
             if options.k_folds<2: raise ValueError('K-folds option must be at least 2')
-            if path.isfile('{}/bdt_hp_opt.txt'.format(mc_dir)): 
-                system('rm {}/bdt_hp_opt.txt'.format(mc_dir))
-                print ('deleting: {}/bdt_hp_opt.txt'.format(mc_dir))
-            bdt_hee.batch_gs_cv(k_folds=3)
+            if path.isfile('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag)): 
+                system('rm {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
+                print ('deleting: {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
+            bdt_hee.batch_gs_cv(k_folds=options.k_folds)
 
         elif options.train_best:
             output_tag+='_best'
-            with open('{}/bdt_hp_opt.txt'.format(mc_dir),'r') as val_roc_file:
+            with open('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag),'r') as val_roc_file:
                 hp_roc = val_roc_file.readlines()
                 best_params = hp_roc[-1].split(';')[0]
                 print 'Best classifier params are: {}'.format(best_params)
@@ -79,14 +92,15 @@ def main(options):
                 bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag)
                 bdt_hee.compute_roc()
                 bdt_hee.plot_roc(output_tag)
-                bdt_hee.plot_output_score(output_tag)
+                bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
         #else just train BDT with default HPs
         else:
             bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
-            bdt_hee.plot_output_score(output_tag)
+            #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
+            bdt_hee.plot_output_score(output_tag, ratio_plot=False, norm_to_data=(not options.pt_reweight))
 
 if __name__ == "__main__":
 
@@ -95,11 +109,12 @@ if __name__ == "__main__":
     required_args.add_argument('-c','--config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
-    opt_args.add_argument('-w','--eq_weights', action='store_true', default=False)
+    opt_args.add_argument('-w','--eq_train', action='store_true', default=False)
     opt_args.add_argument('-o','--opt_hps', action='store_true', default=False)
     opt_args.add_argument('-H','--hp_perm', action='store', default=None)
     opt_args.add_argument('-k','--k_folds', action='store', default=3, type=int)
     opt_args.add_argument('-b','--train_best', action='store_true', default=False)
     opt_args.add_argument('-t','--train_frac', action='store', default=0.7, type=float)
+    opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
     options=parser.parse_args()
     main(options)
