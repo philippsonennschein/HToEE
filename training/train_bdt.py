@@ -46,8 +46,8 @@ def main(options):
         # is applied here and all df's are resaved for smaller mem
         if options.pt_reweight and options.reload_samples: 
             for year in root_obj.years:
-                root_obj.pt_reweight('DYMC', year, presel)
-                #root_obj.pt_njet_reweight('DYMC', year, presel)
+                #root_obj.pt_reweight('DYMC', year, presel)
+                root_obj.pt_njet_reweight('DYMC', year, presel)
 
 
                                                 #BDT stuff#

@@ -44,6 +44,12 @@ train_vars:
      'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi',
      'dijetAbsDEta','dijetAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
 
+#    ['leadElectronPToM', 'subleadElectronPToM',
+#     'leadElectronEta', 'subleadElectronEta',
+#     'dielectronCosPhi', 'dielectronPt',
+#     'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi',
+#     'dijetAbsDEta','dijetAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+
 #original ggH vars
 #    ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
 #     'leadElectronEta', 'subleadElectronEta',

@@ -88,9 +88,10 @@ def main(options):
         else: 
            LSTM.model.summary()
            if options.batch_boost: #type of model selection so need validation set
-               LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set and 2D vars
+               LSTM.train_w_batch_boost(out_tag=output_tag) #handles creating validation set and 2D vars and sequential saving
            else: 
-               LSTM.train_network(epochs=20, batch_size=1024)
+               LSTM.train_network(epochs=10, batch_size=1024)
+               LSTM.save_model(out_tag=output_tag)
            LSTM.compute_roc(batch_size=1024)
            #compute final roc on test set
            LSTM.plot_roc(output_tag)

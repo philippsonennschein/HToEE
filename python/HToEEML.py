@@ -370,7 +370,7 @@ class ROOTHelpers(object):
         elif len(self.data_df) == 0 : pass
         else: self.data_df = pd.concat(self.data_df)
    
-    def pt_reweight(self, bkg_proc, year, presel):
+    def pt_reweight(self, bkg_proc, year, presel, norm_first=True):
         """
         Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee),
         to map bkg process to Data. Then apply this in the signal region
@@ -383,25 +383,32 @@ class ROOTHelpers(object):
             year to be re-weighted (perform this separately for each year)
         presel: string
             preselection to apply to go from the CR -> SR
+        norm_first: bool
+            normalise the simulated background to data. Results in a shape-only correction
         """
 
-        pt_bins = np.linspace(0,250,51)
+        pt_bins = np.linspace(0,180,101)
         scaled_list = []
 
         bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110'.format(bkg_proc,year))
-        bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
-
         data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110'.format(year))       
+
+        #FIXME: here only norming DY events to data...
+        if norm_first: bkg_df['weight'] *= (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
+
+        bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
         data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
         scale_factors = data_pt_binned/bkg_pt_binned
 
-        #now apply the proc targeting selection on all dfs, and re-save 
+        #now apply the proc targeting selection on all dfs, and re-save. Now samples are back in SR
         self.apply_more_cuts(presel)
+        #FIXME: ... but here scaling DY + other backgrounds before doing pT reweighting? is this ok. Think so since in m_ee ctrl region we only have DY really
+        if norm_first: self.mc_df_bkg['weight'] *= (np.sum(self.data_df['weight'])/np.sum(self.mc_df_bkg['weight']))
         self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, scale_factors, False])
         self.save_modified_dfs(year)
 
 
-    def pt_njet_reweight(self, bkg_proc, year, presel):
+    def pt_njet_reweight(self, bkg_proc, year, presel, norm_first=True):
         """
         Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, double differentially 
         in bins on pT(ee) and nJets, to map bkg process to Data. Then apply this in the signal region.
@@ -414,6 +421,8 @@ class ROOTHelpers(object):
             year to be re-weighted (perform this separately for each year)
         presel: string
             preselection to apply to go from the CR -> SR
+        norm_first: bool
+            normalise the simulated background to data. Results in a shape-only correction
         """
 
         #can remove this once nJets is put in ntuples from dumper
@@ -436,6 +445,7 @@ class ROOTHelpers(object):
         jet_bins = [0,1,2]
         n_jets_to_sfs_map = {}
 
+
         #derive pt and njet based SFs
         for n_jets in jet_bins:
             if not n_jets==jet_bins[-1]: 
@@ -445,16 +455,26 @@ class ROOTHelpers(object):
                 bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(bkg_proc,year, n_jets))
                 data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(year,n_jets))       
 
+            if norm_first:
+                CR_norm_i_jet_bin = (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
+                bkg_df['weight'] *= CR_norm_i_jet_bin
+
             bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
             data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
             n_jets_to_sfs_map[n_jets] = data_pt_binned/bkg_pt_binned
 
         #now apply the proc targeting selection on all dfs, and re-save. Then apply derived SFs
         self.apply_more_cuts(presel)
-        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True])
+        if norm_first:
+            SR_i_jet_to_norm = {}
+            for n_jets in jet_bins:
+                SR_i_jet_to_norm[n_jets] = np.sum(self.data_df['weight']) / np.sum(self.mc_df_bkg['weight'])
+            self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True, SR_i_jet_to_norm])
+
+        else: self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True, None])
         self.save_modified_dfs(year)
          
-    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, do_jets):
+    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, do_jets, norm_first_dict=None):
         """
         Function called in pandas apply() function, looping over rows and testing conditions. Can be called for
         single or double differential re-weighting.
@@ -479,10 +499,12 @@ class ROOTHelpers(object):
             scale factors to be applied in each pT bin
         do_jets: bool
             if true, perform double differential re-weighting in bins of pT and jet multiplicity
+        norm_first_dict: dict
+            optional dict that contains normalisations in the SR, for each jet bin
 
         Returns
         -------
-        row['weight']: float of the (modified) MC weight for a single event/dataframe row
+        row['weight'] * scale-factor : float of the (modified) MC weight for a single event/dataframe row
         """
 
         if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
@@ -490,7 +512,11 @@ class ROOTHelpers(object):
             else: rew_factors = scale_factors
             for i_bin in range(len(bin_edges)):
                 if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
-                    return row['weight'] * rew_factors[i_bin]
+                    if norm_first_dict is not None: 
+                        if row['nJets'] >= 2: jet_bin = 2
+                        else: jet_bin = row['nJets']
+                        return row['weight'] * rew_factors[i_bin] * norm_first_dict[jet_bin]
+                    else: return row['weight'] * rew_factors[i_bin]
         else:
             return row['weight']
 
@@ -525,7 +551,7 @@ class ROOTHelpers(object):
 
 class BDTHelpers(object):
     """
-    Documentation to be added soo
+    Documentation to be added soon
     """
     def __init__(self, data_obj, train_vars, train_frac, eq_train=True):
         #attributes train/test X and y datasets
@@ -871,7 +897,7 @@ class LSTM_DNN(object):
         """
 
         if 'subsubleadJetPt' in (self.low_level_vars_flat+self.high_level_vars):
-            self.data_obj.mc_df_sig['subsubleadJetPt'] = self.data_obj.mc_df_sig['subsubleadJetPt'].replace(-9999., 1) #zero after logging
+            self.data_obj.mc_df_sig['subsubleadJetPt'] = self.data_obj.mc_df_sig['subsubleadJetPt'].replace(-9999., 1) #FIXME: zero after logging... so looks like a normal Z-scaled jet! fix this
             self.data_obj.mc_df_bkg['subsubleadJetPt'] = self.data_obj.mc_df_bkg['subsubleadJetPt'].replace(-9999., 1) #zero after logging
             if do_data: self.data_obj.data_df['subsubleadJetPt'] = self.data_obj.data_df['subsubleadJetPt'].replace(-9999., 1) #zero after logging
 
@@ -1280,7 +1306,7 @@ class LSTM_DNN(object):
         if self.eq_train: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights_eq)       
         else: self.model.fit([self.X_train_high_level, self.X_train_low_level], self.y_train, epochs=epochs, batch_size=batch_size, sample_weight=self.train_weights)       
     
-    def save_model(self, epoch, out_tag='my_lstm'):
+    def save_model(self, epoch=None, out_tag='my_lstm'):
         """
         Save the deep learning model, training up to a given epoch
         
@@ -1293,9 +1319,14 @@ class LSTM_DNN(object):
         """
 
         Utils.check_dir('./models/')
-        self.model.save_weights('{}/models/{}_model_epoch_{}.hdf5'.format(os.getcwd(), out_tag, epoch))
-        with open("{}/models/{}_model_architecture_epoch_{}.json".format(os.getcwd(), out_tag, epoch), "w") as f_out:
-            f_out.write(self.model.to_json())
+        if epoch is not None:
+            self.model.save_weights('{}/models/{}_model_epoch_{}.hdf5'.format(os.getcwd(), out_tag, epoch))
+            with open("{}/models/{}_model_architecture_epoch_{}.json".format(os.getcwd(), out_tag, epoch), "w") as f_out:
+                f_out.write(self.model.to_json())
+        else: 
+            self.model.save_weights('{}/models/{}_model.hdf5'.format(os.getcwd(), out_tag))
+            with open("{}/models/{}_model_architecture.json".format(os.getcwd(), out_tag), "w") as f_out:
+                f_out.write(self.model.to_json())
 
 
 

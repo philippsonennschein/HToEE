@@ -44,8 +44,7 @@ object_vars:
     ]
 
 event_vars:
-    ['leadElectronPToM', 'leadElectronIDMVA',
-     'subleadElectronPToM', 'subleadElectronIDMVA',
+    ['leadElectronPToM', 'subleadElectronPToM',
      'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
 
@@ -53,8 +52,7 @@ train_vars: #all vars for plotting inputs
     ['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
      'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
      'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
-     'leadElectronPToM', 'leadElectronIDMVA',
-     'subleadElectronPToM', 'subleadElectronIDMVA',
+     'leadElectronPToM', 'subleadElectronPToM',
      'dijetAbsDEta', 'dijetMass', 
      'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
 
