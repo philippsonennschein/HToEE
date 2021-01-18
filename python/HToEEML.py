@@ -551,10 +551,20 @@ class ROOTHelpers(object):
 
 class BDTHelpers(object):
     """
-    Documentation to be added soon
+    Functions to train a binary class BDT for signal/background separation
+
+    :param data_obj: instance of ROOTHelpers class. containing Dataframes for simulated signal, simulated background, and possibly data
+    :type data_obj: ROOTHelpers
+    :param train_vars: list of variables to train the BDT with
+    :type train_vars: list
+    :param train_frac: fraction of events to train the network. Test on 1-train_frac
+    :type train_frac: float
+    :param eq_train: whether to train with the sum of signal weights scaled equal to the sum of background weights
+    :type eq_train: bool
     """
+
     def __init__(self, data_obj, train_vars, train_frac, eq_train=True):
-        #attributes train/test X and y datasets
+
         self.data_obj         = data_obj
         self.train_vars       = train_vars
         self.train_frac       = train_frac
@@ -602,11 +612,15 @@ class BDTHelpers(object):
         del data_obj
         
     def create_X_and_y(self, mass_res_reweight=True):
-        '''
+        """
         Create X train/test and y train/test
 
-        mass_res_reweight scales the signal by its mass resolution. This is done before self.eq_train, which scales the signal by its mass resolution
-        '''
+        Arguments
+        ---------
+        mass_res_reweight: bool
+           re-weight signal events by 1/sigma(m_ee), in training only.
+        """
+        
         mc_df_sig = self.data_obj.mc_df_sig
         mc_df_bkg = self.data_obj.mc_df_bkg
 
@@ -672,6 +686,19 @@ class BDTHelpers(object):
         self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
 
     def train_classifier(self, file_path, save=False, model_name='my_model'):
+        """
+        Train the BDT and save the resulting classifier
+
+        Arguments
+        ---------
+        file_path: string
+            base file path used when saving model
+        save: bool
+            option to save the classifier
+        model_name: string
+            name of the model to be saved
+        """
+
         if self.eq_train: train_weights = self.train_weights_eq
         else: train_weights = self.train_weights
 
@@ -686,23 +713,36 @@ class BDTHelpers(object):
             print ("Saved classifier as: {}/models/{}.pickle.dat".format(os.getcwd(), model_name))
 
     def batch_gs_cv(self, k_folds=3):
-        '''
+        """
         Submit a sets of hyperparameters permutations (based on attribute hp_grid_rnge) to the IC batch.
         Perform k-fold cross validation; take care to separate training weights, which
         may be modified w.r.t nominal weights, and the weights used when evaluating on the
         validation set which should be the nominal weights
-        '''
+
+        Arguments
+        ---------
+        k_folds: int
+            number of folds that the training+validation set are partitioned into
+        """
+
         #get all possible HP sets from permutations of the above dict
         hp_perms = self.get_hp_perms()
+
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
             Utils.sub_hp_script(self.eq_train, hp_string, k_folds)
             
     def get_hp_perms(self):
+        """
+        Return a list of all possible hyper parameter combinations (permutation template set in constructor) in format 'hp1:val1,hp2:val2, ...'
+
+        Returns
+        -------
+        final_hps: all possible combinaions of hyper parameters given in self.hp_grid_rnge
+        """
+
         from itertools import product
-        ''''
-        returns list of all possible hyper parameter combinations in format 'hp1:val1,hp2:val2, ...'
-        '''
+
         hp_perms  = [perm for perm in apply(product, self.hp_grid_rnge.values())]
         final_hps = []
         counter   = 0
@@ -715,6 +755,15 @@ class BDTHelpers(object):
         return final_hps
 
     def set_hyper_parameters(self, hp_string):
+        """
+        Set a given set hyper-parameters for the classifier. Append the resulting classifier as a class attribute
+
+        Arguments
+        --------
+        hp_string: string
+            string of hyper-parameter values, with format 'hp1:val1,hp2:val2, ...'
+        """
+
         hp_dict = {}
         for params in hp_string.split(','):
             hp_name = params.split(':')[0]
@@ -725,11 +774,17 @@ class BDTHelpers(object):
         self.clf = xgb.XGBClassifier(**hp_dict)
  
     def set_k_folds(self, k_folds):
-        '''
+        """
         Partition the X and Y matrix into folds = k_folds, and append to list (X and y separate) attribute for the class, from the training samples (i.e. X_train -> X_train + X_validate, and same for y and w)
         Used in conjunction with the get_i_fold function to pull one fold out for training+validating
         Note that validation weights should always be the nominal MC weights
-        '''
+
+        Arguments
+        --------
+        k_folds: int
+            number of folds that the training+validation set are partitioned into
+        """
+
         kf = KFold(n_splits=k_folds)
         for train_index, valid_index in kf.split(self.X_train):
             self.X_folds_train.append(self.X_train[train_index])
@@ -747,11 +802,17 @@ class BDTHelpers(object):
 
        
     def set_i_fold(self, i_fold):
-        '''
+        """
         Gets the training and validation fold for a given CV iteration from class attribute,
         and overwrites the self.X_train, self.y_train and self.X_train, self.y_train respectively, and the weights, to train
         Note that for these purposes, our "test" sets are really the "validation" sets
-        '''
+
+        Arguments
+        --------
+        i_folds: int
+            the index describing the train+validate datasets
+        """
+
         self.X_train          = self.X_folds_train[i_fold]
         self.train_weights    = self.w_folds_train[i_fold] #nominal MC weights needed for computing roc on train set (overtraining test)
         if self.eq_train:
@@ -763,6 +824,16 @@ class BDTHelpers(object):
         self.test_weights     = self.w_folds_validate[i_fold]
 
     def compare_rocs(self, roc_file, hp_string):
+        """
+        Compare the AUC for the current model, to the current best AUC saved in a .txt file 
+        Arguments
+        ---------
+        roc_file: string
+            path for the file holding the current best AUC (as the final line)
+        hp_string: string
+            string contraining each hyper_paramter for the network, with the following syntax: 'hp_1_name:hp_1_value, hp_2_name:hp_2_value, ...'
+        """
+
         hp_roc = roc_file.readlines()
         avg_val_auc = np.average(self.validation_rocs)
         print 'avg. validation roc is: {}'.format(avg_val_auc)
@@ -773,9 +844,10 @@ class BDTHelpers(object):
             roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
 
     def compute_roc(self):
-        '''
+        """
         Compute the area under the associated ROC curve, with mc weights
-        '''
+        """
+
         self.y_pred_train = self.clf.predict_proba(self.X_train)[:,1:]
         print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights))
 
@@ -784,9 +856,10 @@ class BDTHelpers(object):
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
     def plot_roc(self, out_tag):
-        ''' 
+        """
         Method to plot the roc curve, using method from Plotter() class
-        '''
+        """
+
         roc_fig = self.plotter.plot_roc(self.y_train, self.y_pred_train, self.train_weights, 
                                    self.y_test, self.y_pred_test, self.test_weights, out_tag=out_tag)
 
@@ -796,9 +869,19 @@ class BDTHelpers(object):
         plt.close()
 
     def plot_output_score(self, out_tag, ratio_plot=False, norm_to_data=False):
-        ''' 
-        Method to plot the roc curve and compute the integral of the roc as a performance metric
-        '''
+        """
+        Plot the output score for the classifier, for signal, background, and data
+
+        Arguments
+        ---------
+        out_tag: string
+            output tag used as part of the image name, when saving
+        ratio_plot: bool
+            whether to plot the ratio between simulated background and data
+        norm_to_data: bool
+            whether to normalise the integral of the simulated background, to the integral in data
+        """
+
         output_score_fig = self.plotter.plot_output_score(self.y_test, self.y_pred_test, self.test_weights, 
                                                           self.proc_arr_test, self.clf.predict_proba(self.X_data_test.values)[:,1:],
                                                           ratio_plot=ratio_plot, norm_to_data=norm_to_data)
