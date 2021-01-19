@@ -2,7 +2,6 @@ import argparse
 import numpy as np
 import yaml
 import pickle
-from HToEEML import ROOTHelpers, Plotter, Utils
 import os
 
 #plotting imports
@@ -14,6 +13,10 @@ try:
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 plt.rcParams.update({'legend.fontsize':10}) 
+
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from Utils import Utils
 
 def annotate_and_save(axes, plotter, var):
     axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
@@ -61,8 +64,8 @@ def main(options):
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
-        for data_obj in root_obj.data_objects:
-            root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+        #for data_obj in root_obj.data_objects:
+        #    root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat()
 
         if options.pt_reweight and options.reload_samples: 

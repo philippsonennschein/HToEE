@@ -3,9 +3,12 @@ import numpy as np
 import pandas as pd
 import yaml
 import pickle
-from HToEEML import ROOTHelpers, BDTHelpers, Plotter, LSTM_DNN
-from catOptim import CatOptim
 import keras
+
+from catOptim import CatOptim
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from NeuralNets import LSTM_DNN
 
 def main(options):
 

@@ -1,7 +1,8 @@
 import argparse
 import numpy as np
 import yaml
-from HToEEML import ROOTHelpers, Plotter, Utils
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
 import os
 import matplotlib
 matplotlib.use('Agg')

@@ -1,20 +1,20 @@
 import argparse
 import numpy as np
 import yaml
-from HToEEML import ROOTHelpers, LSTM_DNN
-from os import path,system
+
+from DataHandling import ROOTHelpers
+from NeuralNets import LSTM_DNN
 
 def main(options):
 
     #take options from the yaml config
     with open(options.config, 'r') as config_file:
-        config        = yaml.load(config_file)
+        config            = yaml.load(config_file)
         output_tag        = config['output_tag']
  
         mc_dir            = config['mc_file_dir']
         mc_fnames         = config['mc_file_names']
   
-        #data not needed yet, but stil specify in the config for compatibility with constructor
         data_dir          = config['data_file_dir']
         data_fnames       = config['data_file_names']
  

@@ -2,8 +2,10 @@ import argparse
 import numpy as np
 import yaml
 import sys
-from HToEEML import ROOTHelpers, BDTHelpers
 from os import path,system
+
+from DataHandling import ROOTHelpers
+from BDTs import BDTHelpers
 
 def main(options):
 
