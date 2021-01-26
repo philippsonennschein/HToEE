@@ -2,8 +2,11 @@ import argparse
 import numpy as np
 import yaml
 import pickle
-from HToEEML import ROOTHelpers, BDTHelpers, Plotter
+
 from catOptim import CatOptim
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from NeuralNets import LSTM_DNN
 
 def main(options):
 

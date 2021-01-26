@@ -1,0 +1,14 @@
+models:
+    VBF: 
+         architecture: 'VBF_DNN_model_architecture.json'
+         model: 'VBF_DNN_model.hdf5'
+    ggH: 'ggH_BDT_pt_reweighted_clf.pickle.dat'
+
+boundaries:
+    VBF: 
+        tag_0: 0.838
+        tag_1: 0.598
+    ggH:
+        tag_0: 0.823
+        tag_1: 0.603
+        tag_2: 0.310

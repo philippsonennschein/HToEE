@@ -1,7 +1,6 @@
 import argparse
 import numpy as np
 import yaml
-from HToEEML import ROOTHelpers, Plotter, Utils
 import os
 import matplotlib
 matplotlib.use('Agg')
@@ -11,6 +10,10 @@ try:
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 import scipy.stats
+
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from Utils import Utils
 
 def main(options):
 

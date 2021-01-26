@@ -2,12 +2,8 @@ import argparse
 import numpy as np
 import pandas as pd
 import yaml
-import pickle
-from HToEEML import ROOTHelpers, Plotter, Utils, LSTM_DNN
 import keras
 import os
-
-#plotting imports
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -16,6 +12,12 @@ try:
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 plt.rcParams.update({'legend.fontsize':10}) 
+
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from NeuralNets import LSTM_DNN
+from Utils import Utils
+
 
 def annotate_and_save(axes, plotter, var):
     axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
@@ -55,11 +57,14 @@ def main(options):
                  
         #load the mc dataframe for all years
         root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel) 
-
+ 
         for sig_obj in root_obj.sig_objects:
+            print sig_obj.file_name
+            print sig_obj.tree_name
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+
         root_obj.concat()
 
                                             #Plotter stuff#

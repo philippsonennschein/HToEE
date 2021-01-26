@@ -2,10 +2,13 @@ import argparse
 import numpy as np
 import pandas as pd
 import yaml
-import pickle
-from HToEEML import ROOTHelpers, BDTHelpers, Plotter, LSTM_DNN
-from catOptim import CatOptim
+#import pickle
 import keras
+
+from catOptim import CatOptim
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
+from NeuralNets import LSTM_DNN
 
 def main(options):
 
@@ -61,7 +64,7 @@ def main(options):
         LSTM = LSTM_DNN(root_obj, object_vars, event_vars, 1.0, False, True)
 
         # set up X and y Matrices. Log variables that have GeV units
-        LSTM.var_transform(do_data=False)  
+        LSTM.var_transform(do_data=False) #bkg=data here. This option is for plotting purposes
         X_tot, y_tot     = LSTM.create_X_y()
         X_tot            = X_tot[flat_obj_vars+event_vars] #filter unused vars
 

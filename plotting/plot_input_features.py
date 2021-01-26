@@ -1,7 +1,9 @@
 import argparse
 import numpy as np
 import yaml
-from HToEEML import ROOTHelpers, Plotter
+
+from DataHandling import ROOTHelpers
+from PlottingUtils import Plotter
 
 def main(options):
 
@@ -25,7 +27,6 @@ def main(options):
 
         sig_colour        = 'forestgreen'
         #sig_colour        = 'red'
-        bkg_colour        = 'violet'
  
                                            #Data handling stuff#
 

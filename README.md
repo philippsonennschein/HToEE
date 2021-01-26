@@ -62,7 +62,7 @@ which runs an optimisation for ggH categories. Note that the `-d` option replace
 
 
 ## Final Tag Producer
-To produce the trees with the category information needed for final fits, we use `categoryOpt/make_tag_sequence.py`. This takes a config specifying the BDT boundaries for each set of tags (see `configs/bdt_boundaries_config.yaml` for an example).
+To produce the trees with the category information needed for final fits, we use `categoryOpt/make_tag_sequence.py`. This takes a config specifying the BDT boundaries for each set of tags (see `configs/bdt_boundaries_config.yaml` for an example). The script also requires an additional config with sample and training varaible info (see `configs/tag_seq_config.yaml` for info an example)
 
 ### To do:
 * assert cut string vars are in nominal vars
