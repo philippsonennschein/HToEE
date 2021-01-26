@@ -3,12 +3,13 @@ import uproot as upr
 import numpy as np
 import pandas as pd
 import os
-from ROOT import TLorentzVector as lv
 from numpy import pi
 from os import path, system
 from variables import nominal_vars, gen_vars, gev_vars
 import yaml
+
 import pickle
+from pickle import load, dump
 
 from Utils import Utils
 
@@ -68,7 +69,9 @@ class ROOTHelpers(object):
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
         self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57} #all in pb. also have BR for signals
-        self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. update if selection changes
+        self.eff_acc            = {'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897} #Pass5 from dumper. update if selection changes
+        #self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. Pass2
+        self.eff_acc            = {'ggH':0.4014615, 'VBF':0.4044795, 'DYMC':0.0660393, 'TT2L2Nu':0.0176973, 'TTSemiL':0.0001307} #from dumper. Pass3
 
         self.out_tag            = out_tag
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
@@ -192,12 +195,13 @@ class ROOTHelpers(object):
         df: pandas dataframe that was read in.
         """
 
-        print 'loading {}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year)
-        df = pd.read_hdf('{}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
-        print 'DEBUG: loaded fine'
+        #print 'loading {}{}_{}_df_{}.pkl'.format(df_dir, proc, self.out_tag, year)
+        #df = pd.read_hdf('{}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
+        #df = pd.read_pickle('{}{}_{}_df_{}.pkl'.format(df_dir, proc, self.out_tag, year))
+        df = pd.read_csv('{}{}_{}_df_{}.csv'.format(df_dir, proc, self.out_tag, year))
         missing_vars = [x for x in self.train_vars if x not in df.columns]
         if len(missing_vars)!=0: raise IOError('Missing variables in dataframe: {}. Reload with option -r and try again'.format(missing_vars))
-        else: print('Sucessfully loaded DataFrame: {}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
+        else: print('Sucessfully loaded DataFrame: {}{}_{}_df_{}.csv'.format(df_dir, proc, self.out_tag, year))
 
         return df    
 
@@ -236,18 +240,17 @@ class ROOTHelpers(object):
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
             #FIXME: temp fix until ptOm in samples. Then can just do normal query string again (which is set up to to only read wider mass range if pT reweighting)
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
-            df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
+            df = df_tree.pandas.df(data_vars).query('dielectronMass>80 and dielectronMass<150')
             df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
             df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
             df = df.query(self.cut_string)
-            df['weight'] = np.ones_like(df.shape[0])
+            #df['weight'] = np.ones_like(df.shape[0])
         else:
             #cant cut on sim now as need to run MC_norm and need sumW before selection!
             df = df_tree.pandas.df(self.nominal_vars)
             #needed for preselection and training
             df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
             df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
-            df['weight'] = df['genWeight']
             #NOTE: dont apply cuts yet as need to do MC norm!
 
 
@@ -267,8 +270,11 @@ class ROOTHelpers(object):
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
         #save everything
         Utils.check_dir(file_dir+'DataFrames/') 
-        df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year), 'df', mode='w', format='t')
-        print('Saved dataframe: {}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
+        df.to_csv('{}/{}_{}_df_{}.csv'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
+        #df.to_pickle('{}/{}_{}_df_{}.pkl'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
+        #df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year), 'df', mode='w', format='t')
+        print('Saved dataframe: {}/{}_{}_df_{}.csv'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
+        #print('Saved dataframe: {}/{}_{}_df_{}.pkl'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
 
         return df
 
@@ -362,8 +368,8 @@ class ROOTHelpers(object):
         pt_bins = np.linspace(0,180,101)
         scaled_list = []
 
-        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110'.format(bkg_proc,year))
-        data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110'.format(year))       
+        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
+        data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
 
         #FIXME: here only norming DY events to data...
         if norm_first: bkg_df['weight'] *= (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
@@ -421,11 +427,11 @@ class ROOTHelpers(object):
         #derive pt and njet based SFs
         for n_jets in jet_bins:
             if not n_jets==jet_bins[-1]: 
-                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets=={}'.format(bkg_proc,year, n_jets))
-                data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets=={}'.format(year,n_jets))       
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets=={}'.format(year,n_jets))       
             else: 
-                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(bkg_proc,year, n_jets))
-                data_df = self.data_df.query('year=="{}" and dielectronMass>70 and dielectronMass<110 and nJets>={}'.format(year,n_jets))       
+                bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(bkg_proc,year, n_jets))
+                data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100 and nJets>={}'.format(year,n_jets))       
 
             if norm_first:
                 CR_norm_i_jet_bin = (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
@@ -507,15 +513,21 @@ class ROOTHelpers(object):
         print 'saving modified dataframes...'
         for sig_proc in self.sig_procs:
             sig_df = self.mc_df_sig[np.logical_and(self.mc_df_sig.proc==sig_proc, self.mc_df_sig.year==year)]
-            sig_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year), 'df', mode='w', format='t')
-            print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+            #sig_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year), 'df', mode='w', format='t')
+            #sig_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+            sig_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+            print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
 
         for bkg_proc in self.bkg_procs:
             bkg_df = self.mc_df_bkg[np.logical_and(self.mc_df_bkg.proc==bkg_proc,self.mc_df_bkg.year==year)]
-            bkg_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year), 'df', mode='w', format='t')
-            print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+            #bkg_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year), 'df', mode='w', format='t')
+            #bkg_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+            bkg_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+            print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
 
         data_df = self.data_df[self.data_df.year==year]
-        data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
-        print('saved dataframe: {}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+        #data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
+        #data_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+        data_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+        print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
 

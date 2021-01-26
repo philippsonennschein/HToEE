@@ -38,10 +38,16 @@ proc_to_tree_name:
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
-    ['leadElectronPToM', 'subleadElectronPToM',
-     'leadJetQGL', 'subleadJetQGL', 
-     'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
-     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: min dijet_dipho_dphi_trunc. see variables.py for more info
+#    ['dijetAbsDEta', 'dijetMass', #'dijetDphi', FIXME
+#     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+#     'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+#     'leadElectronPToM', 'subleadElectronPToM',
+#     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+#     'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] 
+
+    ['dijetAbsDEta', 'dijetMass', #'dijetDphi', FIXME
+     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+     'leadElectronPToM', 'subleadElectronPToM']
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
@@ -53,4 +59,4 @@ preselection:
     'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'
 
 reweight_cr:
-    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'

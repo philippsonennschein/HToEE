@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import yaml
-import pickle
+#import pickle
 import keras
 
 from catOptim import CatOptim
@@ -64,7 +64,7 @@ def main(options):
         LSTM = LSTM_DNN(root_obj, object_vars, event_vars, 1.0, False, True)
 
         # set up X and y Matrices. Log variables that have GeV units
-        LSTM.var_transform(do_data=False)  
+        LSTM.var_transform(do_data=False) #bkg=data here. This option is for plotting purposes
         X_tot, y_tot     = LSTM.create_X_y()
         X_tot            = X_tot[flat_obj_vars+event_vars] #filter unused vars
 

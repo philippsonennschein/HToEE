@@ -110,7 +110,7 @@ class BDTHelpers(object):
             X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
                                                                                                                                          Z_tot['eq_weight'], Z_tot['y'], Z_tot['proc'],
                                                                                                                                          train_size=self.train_frac, 
-                                                                                                                                         test_size=1-self.train_frac,
+                                                                                                                                         #test_size=1-self.train_frac,
                                                                                                                                          shuffle=True, 
                                                                                                                                          random_state=1357
                                                                                                                                          )
@@ -123,7 +123,7 @@ class BDTHelpers(object):
            X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
                                                                                                                                         Z_tot['MoM_weight'], Z_tot['y'], Z_tot['proc'],
                                                                                                                                         train_size=self.train_frac, 
-                                                                                                                                        test_size=1-self.train_frac,
+                                                                                                                                        #test_size=1-self.train_frac,
                                                                                                                                         shuffle=True, 
                                                                                                                                         random_state=1357
                                                                                                                                         )
@@ -136,7 +136,7 @@ class BDTHelpers(object):
                                                                                                                Z_tot['weight'],
                                                                                                                Z_tot['y'], Z_tot['proc'],
                                                                                                                train_size=self.train_frac, 
-                                                                                                               test_size=1-self.train_frac,
+                                                                                                               #test_size=1-self.train_frac,
                                                                                                                shuffle=True, random_state=1357
                                                                                                                )
         self.X_train          = X_train.values
@@ -178,7 +178,7 @@ class BDTHelpers(object):
             pickle.dump(clf, open("{}/models/{}.pickle.dat".format(os.getcwd(), model_name), "wb"))
             print ("Saved classifier as: {}/models/{}.pickle.dat".format(os.getcwd(), model_name))
 
-    def batch_gs_cv(self, k_folds=3):
+    def batch_gs_cv(self, k_folds=3, pt_rew=False):
         """
         Submit a sets of hyperparameters permutations (based on attribute hp_grid_rnge) to the IC batch.
         Perform k-fold cross validation; take care to separate training weights, which
@@ -196,7 +196,7 @@ class BDTHelpers(object):
 
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
-            Utils.sub_hp_script(self.eq_train, hp_string, k_folds)
+            Utils.sub_hp_script(self.eq_train, hp_string, k_folds, pt_rew)
             
     def get_hp_perms(self):
         """

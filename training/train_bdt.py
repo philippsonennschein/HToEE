@@ -48,15 +48,16 @@ def main(options):
         # is applied here and all df's are resaved for smaller mem
         if options.pt_reweight and options.reload_samples: 
             for year in root_obj.years:
-                #root_obj.pt_reweight('DYMC', year, presel)
-                root_obj.pt_njet_reweight('DYMC', year, presel)
+                root_obj.pt_reweight('DYMC', year, presel)
+                #root_obj.pt_njet_reweight('DYMC', year, presel)
 
 
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
-        bdt_hee.create_X_and_y(mass_res_reweight=False)
+        bdt_hee.create_X_and_y(mass_res_reweight=True)
+        #bdt_hee.create_X_and_y(mass_res_reweight=False)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -82,7 +83,7 @@ def main(options):
             if path.isfile('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag)): 
                 system('rm {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
                 print ('deleting: {}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag))
-            bdt_hee.batch_gs_cv(k_folds=options.k_folds)
+            bdt_hee.batch_gs_cv(k_folds=options.k_folds, pt_rew=options.pt_reweight)
 
         elif options.train_best:
             output_tag+='_best'
@@ -102,7 +103,7 @@ def main(options):
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
             #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
-            bdt_hee.plot_output_score(output_tag, ratio_plot=False, norm_to_data=(not options.pt_reweight))
+            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
 if __name__ == "__main__":
 

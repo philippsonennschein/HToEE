@@ -1,12 +1,12 @@
 #electron vars
-nominal_vars = ['genWeight', 'leadElectronIDMVA', 'subleadElectronIDMVA','leadElectronPToM*', 'subleadElectronPToM*',
-                'leadElectronPt', 'leadElectronEta', 'leadElectronPhi',
-                'subleadElectronPt',  'subleadElectronEta', 'subleadElectronPhi',
-                'dielectronCosPhi','dielectronPt', 'dielectronMass', 
+nominal_vars = ['weight', 'leadElectronIDMVA', 'subleadElectronIDMVA','leadElectronPToM*', 'subleadElectronPToM*',
+                'leadJetEn', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi',
+                'subleadJetEn', 'subleadElectronPt',  'subleadElectronEta', 'subleadElectronPhi',
+                'subsubleadJetEn', 'dielectronCosPhi','dielectronPt', 'dielectronMass', 
                 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', #add jet en
                 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #add sublead jet en
                 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #add subsublead jet en
-                'dijetAbsDEta', 'dijetMass', 'dijetAbsDPhiTrunc', # FIXME: dijetAbsDPhiTrunc is actually dijet_dphi. Still need 'dijet_dipho_dphi_trunc' (min dphi I think it is)
+                'dijetAbsDEta', 'dijetMass', 'dijetDieleAbsDEta', 'dijetDieleAbsDPhiTrunc', # FIXME: dijetAbsDPhiTrunc is actually dijet_dphi. Still need 'dijet_dipho_dphi_trunc' (min dphi I think it is)
                 'dijetMinDRJetEle', 'dijetCentrality', 'dielectronSigmaMoM'
                ]
 

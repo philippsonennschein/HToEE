@@ -17,7 +17,8 @@ class Plotter(object):
     '''
     Class to plot input variables and output scores
     '''
-    def __init__(self, data_obj, input_vars, sig_col='forestgreen', normalise=False, log=False, norm_to_data=False): 
+    #def __init__(self, data_obj, input_vars, sig_col='forestgreen', normalise=False, log=False, norm_to_data=False): 
+    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, log=False, norm_to_data=False): 
         self.sig_df       = data_obj.mc_df_sig
         self.bkg_df       = data_obj.mc_df_bkg
         self.data_df      = data_obj.data_df
@@ -38,7 +39,7 @@ class Plotter(object):
             plot_config        = yaml.load(plot_config_file)
             self.var_to_xrange = plot_config['var_to_xrange']
         missing_vars = [x for x in input_vars if x not in self.var_to_xrange.keys()]
-        if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))
+        if len(missing_vars)!=0: raise IOError('Missing variables in var_to_xrange.py: {}'.format(missing_vars))
 
     @classmethod 
     def num_to_str(self, num):
@@ -99,24 +100,36 @@ class Plotter(object):
                 rew_stack.append(w_arr*k_factor)
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+            sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
+            sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
 
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
+        #plot mc error 
+        bkg_std_down, bkg_std_up  = self.poisson_interval(bkg_stack_summed, sumw2_bkg)                                                   
+        axes.fill_between(bins, list(bkg_std_down)+[bkg_std_down[-1]], list(bkg_std_up)+[bkg_std_up[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4, label='Simulation stat. unc.')
+
+        #change axes limits
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=10, top=current_top*1.4)
+        axes.set_ylim(bottom=10, top=current_top*1.35)
         #axes.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
         axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
         self.plot_cms_labels(axes)
            
         var_name_safe = var.replace('_',' ')
         if ratio_plot:
-            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), fmt='o', ms=4, color='black', capsize=0)
+            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=4, color='black', capsize=0)
+            bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
+            bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
+            ratio.fill_between(bins, list(bkg_std_down_ratio)+[bkg_std_down_ratio[-1]], list(bkg_std_up_ratio)+[bkg_std_up_ratio[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4)
+
             ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
             #ratio.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
+            ratio.set_ylabel('Data/MC', size=13)
             ratio.set_ylim(0, 2)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
@@ -201,18 +214,27 @@ class Plotter(object):
                 rew_stack.append(w_arr*k_factor)
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+            sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
-        axes.legend(bbox_to_anchor=(0.98,0.98), ncol=2)
+            sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
+        #plot mc error 
+        bkg_std_down, bkg_std_up  = self.poisson_interval(bkg_stack_summed, sumw2_bkg)                                                   
+        axes.fill_between(bins, list(bkg_std_down)+[bkg_std_down[-1]], list(bkg_std_up)+[bkg_std_up[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4, label='Simulation stat. unc.')
 
+        axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
         current_bottom, current_top = axes.get_ylim()
         axes.set_ylim(bottom=0, top=current_top*1.3)
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
         if ratio_plot:
-            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), fmt='o', ms=4, color='black', capsize=0)
+            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=4, color='black', capsize=0)
+            bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
+            bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
+            ratio.fill_between(bins, list(bkg_std_down_ratio)+[bkg_std_down_ratio[-1]], list(bkg_std_up_ratio)+[bkg_std_up_ratio[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4)
+
             ratio.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
             ratio.set_ylim(0, 2)
             ratio.grid(True, linestyle='dotted')

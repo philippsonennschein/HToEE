@@ -5,8 +5,10 @@ import pickle
 import pandas as pd
 import root_pandas
 from os import path, system
+import keras
 
 from DataHandling import ROOTHelpers
+from NeuralNets import LSTM_DNN
 
 def main(options):
     
@@ -17,14 +19,18 @@ def main(options):
         mc_dir             = config['mc_file_dir']
         mc_fnames          = config['mc_file_names']
   
-        #data not needed yet, but stil specify in the config for compatibility with constructor
         data_dir           = config['data_file_dir']
         data_fnames        = config['data_file_names']
 
         proc_to_tree_name  = config['proc_to_tree_name']
 
         proc_to_train_vars = config['train_vars']
-        all_train_vars     = [item for sublist in proc_to_train_vars.values() for item in sublist]
+        object_vars        = proc_to_train_vars['VBF']['object_vars']
+        flat_obj_vars      = [var for i_object in object_vars for var in i_object]
+        event_vars         = proc_to_train_vars['VBF']['event_vars']
+
+        #used to check all vars we need for categorisation are in our dfs
+        all_train_vars     = proc_to_train_vars['ggH'] + flat_obj_vars + event_vars
 
         vars_to_add        = config['vars_to_add']
 
@@ -38,19 +44,20 @@ def main(options):
         root_obj.no_lumi_scale()
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
-        if options.data_as_bkg:
-            for data_obj in root_obj.data_objects:
-                root_obj.load_data(data_obj, reload_samples=options.reload_samples)
-        else:
+        if not options.data_as_bkg:
             for bkg_obj in root_obj.bkg_objects:
                 root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        else:
+            for data_obj in root_obj.data_objects:
+                root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+            #overwrite background attribute, for compat with DNN class
+            root_obj.mc_df_bkg = root_obj.data_df
         root_obj.concat()
 
 
                                        #Tag sequence stuff#
-    if options.data_as_bkg: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.data_df])
-    else: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
-    del root_obj
+    #NOTE: these must be concatted in the same way they are concatted in LSTM.create_X_y(), else predicts are misaligned
+    combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
 
     #decide sequence of tags and specify preselection for use with numpy.select:
     tag_sequence          = ['VBF','ggH']
@@ -70,18 +77,46 @@ def main(options):
                             }
 
 
-    with open(options.bdt_config, 'r') as bdt_config_file:
-        config            = yaml.load(bdt_config_file)
+        # GET MVA SCORES #    
+
+    with open(options.mva_config, 'r') as mva_config_file:
+        config            = yaml.load(mva_config_file)
         proc_to_model     = config['models']
         proc_to_tags      = config['boundaries']
 
-        #evaluate MVA scores used in categorisation
-        for proc, model in proc_to_model.iteritems():
-            print 'evaluating classifier: {}'.format(model)
-            clf = pickle.load(open('models/{}'.format(model), "rb"))
-            train_vars = proc_to_train_vars[proc]
-            combined_df[proc+'_bdt'] = clf.predict_proba(combined_df[train_vars].values)[:,1:].ravel()
-       
+        #evaluate ggH BDT scores
+        print 'evaluating ggH classifier: {}'.format(proc_to_model['ggH'])
+        clf = pickle.load(open('models/{}'.format(proc_to_model['ggH']), "rb"))
+        train_vars = proc_to_train_vars['ggH']
+        combined_df['ggH_mva'] = clf.predict_proba(combined_df[train_vars].values)[:,1:].ravel()
+
+        #Evaluate VBF LSTM
+        print 'loading VBF DNN:'
+        with open('models/{}'.format(proc_to_model['VBF']['architecture']), 'r') as model_json:
+            model_architecture = model_json.read()
+        model = keras.models.model_from_json(model_architecture)
+        model.load_weights('models/{}'.format(proc_to_model['VBF']['model']))
+         
+        LSTM = LSTM_DNN(root_obj, object_vars, event_vars, 1.0, False, True)
+         
+        # set up X and y Matrices. Log variables that have GeV units
+        LSTM.var_transform(do_data=False)  
+        X_tot, y_tot     = LSTM.create_X_y()
+        X_tot            = X_tot[flat_obj_vars+event_vars] #filter unused vars
+        print np.isnan(X_tot).any()
+         
+        #scale X_vars to mean=0 and std=1. Use scaler fit during previous dnn training
+        LSTM.load_X_scaler(out_tag='VBF_DNN')
+        X_tot            = LSTM.X_scaler.transform(X_tot)
+            
+        #make 2D vars for LSTM layers
+        X_tot            = pd.DataFrame(X_tot, columns=flat_obj_vars+event_vars)
+        X_tot_high_level = X_tot[event_vars].values
+        X_tot_low_level  = LSTM.join_objects(X_tot[flat_obj_vars])
+            
+        #predict probs. Corresponds to same events, since dfs are concattened internally in the same 
+        combined_df['VBF_mva']    = model.predict([X_tot_high_level, X_tot_low_level], batch_size=1).flatten()
+
         # TAG NUMBER #
 
         #decide on tag
@@ -91,10 +126,10 @@ def main(options):
             tag_masks = []
             for i_bound in range(len(tag_bounds)): #c++ type looping for index reasons
                 if i_bound==0: #first bound, tag 0
-                    tag_masks.append( presel[0] & combined_df['{}_bdt'.format(proc)].gt(tag_bounds[i_bound]) )
+                    tag_masks.append( presel[0] & combined_df['{}_mva'.format(proc)].gt(tag_bounds[i_bound]) )
                 else: #intermed bound
-                    tag_masks.append( presel[0] & combined_df['{}_bdt'.format(proc)].lt(tag_bounds[i_bound-1]) & 
-                                      combined_df['{}_bdt'.format(proc)].gt(tag_bounds[i_bound])
+                    tag_masks.append( presel[0] & combined_df['{}_mva'.format(proc)].lt(tag_bounds[i_bound-1]) & 
+                                      combined_df['{}_mva'.format(proc)].gt(tag_bounds[i_bound])
                                     )
 
             mask_key     = [icat for icat in range(len(tag_bounds))]
@@ -215,7 +250,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     required_args = parser.add_argument_group('Required Arguments')
     required_args.add_argument('-c','--config', action='store', required=True)
-    required_args.add_argument('-M','--bdt_config', action='store', required=True)
+    required_args.add_argument('-B','--mva_config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', help='re-load the .root files and convert into pandas DataFrames', action='store_true', default=False)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)

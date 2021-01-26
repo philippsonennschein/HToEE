@@ -27,7 +27,6 @@ def main(options):
 
         sig_colour        = 'forestgreen'
         #sig_colour        = 'red'
-        bkg_colour        = 'violet'
  
                                            #Data handling stuff#
 

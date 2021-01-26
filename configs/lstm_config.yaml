@@ -38,23 +38,23 @@ proc_to_tree_name:
 
 #X variables to train with (4 vectors of jets... and maybe photons... anything else that is low-level and maybe useful?)
 object_vars:
-    [['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL'], #add lead jet en
-     ['subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL'], #add sublead jet en
-     ['subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] #add subsublead jet en
+    [['leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL'], 
+     ['subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL'],
+     ['subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']
     ]
 
 event_vars:
     ['leadElectronPToM', 'subleadElectronPToM',
      'dijetAbsDEta', 'dijetMass', 
-     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
+     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality'] #FIXME: add dijetDphi
 
 train_vars: #all vars for plotting inputs
-    ['leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
-     'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-     'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
+    ['leadJetEn', 'leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
+     'subleadJetEn', 'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
      'leadElectronPToM', 'subleadElectronPToM',
      'dijetAbsDEta', 'dijetMass', 
-     'dijetAbsDPhiTrunc', 'dijetCentrality'] #FIXME: dont have: dijet_dipho_dphi_trunc. see variables.py for more in
+     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality'] #FIXME: add dijetDphi
 
 vars_to_add:
     leadElectronPToM:

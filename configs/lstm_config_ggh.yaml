@@ -1,8 +1,6 @@
 # custom tag that will be added to all saved df's and models. 
-# useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
-# otherwise may get confused when training another clf like VBF 
 output_tag:
-    'ggH_BDT'
+    'ggH_DNN'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
@@ -27,8 +25,9 @@ mc_file_names:
 data_file_names:
     Data:
         '2017': 'Data_UL2017.root'
+        #'2018': 'DYData_2018_PAS5.root'
 
-#.root MC files for all years (bkg) should have these tree path:
+#.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     ggH: 'Events'
     DYMC: 'Events'
@@ -36,22 +35,20 @@ proc_to_tree_name:
     TT2L2Nu: 'Events'
     TTSemiL: 'Events'
 
-#X variables to train with. Must be in nominal_vars (unless created from existing features)
-train_vars:
-#nominal BDT vars
-#    ['leadElectronPToM', 'subleadElectronPToM',
-#     'leadElectronEta', 'subleadElectronEta',
-#     'dielectronCosPhi', 'dielectronPt',
-#     'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
-#     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
-#     'dijetAbsDEta', 'dijetAbsDPhi' #FIXME
+#X variables to train with (4 vectors of jets... and maybe photons... anything else that is low-level and maybe useful?)
+object_vars:
+    [['leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL'], 
+     ['subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL']
+     #['subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi','subsubleadJetQGL']
+    ]
 
-#original ggH vars
-#    ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
-#     'leadElectronEta', 'subleadElectronEta',
-#     'dielectronCosPhi', 'dielectronPt']
-#
-#ggh_dnn vars
+event_vars:
+    ['leadElectronPToM', 'subleadElectronPToM',
+     'leadElectronEta', 'subleadElectronEta',
+     'dielectronCosPhi', 'dielectronPt',
+     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+
+train_vars: #all vars for plotting inputs
     ['leadElectronPToM', 'subleadElectronPToM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
@@ -59,8 +56,8 @@ train_vars:
      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
      'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL']
-     #'dijetAbsDEta', 'dijetAbsDPhi' #FIXME
-
+     #'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']
+    
 vars_to_add:
     leadElectronPToM:
     subleadElectronPToM:
@@ -69,6 +66,6 @@ vars_to_add:
 preselection:
     'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
 
-#need looser cut to for re-weighting in 80 < m_ee < 100 GeV
+#need looser cut for re-weighting in 80 < m_ee < 100 GeV. Apply extra cut to get into CR later
 reweight_cr:
     'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'

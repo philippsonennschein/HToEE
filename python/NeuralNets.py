@@ -75,18 +75,36 @@ class LSTM_DNN(object):
         self.X_data_test_low_level   = None
         self.X_data_test_high_level  = None
         
-        #self.set_model(n_lstm_layers=1, n_lstm_nodes=150, n_dense_1=2, n_nodes_dense_1=300, 
-        #               n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.2,
+        # high complex
+        #self.set_model(n_lstm_layers=3, n_lstm_nodes=150, n_dense_1=2, n_nodes_dense_1=300, 
+        #               n_dense_2=3, n_nodes_dense_2=200, dropout_rate=0.3,
         #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
-        self.set_model(n_lstm_layers=1, n_lstm_nodes=100, n_dense_1=1, n_nodes_dense_1=100, 
-                       n_dense_2=2, n_nodes_dense_2=50, dropout_rate=0.2,
+        # med complex
+        self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=50, 
+                       n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
                        learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
-        self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
-                                       'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
-                                       'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
-                                       'dropout_rate':[0.1,0.2,0.3]
+        # simple
+        #self.set_model(n_lstm_layers=1, n_lstm_nodes=20, n_dense_1=2, n_nodes_dense_1=20, 
+        #               n_dense_2=1, n_nodes_dense_2=10, dropout_rate=0.2,
+        #               learning_rate=0.001, batch_norm=False, batch_momentum=0.99)
+
+        #self.set_model(n_lstm_layers=2, n_lstm_nodes=10, n_dense_1=2, n_nodes_dense_1=40, 
+        #               n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
+        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+
+
+        #self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
+        #                               'n_dense_1':[1,2,3], 'n_nodes_dense_1':[100,200,300],
+        #                               'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[100,200,300], 
+        #                               'dropout_rate':[0.1,0.2,0.3]
+        #                              }
+
+        self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[50,100,150], 
+                                       'n_dense_1':[1,2,3], 'n_nodes_dense_1':[50,100,150],
+                                       'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[50,100,150], 
+                                       'dropout_rate':[0.1,0.2]
                                       }
 
         #assign plotter attribute before data_obj is deleted for mem
@@ -95,7 +113,9 @@ class LSTM_DNN(object):
 
     def var_transform(self, do_data=False):
         """
-        Apply natural log to GeV variables and change empty variable default values. Do this for signal, background, and potentially data
+        Apply natural log to GeV variables, unless variable value is empty. Do this for signal, background, and potentially data
+        Note that the lead and sublead jet replacements make no difference for VBF, but in evaluating scores on ggH samples, we normally
+        have 0J events; hence all jet varibles need replacing
         
         Arguments
         ---------
@@ -104,20 +124,43 @@ class LSTM_DNN(object):
         
         """
 
-        if 'subsubleadJetPt' in (self.low_level_vars_flat+self.high_level_vars):
-            self.data_obj.mc_df_sig['subsubleadJetPt'] = self.data_obj.mc_df_sig['subsubleadJetPt'].replace(-9999., 1) #FIXME: zero after logging... so looks like a normal Z-scaled jet! fix this
-            self.data_obj.mc_df_bkg['subsubleadJetPt'] = self.data_obj.mc_df_bkg['subsubleadJetPt'].replace(-9999., 1) #zero after logging
-            if do_data: self.data_obj.data_df['subsubleadJetPt'] = self.data_obj.data_df['subsubleadJetPt'].replace(-9999., 1) #zero after logging
+        #FIXME: put this into a loop over potential -999 vars later
+        empty_vars = ['leadJetEn', 'leadJetPt', 'leadJetPhi', 'leadJetEta', 'leadJetQGL',
+                      'subleadJetEn', 'subleadJetPt', 'subleadJetPhi', 'subleadJetEta', 'subleadJetQGL',
+                      'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetPhi', 'subsubleadJetEta', 'subsubleadJetQGL',
+                      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass', 'dijetAbsDEta']
+        replacement_value = -10
 
-        #df['subsubleadJetEta'] = df['subsubleadJetEta'].replace(-9999., -10) #angles can't be zero because its still meaningfull. ?
-        #df['subsubleadJetPhi'] = df['subsubleadJetPhi'].replace(-9999., -10)
-        #df['subsubleadJetQGL'] = df['subsubleadJetQGL'].replace(-9999., -10) 
+        for empty_var in empty_vars:
+            self.data_obj.mc_df_sig[empty_var] = self.data_obj.mc_df_sig[empty_var].replace(-999., replacement_value)
+            self.data_obj.mc_df_bkg[empty_var] = self.data_obj.mc_df_bkg[empty_var].replace(-999., replacement_value)
+            if do_data: self.data_obj.data_df[empty_var] = self.data_obj.data_df[empty_var].replace(-999., replacement_value)
+
+        #print self.data_obj.mc_df_sig[empty_vars]
+        #print np.isnan(self.data_obj.mc_df_sig[empty_vars]).any()
 
         for var in gev_vars:
             if var in (self.low_level_vars_flat+self.high_level_vars):
-                self.data_obj.mc_df_sig[var] = np.log(self.data_obj.mc_df_sig[var].values)
-                self.data_obj.mc_df_bkg[var] = np.log(self.data_obj.mc_df_bkg[var].values)
-                if do_data: self.data_obj.data_df[var]   = np.log(self.data_obj.data_df[var].values)
+                self.data_obj.mc_df_sig[var] = self.data_obj.mc_df_sig.apply(self.var_transform_helper, axis=1, args=[var, replacement_value])
+                self.data_obj.mc_df_bkg[var] = self.data_obj.mc_df_bkg.apply(self.var_transform_helper, axis=1, args=[var, replacement_value])
+                if do_data: self.data_obj.data_df[var]   = self.data_obj.data_df.apply(self.var_transform_helper, axis=1, args=[var, replacement_value])
+
+        #print np.isnan(self.data_obj.mc_df_sig[empty_vars]).any()
+
+    def var_transform_helper(self, row, var, replacement_value):
+        """
+        Helper function to decide whether to transform variable. 
+
+        Arguments
+        ---------
+        row : pandas Series
+            pandas series object for yielded by pandas apply(). Contains per event information
+        var : string
+            name of the variable we are considering for transform
+        """
+
+        if row[var]==replacement_value : return row[var]
+        else: return np.log(row[var])
 
     def create_X_y(self, mass_res_reweight=True):
         """
@@ -174,7 +217,7 @@ class LSTM_DNN(object):
                                                                                                                                                            X_tot['weight'], 
                                                                                                                                                            y_tot,
                                                                                                                                                            X_tot['proc'],
-                                                                                                                                                           train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357
+                                                                                                                                                           train_size=self.train_frac, shuffle=True, random_state=1357
                                                                                                                                                           )
         else:
             self.all_vars_X_train, self.all_vars_X_test, self.train_weights, self.test_weights, self.train_eqw, self.test_eqw, self.y_train, self.y_test, self.proc_arr_train, self.proc_arr_test = train_test_split(X_tot[self.low_level_vars_flat+self.high_level_vars], 
@@ -182,7 +225,7 @@ class LSTM_DNN(object):
                                                                                                                                                                                         X_tot['eq_weight'], 
                                                                                                                                                                                         y_tot, 
                                                                                                                                                                                         X_tot['proc'],
-                                                                                                                                                                                        train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357
+                                                                                                                                                                                        train_size=self.train_frac, shuffle=True, random_state=1357
                                                                                                                                                                                         )
             self.train_weights_eq = self.train_eqw.values
 
@@ -190,9 +233,9 @@ class LSTM_DNN(object):
         if do_data: #for plotting purposes
             self.all_X_data_train, self.all_X_data_test  = train_test_split(self.data_obj.data_df[self.low_level_vars_flat+self.high_level_vars],
                                                                   train_size=self.train_frac, 
-                                                                  test_size=1-self.train_frac, shuffle=True, random_state=1357)
+                                                                  shuffle=True, random_state=1357)
 
-    def get_X_scaler(self, X_train, out_tag='lstm_scaler'):
+    def get_X_scaler(self, X_train, out_tag='lstm_scaler', save=True):
         """
         Derive transform on X features to give to zero mean and unit std. Derive on train set. Save for use later
 
@@ -207,8 +250,9 @@ class LSTM_DNN(object):
         X_scaler = StandardScaler()
         X_scaler.fit(X_train.values)
         self.X_scaler = X_scaler
-        print('saving X scaler: models/{}_X_scaler.pkl'.format(out_tag))
-        dump(X_scaler, open('models/{}_X_scaler.pkl'.format(out_tag),'wb'))
+        if save:
+            print('saving X scaler: models/{}_X_scaler.pkl'.format(out_tag))
+            dump(X_scaler, open('models/{}_X_scaler.pkl'.format(out_tag),'wb'))
 
     def load_X_scaler(self, out_tag='lstm_scaler'): 
         """
@@ -378,19 +422,21 @@ class LSTM_DNN(object):
         input_objects = keras.layers.Input(shape=(len(self.low_level_vars), len(self.low_level_vars[0])), name='input_objects') 
         input_global  = keras.layers.Input(shape=(len(self.high_level_vars),), name='input_global')
         lstm = input_objects
+        decay = 0.2
         for i_layer in range(n_lstm_layers):
+            #lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', kernel_regularizer=keras.regularizers.l2(decay), recurrent_regularizer=keras.regularizers.l2(decay), bias_regularizer=keras.regularizers.l2(decay), return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm)
             lstm = keras.layers.LSTM(n_lstm_nodes, activation='tanh', return_sequences=(i_layer!=(n_lstm_layers-1)), name='lstm_{}'.format(i_layer))(lstm)
 
         #inputs to dense layers are output of lstm and global-event variables. Also batch norm the FC layers
         dense = keras.layers.concatenate([input_global, lstm])
         for i in range(n_dense_1):
-            dense = keras.layers.Dense(n_nodes_dense_1, activation='relu', kernel_initializer='lecun_uniform', name = 'dense1_%d' % i)(dense)
+            dense = keras.layers.Dense(n_nodes_dense_1, activation='relu', kernel_initializer='he_uniform', name = 'dense1_%d' % i)(dense)
             if batch_norm:
                 dense = keras.layers.BatchNormalization(name = 'dense_batch_norm1_%d' % i)(dense)
         dense = keras.layers.Dropout(rate = dropout_rate, name = 'dense_dropout1_%d' % i)(dense)
 
         for i in range(n_dense_2):
-            dense = keras.layers.Dense(n_nodes_dense_2, activation='relu', kernel_initializer='lecun_uniform', name = 'dense2_%d' % i)(dense)
+            dense = keras.layers.Dense(n_nodes_dense_2, activation='relu', kernel_initializer='he_uniform', name = 'dense2_%d' % i)(dense)
             #add droput and norm if not on last layer
             if batch_norm and i < (n_dense_2 - 1):
                 dense = keras.layers.BatchNormalization(name = 'dense_batch_norm2_%d' % i)(dense) 
@@ -398,7 +444,8 @@ class LSTM_DNN(object):
                 dense = keras.layers.Dropout(rate = dropout_rate, name = 'dense_dropout2_%d' % i)(dense)
 
         output = keras.layers.Dense(1, activation = 'sigmoid', name = 'output')(dense)
-        optimiser = keras.optimizers.Nadam(lr = learning_rate)
+        #optimiser = keras.optimizers.Nadam(lr = learning_rate)
+        optimiser = keras.optimizers.Adam(lr = learning_rate)
 
         model = keras.models.Model(inputs = [input_global, input_objects], outputs = [output])
         model.compile(optimizer = optimiser, loss = 'binary_crossentropy')
@@ -424,7 +471,9 @@ class LSTM_DNN(object):
 
         #paramaters that control batch size
         best_auc           = 0.5
-        current_batch_size = 1024
+        #current_batch_size = 1024
+        current_batch_size = 64
+        #max_batch_size     = 50000
         max_batch_size     = 50000
 
         #keep track of epochs for plotting loss vs epoch, and for getting best model
@@ -558,7 +607,7 @@ class LSTM_DNN(object):
             roc_file.write('{};{:.4f}'.format(hp_string, val_auc))
 
 
-    def batch_gs_cv(self):
+    def batch_gs_cv(self, pt_rew=False):
         """
         Submit sets of hyperparameters permutations (based on attribute hp_grid_rnge) to the IC batch.
         Take care to separate training weights, which may be modified w.r.t nominal weights, 
@@ -568,7 +617,7 @@ class LSTM_DNN(object):
         hp_perms = self.get_hp_perms()
         #submit job to the batch for the given HP range:
         for hp_string in hp_perms:
-            Utils.sub_lstm_hp_script(self.eq_train, self.batch_boost, hp_string)
+            Utils.sub_lstm_hp_script(self.eq_train, self.batch_boost, hp_string, pt_rew=pt_rew)
 
     def get_hp_perms(self):
         """

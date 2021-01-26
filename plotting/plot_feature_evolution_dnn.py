@@ -59,6 +59,8 @@ def main(options):
         root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel) 
  
         for sig_obj in root_obj.sig_objects:
+            print sig_obj.file_name
+            print sig_obj.tree_name
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
