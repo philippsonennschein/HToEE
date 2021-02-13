@@ -51,13 +51,11 @@ def main(options):
                 root_obj.pt_reweight('DYMC', year, presel)
                 #root_obj.pt_njet_reweight('DYMC', year, presel)
 
-
                                                 #BDT stuff#
 
         #set up X, w and y, train-test 
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
         bdt_hee.create_X_and_y(mass_res_reweight=True)
-        #bdt_hee.create_X_and_y(mass_res_reweight=False)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -102,7 +100,6 @@ def main(options):
             bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
-            #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
             bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
 if __name__ == "__main__":

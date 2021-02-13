@@ -44,22 +44,22 @@ train_vars:
 #     'dielectronCosPhi', 'dielectronPt',
 #     'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
 #     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
-#     'dijetAbsDEta', 'dijetAbsDPhi' #FIXME
+#    # 'dijetAbsDEta', 'dijetAbsDPhi' #FIXME
 
 #original ggH vars
-#    ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
+#    ['leadElectronPtOvM', 'subleadElectronPtOvM',
 #     'leadElectronEta', 'subleadElectronEta',
 #     'dielectronCosPhi', 'dielectronPt']
-#
-#ggh_dnn vars
-    ['leadElectronPToM', 'subleadElectronPToM',
+
+#matching ggh_dnn vars
+    ['leadElectronPtOvM', 'subleadElectronPtOvM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
      'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
-     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL']
-     #'dijetAbsDEta', 'dijetAbsDPhi' #FIXME
+     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     'dijetAbsDEta', 'dijetDPhi']
 
 vars_to_add:
     leadElectronPToM:
@@ -67,8 +67,8 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
+    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25'
 
-#need looser cut to for re-weighting in 80 < m_ee < 100 GeV
+#need looser cut for re-weighting around Z mass. Actual CR selection is defined is DataHandling.py
 reweight_cr:
-    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25'

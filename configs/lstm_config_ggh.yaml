@@ -43,19 +43,21 @@ object_vars:
     ]
 
 event_vars:
-    ['leadElectronPToM', 'subleadElectronPToM',
+    ['leadElectronPtOvM', 'subleadElectronPtOvM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
-     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
+     'dijetAbsDEta', 'dijetAbsDPhi'] 
 
 train_vars: #all vars for plotting inputs
-    ['leadElectronPToM', 'subleadElectronPToM',
+    ['leadElectronPtOvM', 'subleadElectronPtOvM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
      'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
-     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL']
+     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     'dijetAbsDEta', 'dijetAbsDPhi'] 
      #'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']
     
 vars_to_add:
@@ -64,8 +66,8 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
+    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25'
 
 #need looser cut for re-weighting in 80 < m_ee < 100 GeV. Apply extra cut to get into CR later
 reweight_cr:
-    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25'
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25'

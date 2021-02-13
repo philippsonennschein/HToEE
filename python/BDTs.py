@@ -311,7 +311,12 @@ class BDTHelpers(object):
 
     def compute_roc(self):
         """
-        Compute the area under the associated ROC curve, with mc weights
+        Compute the area under the associated ROC curve, with mc weights. Also compute with blinded data as bkg
+
+        Returns
+        -------
+        roc_auc_score: float
+            area under the roc curve evluated on test set
         """
 
         self.y_pred_train = self.clf.predict_proba(self.X_train)[:,1:]
@@ -319,6 +324,28 @@ class BDTHelpers(object):
 
         self.y_pred_test = self.clf.predict_proba(self.X_test)[:,1:]
         print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
+
+        #get auc for bkg->data
+        sig_y_pred_test  = self.y_pred_test[self.y_test==1]
+        sig_weights_test = self.test_weights[self.y_test==1]
+        sig_y_true_test  = self.y_test[self.y_test==1]
+        data_weights_test = np.ones(self.X_data_test.values.shape[0])
+        data_y_true_test  = np.zeros(self.X_data_test.values.shape[0])
+        #data_y_pred_test  = self.clf.predict_proba(self.X_data_test.query('dielectronMass<115 and dielectonMass>135').values)[:,1:]
+        data_y_pred_test  = self.clf.predict_proba(self.X_data_test.values)[:,1:]
+        #print sig_y_pred_test
+        #print sig_weights_test
+        #print sig_y_true_test
+        #print self.X_data_test.values.shape[0]
+        #print data_weights_test
+        #print data_y_true_test
+        #print data_y_pred_test
+        print 'Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
+                                                                                       np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
+                                                                                       sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
+                                                                                     )
+                                                                       )
+
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
     def plot_roc(self, out_tag):

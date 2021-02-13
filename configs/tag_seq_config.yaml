@@ -37,16 +37,22 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     VBF:
-        ['leadElectronPToM', 'subleadElectronPToM',
-         'leadJetPt', 'subleadJetPt', 'dijetAbsDEta', 'dijetMass', 
+        ['dijetAbsDEta', 'dijetDPhi', 'dijetMass',
          'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
          'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'leadElectronPtOvM', 'subleadElectronPtOvM',
          'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
          'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] 
+
     ggH:
-        ['leadElectronIDMVA', 'subleadElectronIDMVA', 'leadElectronPToM', 'subleadElectronPToM',
+        ['leadElectronPtOvM', 'subleadElectronPtOvM',
          'leadElectronEta', 'subleadElectronEta',
-         'dielectronCosPhi', 'dielectronPt']
+         'dielectronCosPhi', 'dielectronPt',
+         'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
+         'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
+         'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+         'dijetAbsDEta', 'dijetDPhi']
 
 #FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:

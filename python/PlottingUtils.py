@@ -90,7 +90,7 @@ class Plotter(object):
         bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
         x_err    = (bin_edges[-1] - bin_edges[-2])/2
         data_down, data_up = self.poisson_interval(data_binned, data_binned)
-        axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
+        axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=3, color='black', capsize=0, zorder=1)
 
         #add stacked bkg
         if norm_to_data: 
@@ -122,15 +122,15 @@ class Plotter(object):
            
         var_name_safe = var.replace('_',' ')
         if ratio_plot:
-            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=4, color='black', capsize=0)
+            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=3, color='black', capsize=0)
             bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
             bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
             ratio.fill_between(bins, list(bkg_std_down_ratio)+[bkg_std_down_ratio[-1]], list(bkg_std_up_ratio)+[bkg_std_up_ratio[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4)
 
             ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
-            #ratio.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
             ratio.set_ylabel('Data/MC', size=13)
-            ratio.set_ylim(0, 2)
+            #ratio.set_ylim(0, 2)
+            ratio.set_ylim(0.5, 1.5)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
        
@@ -161,6 +161,7 @@ class Plotter(object):
         self.fig = fig
 
         np.savez('{}/models/{}_ROC_sig_bkg_arrays.npz'.format(os.getcwd(), out_tag), sig_eff_test=sig_eff_test, bkg_eff_test=bkg_eff_test)
+        #np.savez('{}/models/{}_ROC_sig_bkg_arrays_NOJETVARS.npz'.format(os.getcwd(), out_tag), sig_eff_test=sig_eff_test, bkg_eff_test=bkg_eff_test)
         return fig
 
     def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test, MVA='BDT', ratio_plot=False, norm_to_data=False):
@@ -262,7 +263,7 @@ class Plotter(object):
     def cats_vs_ams(self, cats, AMS, out_tag):
         fig  = plt.figure(1)
         axes = fig.gca()
-        axes.plot(cats,AMS, 'ro')
+        axes.plot(cats,AMS, '-ro')
         axes.set_xlim((0, cats[-1]+1))
         axes.set_xlabel('$N_{\mathrm{cat}}$', ha='right', x=1, size=13)
         axes.set_ylabel('Combined AMS', ha='right', y=1, size=13)

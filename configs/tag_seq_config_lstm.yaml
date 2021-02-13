@@ -45,14 +45,10 @@ train_vars:
         
         event_vars:
             ['leadElectronPToM', 'subleadElectronPToM',
-             'dijetAbsDEta', 'dijetMass', 
+             'dijetAbsDEta', 'dijetDPhi', 'dijetMass', 
              'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality']
     ggH:
-        ['leadElectronPToM', 'subleadElectronPToM',
-         'leadElectronEta', 'subleadElectronEta',
-         'dielectronCosPhi', 'dielectronPt',
-         'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 'dijetMinDRJetEle',
-         'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+        []
 
 vars_to_add:
     leadElectronPToM:
