@@ -115,8 +115,8 @@ class ROOTHelpers(object):
         self.nominal_vars = nominal_vars
         if read_systs: 
             for syst_type in syst_map.keys():
-                self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
-        print self.nominal_vars
+                #self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
+                self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
 
         missing_vars = [x for x in train_vars if x not in (nominal_vars+list(vars_to_add.keys()))]
         if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))

@@ -1,12 +1,19 @@
 import numpy as np
 import yaml
 import pandas as pd
+import keras
 import pickle
 from os import path, system
 import root_pandas
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+try:
+     plt.style.use("cms10_6_HP")
+except IOError:
+     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 
-from variables import syst_vars
+from NeuralNets import LSTM_DNN
 
 class taggerBase(object):
     """
@@ -50,7 +57,9 @@ class taggerBase(object):
         """
 
         #import variables that may change with each systematic
-        from variables import syst_vars
+        from syst_maps import syst_map 
+        #syst_var = [var_name+'_'+self.syst_name for var_name in syst_map[syst_type]] 
+        syst_vars = [var_name+self.syst_name for var_name in syst_map[self.syst_name]] 
 
         #relabel. Delete nominal column frst else pandas throws an exception
         for syst_var in syst_vars:
@@ -78,10 +87,64 @@ class taggerBase(object):
         clf = pickle.load(open('models/{}'.format(model), "rb"))
         self.combined_df[proc+'_mva'] = clf.predict_proba(self.combined_df[train_vars].values)[:,1:].ravel()
    
+    def load_dnn(self, proc, models):
+        """
+        Load Neural Network corresponding to categorisation targeting a given process.
 
-    def eval_dnn(self): pass
-        #be careful to normalise vars etc. Will need to import stuff from DNN class and use it here (as we did it the previous tagger script)
-        #print 'evaluating NN: {}'.format(model)
+        Arguments
+        ---------
+        model: str
+            file path to DNN model(s)
+        proc: str
+            process name that the BDT develops categories to target
+
+        Returns
+        -------
+        model: Keras.Model()
+            LSTM with model weights and architecture loaded
+        """
+
+        print 'loading NN: {}'.format(models['model'])
+        with open('models/{}'.format(models['architecture']), 'r') as model_json:
+            model_architecture = model_json.read()
+        model = keras.models.model_from_json(model_architecture)
+        model.load_weights('models/{}'.format(models['model']))
+
+        return model
+
+    def eval_lstm(self, model, out_tag, root_obj, proc, object_vars, flat_obj_vars, event_vars):
+        """
+        Evaluate a given Neural Network corresponding to categorisation targeting a given process.
+        Add the resulting scores to self.combined_df
+
+        Arguments
+        ---------
+        model: Keras.Model()
+            loaded DNN model
+        proc: str
+            process name that the BDT develops categories to target
+        train_vars: list
+            list of variables that were used in the training of the BDT, in the same order!
+        """
+
+        
+        LSTM = LSTM_DNN(root_obj, object_vars, event_vars, 1.0, False, True)
+         
+        # set up X and y Matrices. Log variables that have GeV units
+        LSTM.var_transform(do_data=False)  
+        X_tot, y_tot     = LSTM.create_X_y()
+        X_tot            = X_tot[flat_obj_vars+event_vars] #filter unused vars
+         
+        #scale X_vars to mean=0 and std=1. Use scaler fit during previous dnn training
+        LSTM.load_X_scaler(out_tag=out_tag)
+        X_tot            = LSTM.X_scaler.transform(X_tot)
+            
+        #make 2D vars for LSTM layers
+        X_tot            = pd.DataFrame(X_tot, columns=flat_obj_vars+event_vars)
+        X_tot_high_level = X_tot[event_vars].values
+        X_tot_low_level = LSTM.join_objects(X_tot[flat_obj_vars])
+        self.combined_df['{}_mva'.format(proc)] = model.predict([X_tot_high_level, X_tot_low_level], batch_size=1).flatten()
+        
 
     def decide_tag(self, tag_preselection, tag_boundaries):
         """
@@ -127,33 +190,17 @@ class taggerBase(object):
             self.combined_df['priority_tag'].replace(tag_code, tag_name, inplace=True)
         self.combined_df['priority_tag'].replace(self.default_tag, 'NOTAG', inplace=True)
          
-        #debug_cols = ['dielectronMass', 'leadElectronPtOvM', 'subleadElectronPtOvM', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'ggH_mva', 'VBF_mva', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag']
-        #print self.combined_df[debug_cols]
-
-        #other option is to use pandas apply with (priv) function, but its v slow on large dfs
-        #def tag_priority_helper(row):
-        #    """
-        #    go through sequence in order of priority and return highest priority tag
-        #    """
-        #    
-        #    priority_tag = 'NOTAG'
-        #    for tag in self.tag_seq:
-        #        if row[tag+'_analysis_tag'] != self.default_tag : priority_tag = tag
-        #    return priority_tag
-        #self.combined_df['priority_tag'] = self.combined_df.apply(tag_priority_tree, axis=1)
-
     def get_tree_names(self, tag_boundaries):
         """
         Automatically get branch names, for each true proc.
         """
 
-        #FIXME: account for data in systs!
         #set tree names for output files with format: <true_proc>_<misc_info>_<tag>_cat<tag_num>
         branch_names = {}
         for true_proc in self.true_procs: 
             branch_names[true_proc] = []
             for target_proc in self.tag_seq:  #for all events with proc = true_proc, which tag do they fall into?
-                for i_tag in range(len(tag_boundaries[target_proc].values())):#for each tag corresponding to the category we target, which events go in which tag
+                for i_tag in range(len(tag_boundaries[target_proc].values())):
                      if self.syst_name is not None: branch_names[true_proc].append('{}_125_13TeV_{}cat{}_{}01sigma'.format(true_proc.lower(), target_proc.lower(), i_tag, self.syst_name))
                      else:      
                          if true_proc is not 'Data': branch_names[true_proc].append('{}_125_13TeV_{}cat{}'.format(true_proc.lower(), target_proc.lower(), i_tag ))
@@ -175,7 +222,7 @@ class taggerBase(object):
         for proc in self.true_procs:
 
             if proc is not 'Data':
-                proc_label = proc.lower()#data needs captial D in tree name
+                proc_label = proc.lower() #data needs captial D in tree name
                 label = '125_13TeV'
             else:
                 proc_label = proc 
@@ -193,11 +240,8 @@ class taggerBase(object):
         self.combined_df['CMS_hgg_mass'] = self.combined_df['dielectronMass'] 
 
 
-        debug_cols = ['dielectronMass', 'leadElectronPtOvM', 'subleadElectronPtOvM', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'ggH_mva', 'VBF_mva', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag', 'proc', 'tree_name']
-        print self.combined_df[debug_cols]
-
-
     def fill_trees(self, branch_names):
+
         #have to save individual trees as root files (fn=bn), then hadd over single proc on the command line, to get one proc file with all tag trees
         debug_cols = ['dielectronMass', 'leadElectronPtOvM', 'subleadElectronPtOvM', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'ggH_mva', 'VBF_mva', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag', 'proc', 'tree_name']
 
@@ -217,7 +261,7 @@ class taggerBase(object):
     
         def plot_helper(matrix, norm, branch_names, output_tag):
             """
-            draw categorisation matrix; make it look nice
+            draw categorisation matrix and make it look nice
             """
 
             plt.set_cmap('Blues')

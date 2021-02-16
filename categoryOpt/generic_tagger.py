@@ -23,8 +23,18 @@ def main(options):
 
         proc_to_tree_name  = config['proc_to_tree_name']
 
+        #check if dnn (lstm) variables need to be read in 
         proc_to_train_vars = config['train_vars']
-        all_train_vars     = [item for sublist in proc_to_train_vars.values() for item in sublist]
+        all_train_vars     = []
+        for proc, varrs in proc_to_train_vars.iteritems():
+            if isinstance(varrs, dict):
+                object_vars     = proc_to_train_vars[proc]['object_vars']
+                flat_obj_vars   = [var for i_object in object_vars for var in i_object]
+                event_vars      = proc_to_train_vars[proc]['event_vars']
+                all_train_vars += (flat_obj_vars + event_vars)
+            else: 
+                all_train_vars += varrs
+
         vars_to_add        = config['vars_to_add']
 
         if options.syst_name is not None: 
@@ -42,20 +52,21 @@ def main(options):
         root_obj.no_lumi_scale()
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
-        if not read_syst:
-            if options.data_as_bkg:
-                for data_obj in root_obj.data_objects:
-                    root_obj.load_data(data_obj, reload_samples=options.reload_samples)
-            else:
-                for bkg_obj in root_obj.bkg_objects:
-                    root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        #if not read_syst:
+        if not options.data_as_bkg:
+            for bkg_obj in root_obj.bkg_objects:
+                root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        else:
+            for data_obj in root_obj.data_objects:
+                root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+            #overwrite background attribute, for compat with DNN class
+            root_obj.mc_df_bkg = root_obj.data_df
         root_obj.concat()
 
-    if read_syst: combined_df = root_obj.mc_df_sig
-    elif options.data_as_bkg: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.data_df])
-    else: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
+    #if read_syst: combined_df = root_obj.mc_df_sig
+    #else: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
+    combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
 
-    del root_obj
 
                                        #Tag sequence stuff#
     #specify sequence of tags and preselection targetting each
@@ -91,9 +102,20 @@ def main(options):
 
         #evaluate MVA scores used in categorisation
         for proc, model in proc_to_model.iteritems():
-            if 'BDT' in model: tag_obj.eval_bdt(proc, model, proc_to_train_vars[proc])
-            elif 'NN' in model: tag_obj.eval_dnn(proc, model, proc_to_train_vars[proc])
-            else: raise IOError('Did not get a classifier with BDT or DNN in model name!')
+            #for BDT - proc:[var list]. For DNN - proc:{var_type1:[var_list_type1], var_type2: [...], ...}
+            if isinstance(model,dict):
+                object_vars     = proc_to_train_vars[proc]['object_vars']
+                flat_obj_vars   = [var for i_object in object_vars for var in i_object]
+                event_vars      = proc_to_train_vars[proc]['event_vars']
+
+                dnn_loaded = tag_obj.load_dnn(proc, model)
+                train_tag = model['architecture'].split('_model')[0]
+                tag_obj.eval_lstm(dnn_loaded, train_tag, root_obj, proc, object_vars, flat_obj_vars, event_vars)
+
+            elif isinstance(model,str): tag_obj.eval_bdt(proc, model, proc_to_train_vars[proc])
+            else: raise IOError('Did not get a classifier models in correct format in config')
+
+    del root_obj
 
     #set up tag boundaries for each process being targeted
     tag_obj.decide_tag(tag_preselection, tag_boundaries)

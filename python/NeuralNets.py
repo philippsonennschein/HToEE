@@ -387,7 +387,7 @@ class LSTM_DNN(object):
 
         print 'Creating 2D object vars...'
         l_to_convert = []
-        for index, row in pd.DataFrame(X_low_level, columns=self.low_level_vars_flat).iterrows(): #very slow
+        for index, row in pd.DataFrame(X_low_level, columns=self.low_level_vars_flat).iterrows(): #very slow; need a better way to do this
             l_event = []
             for i_object_list in self.low_level_vars:
                 l_object = []
