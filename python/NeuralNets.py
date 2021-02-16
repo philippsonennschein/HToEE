@@ -81,18 +81,25 @@ class LSTM_DNN(object):
         #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
         # med complex
-        self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=50, 
-                       n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
+        #self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=50, 
+        #               n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
+        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+
+        #ggH model that learns the m_ee
+        #self.set_model(n_lstm_layers=3, n_lstm_nodes=50, n_dense_1=3, n_nodes_dense_1=150, 
+        #               n_dense_2=2, n_nodes_dense_2=100, dropout_rate=0.1,
+        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+
+        self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=100, 
+                       n_dense_2=1, n_nodes_dense_2=50, dropout_rate=0.25,
                        learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+
 
         # simple
         #self.set_model(n_lstm_layers=1, n_lstm_nodes=20, n_dense_1=2, n_nodes_dense_1=20, 
         #               n_dense_2=1, n_nodes_dense_2=10, dropout_rate=0.2,
         #               learning_rate=0.001, batch_norm=False, batch_momentum=0.99)
 
-        #self.set_model(n_lstm_layers=2, n_lstm_nodes=10, n_dense_1=2, n_nodes_dense_1=40, 
-        #               n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
-        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
 
         #self.hp_grid_rnge           = {'n_lstm_layers': [1,2,3], 'n_lstm_nodes':[100,150,200], 
@@ -106,6 +113,7 @@ class LSTM_DNN(object):
                                        'n_dense_2':[1,2,3,4], 'n_nodes_dense_2':[50,100,150], 
                                        'dropout_rate':[0.1,0.2]
                                       }
+
 
         #assign plotter attribute before data_obj is deleted for mem
         self.plotter = Plotter(data_obj, self.low_level_vars_flat+self.high_level_vars)
@@ -124,11 +132,12 @@ class LSTM_DNN(object):
         
         """
 
-        #FIXME: put this into a loop over potential -999 vars later
         empty_vars = ['leadJetEn', 'leadJetPt', 'leadJetPhi', 'leadJetEta', 'leadJetQGL',
                       'subleadJetEn', 'subleadJetPt', 'subleadJetPhi', 'subleadJetEta', 'subleadJetQGL',
                       'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetPhi', 'subsubleadJetEta', 'subsubleadJetQGL',
-                      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass', 'dijetAbsDEta']
+                      'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass', 
+                      'dijetAbsDEta', 'dijetDPhi'] 
+
         replacement_value = -10
 
         for empty_var in empty_vars:
@@ -378,7 +387,7 @@ class LSTM_DNN(object):
 
         print 'Creating 2D object vars...'
         l_to_convert = []
-        for index, row in pd.DataFrame(X_low_level, columns=self.low_level_vars_flat).iterrows(): #very slow
+        for index, row in pd.DataFrame(X_low_level, columns=self.low_level_vars_flat).iterrows(): #very slow; need a better way to do this
             l_event = []
             for i_object_list in self.low_level_vars:
                 l_object = []

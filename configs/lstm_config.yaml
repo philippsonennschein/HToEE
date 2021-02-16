@@ -44,16 +44,16 @@ object_vars:
     ]
 
 event_vars:
-    ['leadElectronPToM', 'subleadElectronPToM',
-     'dijetAbsDEta', 'dijetMass', 
+    ['leadElectronPtOvM', 'subleadElectronPtOvM',
+     'dijetAbsDEta','dijetDPhi', 'dijetMass', 
      'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality'] #FIXME: add dijetDphi
 
 train_vars: #all vars for plotting inputs
     ['leadJetEn', 'leadJetPt',  'leadJetEta', 'leadJetPhi','leadJetQGL',
      'subleadJetEn', 'subleadJetPt',  'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
      'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
-     'leadElectronPToM', 'subleadElectronPToM',
-     'dijetAbsDEta', 'dijetMass', 
+     'leadElectronPtOvM', 'subleadElectronPtOvM',
+     'dijetAbsDEta', 'dijetDPhi', 'dijetMass', 
      'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality'] #FIXME: add dijetDphi
 
 vars_to_add:
@@ -62,4 +62,4 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPToM > 0.333 and subleadElectronPToM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'
+    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30'

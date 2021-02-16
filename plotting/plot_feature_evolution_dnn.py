@@ -56,11 +56,13 @@ def main(options):
                                            #Data handling stuff#
                  
         #load the mc dataframe for all years
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel) 
+        if options.pt_reweight: 
+            cr_selection = config['reweight_cr']
+            output_tag += '_pt_reweighted'
+            root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, cr_selection)
+        else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel)
  
         for sig_obj in root_obj.sig_objects:
-            print sig_obj.file_name
-            print sig_obj.tree_name
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
@@ -148,6 +150,7 @@ if __name__ == "__main__":
     required_args.add_argument('-B','--boundaries', nargs='+', required=True, default=[0.3,0.5,0.7,1.0], type=float)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
+    opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
     opt_args.add_argument('-b','--n_bins',  default=26, type=int)
     options=parser.parse_args()
     main(options)

@@ -5,12 +5,13 @@ import pandas as pd
 import os
 from numpy import pi
 from os import path, system
-from variables import nominal_vars, gen_vars, gev_vars
 import yaml
 
 import pickle
 from pickle import load, dump
 
+from variables import nominal_vars, gen_vars, gev_vars
+from syst_maps import syst_map
 from Utils import Utils
 
 
@@ -26,7 +27,7 @@ class SampleObject(object):
     :param file_name: name of the ROOT file being read in
     :type file_name: string
     :param tree_path: name of the TTree for the sample, contained in the ROOT TDirectory
-    :type tre_path: string
+    :type tree_path: string
     ''' 
 
     def __init__(self, proc_tag, year, file_name, tree_path):
@@ -62,16 +63,18 @@ class ROOTHelpers(object):
     :type vars_to_add: list
     :param presel_str: selection to be applied to all samples.
     :type presel_str: string
+    :param read_systs: option to read in variables resulting from systematic variations e.g. JEC, JER, ...
+    :type read_systs: bool
     """
   
-    def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str=''):
+    def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str='', read_systs=False):
         self.years              = set()
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
         self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57} #all in pb. also have BR for signals
         self.eff_acc            = {'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897} #Pass5 from dumper. update if selection changes
         #self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. Pass2
-        self.eff_acc            = {'ggH':0.4014615, 'VBF':0.4044795, 'DYMC':0.0660393, 'TT2L2Nu':0.0176973, 'TTSemiL':0.0001307} #from dumper. Pass3
+        #self.eff_acc            = {'ggH':0.4014615, 'VBF':0.4044795, 'DYMC':0.0660393, 'TT2L2Nu':0.0176973, 'TTSemiL':0.0001307} #from dumper. Pass3
 
         self.out_tag            = out_tag
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
@@ -107,9 +110,16 @@ class ROOTHelpers(object):
 
         if vars_to_add is None: vars_to_add = {}
         self.vars_to_add        = vars_to_add
+
+        self.data_vars = nominal_vars
+        self.nominal_vars = nominal_vars
+        if read_systs: 
+            for syst_type in syst_map.keys():
+                #self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
+                self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
+
         missing_vars = [x for x in train_vars if x not in (nominal_vars+list(vars_to_add.keys()))]
         if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))
-        self.nominal_vars       = nominal_vars
         self.train_vars         = train_vars
 
         self.cut_string         = presel_str
@@ -235,22 +245,21 @@ class ROOTHelpers(object):
 
         if flag == 'Data':
             #can cut on data now as dont need to run MC_norm
-            data_vars = self.nominal_vars
             #needed for preselection and training
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
             #FIXME: temp fix until ptOm in samples. Then can just do normal query string again (which is set up to to only read wider mass range if pT reweighting)
             #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
-            df = df_tree.pandas.df(data_vars).query('dielectronMass>80 and dielectronMass<150')
-            df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
-            df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
-            df = df.query(self.cut_string)
+            df = df_tree.pandas.df(self.data_vars).query(self.cut_string)
+            #df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
+            #df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
+            #df = df.query(self.cut_string)
             #df['weight'] = np.ones_like(df.shape[0])
         else:
             #cant cut on sim now as need to run MC_norm and need sumW before selection!
-            df = df_tree.pandas.df(self.nominal_vars)
+            df = df_tree.pandas.df(self.nominal_vars+gen_vars)
             #needed for preselection and training
-            df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
-            df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
+            #df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
+            #df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
             #NOTE: dont apply cuts yet as need to do MC norm!
 
 
@@ -281,6 +290,9 @@ class ROOTHelpers(object):
     def MC_norm(self, df, proc_tag, year):
         """
         Apply normalisation to get expected number of events (perform before prelection)
+        Note that "weight" column already has exp SFs applied i.e. weight = genWeight * centralObjWeight
+
+        End up with a normalised weight: weight = (event_weight * xs * eff * acc)/sum(genWeights)
 
         Arguments 
         ---------
@@ -297,7 +309,7 @@ class ROOTHelpers(object):
         """
 
         #Do scaling that used to happen in flashgg: XS * BR(for sig only) eff * acc
-        sum_w_initial = np.sum(df['weight'].values)
+        sum_w_gen = np.sum(df['genWeight'].values)
         print 'scaling by {} by XS: {}'.format(proc_tag, self.XS_map[proc_tag])
         df['weight'] *= (self.XS_map[proc_tag]) 
 
@@ -307,7 +319,7 @@ class ROOTHelpers(object):
 
         print 'scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[proc_tag])
         df['weight'] *= (self.eff_acc[proc_tag])
-        df['weight'] /= sum_w_initial
+        df['weight'] /= sum_w_gen
 
         print 'sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values))
 

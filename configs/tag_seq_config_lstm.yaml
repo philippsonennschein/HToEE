@@ -44,16 +44,17 @@ train_vars:
             ]
         
         event_vars:
-            ['leadElectronPToM', 'subleadElectronPToM',
-             'dijetAbsDEta', 'dijetMass', 
+            ['leadElectronPtOvM', 'subleadElectronPtOvM',
+             'dijetAbsDEta', 'dijetDPhi', 'dijetMass', 
              'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality']
     ggH:
-        ['leadElectronPToM', 'subleadElectronPToM',
+        ['leadElectronPtOvM', 'subleadElectronPtOvM',
          'leadElectronEta', 'subleadElectronEta',
          'dielectronCosPhi', 'dielectronPt',
-         'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 'dijetMinDRJetEle',
-         'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass']
+         'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
+         'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
+         'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+         'dijetAbsDEta', 'dijetDPhi']
 
 vars_to_add:
-    leadElectronPToM:
-    subleadElectronPToM:

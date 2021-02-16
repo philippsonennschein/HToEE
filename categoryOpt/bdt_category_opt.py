@@ -62,10 +62,10 @@ def main(options):
             pred_prob_bkg = clf.predict_proba(root_obj.mc_df_bkg[train_vars].values)[:,1:].ravel()
 
         #set up optimiser ranges and no. categories to test if non-cut based
-        ranges    = [ [0.3,1.] ]
+        ranges    = [ [0.15,1.] ]
         names     = ['{} score'.format(output_tag)] #arbitrary
         print_str = ''
-        cats = [1,2,3,4]
+        cats = [1,2,3]
         AMS  = []
 
         #just to use class methods here

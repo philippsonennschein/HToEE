@@ -21,13 +21,13 @@ from Utils import Utils
 def annotate_and_save(axes, plotter, var):
     axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
     current_bottom, current_top = axes.get_ylim()
-    axes.set_ylim(bottom=0, top=current_top*1.2)
+    axes.set_ylim(bottom=0, top=current_top*1.3)
     #axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
     axes.legend(loc='upper center', bbox_to_anchor=(0.5,0.97), ncol=2)
     plotter.plot_cms_labels(axes)
 
     var_name_safe = var.replace('_',' ')
-    axes.set_xlim(left=plotter.var_to_xrange[var][0], right=plotter.var_to_xrange[var][1])
+    #axes.set_xlim(left=plotter.var_to_xrange[var][0], right=plotter.var_to_xrange[var][1])
     axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
 
 def main(options):
@@ -82,7 +82,7 @@ def main(options):
         bkg_df = root_obj.mc_df_bkg
         bkg_df['bdt_score'] = clf.predict_proba(bkg_df[train_vars].values)[:,1:].ravel()
  
-        plotter  = Plotter(root_obj, train_vars, norm_to_data=True)
+        plotter  = Plotter(root_obj, train_vars)
         #for VBF, good set is: [0.30 0.50 0.70 0.80 0.90 1.0]
         #for ggH, good set is: [0.10 0.30 0.45 0.53 0.60 0.8]
         bdt_bins = np.array(options.boundaries)
@@ -96,12 +96,12 @@ def main(options):
             for ibin in range(len(bdt_bins)-1):
                 sig_cut = sig_df[np.logical_and( sig_df['bdt_score'] > bdt_bins[ibin], sig_df['bdt_score'] < bdt_bins[ibin+1])][var]
                 weights_cut = sig_df[np.logical_and( sig_df['bdt_score'] > bdt_bins[ibin], sig_df['bdt_score'] < bdt_bins[ibin+1])]['weight']
-                weights_cut /= np.sum(weights_cut)
-                axes.hist(sig_cut, bins=var_bins, label='{:.2f} $<$ MVA $<$ {:.2f}'.format(bdt_bins[ibin], bdt_bins[ibin+1]), weights=weights_cut, histtype='step', color=colours[i_hist])
+                axes.hist(sig_cut, bins=var_bins, label='{:.2f} $<$ MVA $<$ {:.2f}'.format(bdt_bins[ibin], bdt_bins[ibin+1]), weights=weights_cut, histtype='step', color=colours[i_hist], normed=True)
                 i_hist += 1
             i_hist=0
             annotate_and_save(axes, plotter, var)
             fig.savefig('{0}/plotting/plots/{1}_sig_bkg_evo/{1}_{2}.pdf'.format(os.getcwd(), output_tag, var))
+            print('saving: {0}/plotting/plots/{1}_sig_bkg_evo/{1}_{2}.pdf'.format(os.getcwd(), output_tag, var))
             plt.close()
 
         #plot background (check mass is not being sculpted)
@@ -112,8 +112,7 @@ def main(options):
             for ibin in range(len(bdt_bins)-1):
                 bkg_cut = bkg_df[np.logical_and( bkg_df['bdt_score'] > bdt_bins[ibin], bkg_df['bdt_score'] < bdt_bins[ibin+1])][var]
                 bkg_weights_cut = bkg_df[np.logical_and( bkg_df['bdt_score'] > bdt_bins[ibin], bkg_df['bdt_score'] < bdt_bins[ibin+1])]['weight']
-                bkg_weights_cut /= np.sum(bkg_weights_cut)
-                axes.hist(bkg_cut, bins=var_bins, label='{:.2f} $<$ MVA $<$ {:.2f}'.format(bdt_bins[ibin], bdt_bins[ibin+1]), weights=bkg_weights_cut, histtype='step', color=colours[i_hist])
+                axes.hist(bkg_cut, bins=var_bins, label='{:.2f} $<$ MVA $<$ {:.2f}'.format(bdt_bins[ibin], bdt_bins[ibin+1]), weights=bkg_weights_cut, histtype='step', color=colours[i_hist], normed=True)
                 i_hist+=1
             i_hist=0
 

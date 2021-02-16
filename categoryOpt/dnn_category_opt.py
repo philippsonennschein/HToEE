@@ -91,7 +91,8 @@ def main(options):
                                              #category optimisation stuff#
 
         #set up optimiser ranges and no. categories to test if non-cut based
-        ranges    = [ [0.3,1.] ]
+        #ranges    = [ [0.3,1.] ]
+        ranges    = [ [0.15,1.] ]
         names     = ['{} score'.format(output_tag)] #arbitrary
         print_str = ''
         cats = [1,2,3,4]
