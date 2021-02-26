@@ -46,15 +46,14 @@ def main(options):
         root_obj.concat()
 
         if options.pt_reweight and options.reload_samples: 
-            for year in root_obj.years:
-                root_obj.pt_reweight('DYMC', year, presel)
+            root_obj.apply_pt_rew('DYMC', presel)
 
                                             #Plotter stuff#
  
         #set up X, w and y, train-test 
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
         for var in train_vars+['dielectronMass','dielectronPt']:
-            plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=(not options.pt_reweight))
+            plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
 
 
 if __name__ == "__main__":

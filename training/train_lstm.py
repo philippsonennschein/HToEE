@@ -46,8 +46,7 @@ def main(options):
 
         #reweight samples in bins of pT (and maybe Njets), for each year separely. 
         if options.pt_reweight and options.reload_samples: 
-            for year in root_obj.years:
-                root_obj.pt_reweight('DYMC', year, presel)
+            root_obj.apply_pt_rew('DYMC', presel)
 
                                                 #LSTM stuff#
 

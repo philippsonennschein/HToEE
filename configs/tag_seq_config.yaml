@@ -12,20 +12,29 @@ mc_file_dir:
 data_file_dir:
     '/vols/cms/jwd18/HToEESamples/Data/'
 
+#must do one year at a time in the tagger!
 mc_file_names:
     sig:
         VBF:
-            '2017': 'VBF_UL2017.root'
+            '2016': 'VBF_UL2017.root'
+            #'2017': 'VBF_UL2017.root'
+            #'2018': 'VBF_UL2017.root'
         ggH:
-            '2017': 'ggH_UL2017.root'
+            '2016': 'ggH_UL2017.root'
+            #'2017': 'ggH_UL2017.root'
+            #'2018': 'ggH_UL2017.root'
             
     bkg:
         DYMC:
-            '2017': 'DY_UL2017.root' #not used here!
+            '2016': 'DY_UL2016.root' #not used here!
+            #'2017': 'DY_UL2017.root' #not used here!
+            #'2018': 'DY_UL2018.root' #not used here!
 
 data_file_names:
     Data:
-        '2017': 'Data_UL2017.root'
+        '2016': 'Data_UL2016.root'
+        #'2017': 'Data_UL2017.root'
+        #'2018': 'Data_UL2018.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
@@ -37,24 +46,24 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
     VBF:
-        ['dijetAbsDEta', 'dijetDPhi', 'dijetMass',
+        ['dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
          'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
          'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
-         'leadElectronPtOvM', 'subleadElectronPtOvM',
          'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-         'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'] 
+         'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'
+        ] 
 
     ggH:
         ['leadElectronPtOvM', 'subleadElectronPtOvM',
          'leadElectronEta', 'subleadElectronEta',
          'dielectronCosPhi', 'dielectronPt',
-         'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
-         'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
-         'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
-         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-         'dijetAbsDEta', 'dijetDPhi']
+         'dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
+         'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadJetEn', 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL'
+        ]
 
-#FIXME: implement this in the BDT class by calling root helper function
 vars_to_add:
-    leadElectronPToM:
-    subleadElectronPToM:

@@ -95,13 +95,22 @@ class Plotter(object):
         #add stacked bkg
         if norm_to_data: 
             rew_stack = []
-            k_factor = np.sum(self.data_df['weight'].values)/np.sum(self.bkg_df['weight'].values)
+            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
+            k_factor = np.sum(data_binned) / np.sum(bkg_stack_summed) #important to do this after binning, since norm may be different than before (if var has -999's)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
-            bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+
+            
+            bkg_stack_summed *= k_factor
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
+            print 'DEBUG'
+            print bkg_stack
+            print bkg_proc_stack
+            print bkg_w_stack
+            print self.bkg_colours[0:len(bkg_proc_stack)]
+            print ''
             axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
@@ -129,8 +138,8 @@ class Plotter(object):
 
             ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
             ratio.set_ylabel('Data/MC', size=13)
-            #ratio.set_ylim(0, 2)
-            ratio.set_ylim(0.5, 1.5)
+            ratio.set_ylim(0, 2)
+            #ratio.set_ylim(0.5, 1.5)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
        

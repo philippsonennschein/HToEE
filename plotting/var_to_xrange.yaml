@@ -29,6 +29,8 @@ var_to_xrange:
     'subleadElectronEta':     [-2.6,2.6]
     'dielectronCosPhi':       [-1.,1]
     'dielectronPt':           [0,180]
-    #'dielectronMass':         [110,150]
-    'dielectronMass':         [115,135]
-
+    'dielectronMass':         [110,150]
+    'leadJetDieleDPhi':       [-4.,4]
+    'leadJetDieleDEta':       [-8.,8]
+    'subleadJetDieleDPhi':    [-4.,4]
+    'subleadJetDieleDEta':    [-8.,8]

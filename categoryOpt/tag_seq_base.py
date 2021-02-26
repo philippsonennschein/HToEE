@@ -39,16 +39,13 @@ class taggerBase(object):
         self.combined_df = combined_df
         self.syst_name   = syst_name
 
-        self.tree_vars   = ['dZ', 'CMS_hgg_mass', 'weight']
+        self.tree_vars   = ['dZ', 'CMS_hgg_mass', 'weight', 'centralObjectWeight']
         self.default_tag = -999
-
 
     def relabel_syst_vars(self, del_other_systs=False):
         """
         Overwrite the nominal branches, with the analagous branch but with a systematic variation.
         For example if syst = JecUp, we may overwrite "leadJetPt" with "leadJetPtJecUp"
-
-        Expect this function to evolve, since hope to have systematics map to variables that change with them e.g. {Jec: [leadPt, leadPhi..., ]}
 
         Arguments
         ---------
@@ -58,8 +55,8 @@ class taggerBase(object):
 
         #import variables that may change with each systematic
         from syst_maps import syst_map 
-        #syst_var = [var_name+'_'+self.syst_name for var_name in syst_map[syst_type]] 
-        syst_vars = [var_name+self.syst_name for var_name in syst_map[self.syst_name]] 
+        syst_var = [var_name+'_'+self.syst_name for var_name in syst_map[syst_type]] 
+        #syst_vars = [var_name+self.syst_name for var_name in syst_map[self.syst_name]] 
 
         #relabel. Delete nominal column frst else pandas throws an exception
         for syst_var in syst_vars:
@@ -190,7 +187,7 @@ class taggerBase(object):
             self.combined_df['priority_tag'].replace(tag_code, tag_name, inplace=True)
         self.combined_df['priority_tag'].replace(self.default_tag, 'NOTAG', inplace=True)
          
-    def get_tree_names(self, tag_boundaries):
+    def get_tree_names(self, tag_boundaries, year):
         """
         Automatically get branch names, for each true proc.
         """
@@ -206,13 +203,13 @@ class taggerBase(object):
                          if true_proc is not 'Data': branch_names[true_proc].append('{}_125_13TeV_{}cat{}'.format(true_proc.lower(), target_proc.lower(), i_tag ))
                          else: branch_names[true_proc].append('{}_13TeV_{}cat{}'.format(true_proc, target_proc.lower(), i_tag ))
 
-        if not path.isdir('output_trees/'):
-            print 'making directory: {}'.format('output_trees/')
-            system('mkdir -p %s' %'output_trees/')
+        if not path.isdir('output_trees/{}'.format(year)):
+            print 'making directory: {}'.format('output_trees/{}'.format(year))
+            system('mkdir -p %s' %'output_trees/{}'.format(year))
 
         return branch_names
 
-    def set_tree_names(self, tag_boundaries):
+    def set_tree_names(self, tag_boundaries, dump_syst_weights):
         """
         Use the tag priority and tag number (for each process) to decide on a final tag
         """
@@ -239,8 +236,15 @@ class taggerBase(object):
         self.combined_df['dZ'] = float(0.)
         self.combined_df['CMS_hgg_mass'] = self.combined_df['dielectronMass'] 
 
+        if dump_syst_weights:
+            from syst_maps import weight_systs
+            for syst_name in weight_systs.keys():
+                self.combined_df['{}Up01Sigma'.format(syst_name)] = (self.combined_df['{}_Up'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight']
+                self.combined_df['{}Down01Sigma'.format(syst_name)] = (self.combined_df['{}_Dn'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight']
+                self.tree_vars.append('{}Up01Sigma'.format(syst_name))
+                self.tree_vars.append('{}Down01Sigma'.format(syst_name))
 
-    def fill_trees(self, branch_names):
+    def fill_trees(self, branch_names, year):
 
         #have to save individual trees as root files (fn=bn), then hadd over single proc on the command line, to get one proc file with all tag trees
         debug_cols = ['dielectronMass', 'leadElectronPtOvM', 'subleadElectronPtOvM', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'ggH_mva', 'VBF_mva', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag', 'proc', 'tree_name']
@@ -251,13 +255,14 @@ class taggerBase(object):
                 print bn
                 branch_selected_df = selected_df[selected_df.tree_name==bn]
                 print branch_selected_df[debug_cols].head(10)
-                root_pandas.to_root(branch_selected_df[self.tree_vars], 'output_trees/{}.root'.format(bn), key=bn)
+                root_pandas.to_root(branch_selected_df[self.tree_vars], 'output_trees/{}/{}_{}.root'.format(year,bn,year), key=bn)
                 print
     
     def plot_matrix(self, branch_names, output_tag):
         """
         create categorisation matrix of (rows=reco cats, cols=procs), using branch name of each event
         """
+        #FIXME: throws struct error... could be from nested function idk
     
         def plot_helper(matrix, norm, branch_names, output_tag):
             """

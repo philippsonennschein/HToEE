@@ -81,18 +81,18 @@ class LSTM_DNN(object):
         #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
         # med complex
-        #self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=50, 
-        #               n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
-        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+        self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=50, 
+                       n_dense_2=2, n_nodes_dense_2=20, dropout_rate=0.25,
+                       learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
         #ggH model that learns the m_ee
         #self.set_model(n_lstm_layers=3, n_lstm_nodes=50, n_dense_1=3, n_nodes_dense_1=150, 
         #               n_dense_2=2, n_nodes_dense_2=100, dropout_rate=0.1,
         #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
-        self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=100, 
-                       n_dense_2=1, n_nodes_dense_2=50, dropout_rate=0.25,
-                       learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
+        #self.set_model(n_lstm_layers=2, n_lstm_nodes=50, n_dense_1=2, n_nodes_dense_1=100, 
+        #               n_dense_2=1, n_nodes_dense_2=50, dropout_rate=0.25,
+        #               learning_rate=0.001, batch_norm=True, batch_momentum=0.99)
 
 
         # simple
@@ -363,16 +363,16 @@ class LSTM_DNN(object):
     def join_objects(self, X_low_level):
         """
         Function take take all low level objects for each event, and transform into a matrix:
-           [ [jet1-pt, jet1-eta, ...,
-              jet2-pt, jet2-eta, ...,
-              jet3-pt, jet3-eta, ... ]_evt1 ,
+            [ [jet1-pt, jet1-eta, ...],
+              [jet2-pt, jet2-eta, ...],
+              [jet3-pt, jet3-eta, ...] ]_evt1 ,
 
-             [jet1-pt, jet1-eta, ...,
-              jet2-pt, jet2-eta, ...,
-              jet3-pt, jet3-eta, ...]_evt2 ,
+            [ [jet1-pt, jet1-eta, ...],
+              [jet2-pt, jet2-eta, ...],
+              [jet3-pt, jet3-eta, ...] ]_evt2 ,
 
              ...
-           ]
+           
         Note that the order of the low level inputs is important, and should be jet objects in descending pT
 
         Arguments

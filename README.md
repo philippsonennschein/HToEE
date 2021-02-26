@@ -74,9 +74,13 @@ The script which handles systematic variations and their affect on category comp
 python categoryOpt/make_tag_sequence_with_systs.py -c configs/tag_seq_config.yaml -M configs/mva_boundaries_config.yaml -d -S JecUp -r
 ```
 
-Some important notes:
+For variations that only effect the event weight, we do not split by systematic. Instead, we run with the `-W` option, which dumps all weight variations alongside the nominal event weight in the nominal tree. This tree should be hadded as usual with the other systematics trees at the end.
+
+Any additional systematics should be added to the dictionary keys in `python/syst_maps.py`
+
+
+Some other important notes:
+* this script and all the systematics variations should be run once per year, such that the signal models can be split at the fit stage
 * if the memory gets too high, may need to modify DataHandling.py such that we dont read every systematic in every time, since the script is only run once per systematic
 * the output trees need to be hadded over procs, along with the nominal trees
 
-### To do:
-* break plotting class up to avoid duplicating code
