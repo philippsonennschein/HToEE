@@ -43,6 +43,7 @@ def main(options):
         else: read_syst=False
 
         if read_syst and options.dump_weight_systs: raise IOError('Cannot dump weight variations and tree systematics at the same time. Please run separately for each.')
+        if options.data_only and (read_syst or options.dump_weight_systs): raise IOError('Cannot read Data and apply sysetmatic shifts')
 
                                            #Data handling stuff#
         #apply loosest selection (ggh) first, else memory requirements are ridiculous. Fine to do this since all cuts all looser than VBF (not removing events with higher priority)
@@ -50,7 +51,7 @@ def main(options):
         loosest_selection = 'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25' 
  
         #load the mc dataframe for all years. Do not apply any specific preselection to sim samples
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection, read_systs=read_syst, read_weight_systs=options.dump_weight_systs) 
+        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection, read_systs=(read_syst or options.dump_weight_systs)) 
         root_obj.no_lumi_scale()
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -79,7 +80,8 @@ def main(options):
 
     tag_sequence      = ['VBF','ggH']
     true_procs        = ['VBF','ggH']
-    if (not read_syst) or (not options.dump_weight_systs) : true_procs.append('Data') 
+    if (not read_syst) and (not options.dump_weight_systs) : true_procs.append('Data') 
+    if options.data_only: true_procs = ['Data']
 
     tag_preselection  = {'VBF': [combined_df['dielectronMass'].gt(110) & 
                                  combined_df['dielectronMass'].lt(150) &
@@ -98,7 +100,7 @@ def main(options):
 
     #create tag object 
     tag_obj = taggerBase(tag_sequence, true_procs, combined_df, syst_name=options.syst_name)
-    if read_syst: tag_obj.relabel_syst_vars()
+    if read_syst: tag_obj.relabel_syst_vars() #not run if reading weight systematics
 
     #get number models and tag boundaries from config
     with open(options.mva_config, 'r') as mva_config_file:
@@ -142,6 +144,7 @@ if __name__ == "__main__":
     required_args.add_argument('-S','--syst_name', action='store', default=None)
     opt_args.add_argument('-r','--reload_samples', help='re-load the .root files and convert into pandas DataFrames', action='store_true', default=False)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)
+    opt_args.add_argument('-D','--data_only', action='store_true', default=False)
     opt_args.add_argument('-W','--dump_weight_systs', help='Dump all weight variations in the nominal output trees e.g. effect of pre-firing', action='store_true', default=False)
     options=parser.parse_args()
     main(options)

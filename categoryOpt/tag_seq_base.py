@@ -55,7 +55,7 @@ class taggerBase(object):
 
         #import variables that may change with each systematic
         from syst_maps import syst_map 
-        syst_var = [var_name+'_'+self.syst_name for var_name in syst_map[syst_type]] 
+        syst_vars = [var_name+'_'+self.syst_name for var_name in syst_map[self.syst_name]] 
         #syst_vars = [var_name+self.syst_name for var_name in syst_map[self.syst_name]] 
 
         #relabel. Delete nominal column frst else pandas throws an exception

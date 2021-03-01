@@ -1,0 +1,69 @@
+# custom tag that will be added to all saved df's and models. 
+# useful if you are training say ggH classifier and want to save dataframe with ggH preselection. 
+# otherwise may get confused when training another clf like VBF
+output_tag:
+    'tag_seq_loose'
+
+#.root MC files for all years (sig and bkg) should be kept in this dir:
+mc_file_dir:
+    '/vols/cms/jwd18/HToEESamples/MC/'
+
+#.root Data files for all years should be kept in this dir:
+data_file_dir:
+    '/vols/cms/jwd18/HToEESamples/Data/'
+
+#must do one year at a time in the tagger!
+mc_file_names:
+    sig:
+        VBF:
+            #'2016': 'VBF_UL2017.root'
+            #'2017': 'VBF_UL2017.root'
+            '2018': 'VBF_UL2017.root'
+        ggH:
+            #'2016': 'ggH_UL2017.root'
+            #'2017': 'ggH_UL2017.root'
+            '2018': 'ggH_UL2017.root'
+            
+    bkg:
+        DYMC:
+            #'2016': 'DY_UL2016.root' #not used here!
+            #'2017': 'DY_UL2017.root' #not used here!
+            '2018': 'DY_UL2018.root' #not used here!
+
+data_file_names:
+    Data:
+        #'2016': 'Data_UL2016.root'
+        #'2017': 'Data_UL2017.root'
+        '2018': 'Data_UL2018.root'
+
+#.root files for all years should have these tree paths. Keys should match keys above
+proc_to_tree_name:
+    VBF:  'Events'
+    ggH:  'Events'
+    DYMC: 'Events'
+    Data: 'Events'
+
+#X variables to train with. Must be in nominal_vars (unless created from existing features)
+train_vars:
+    VBF:
+        ['dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
+         'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
+         'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+         'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL'
+        ] 
+
+    ggH:
+        ['leadElectronPtOvM', 'subleadElectronPtOvM',
+         'leadElectronEta', 'subleadElectronEta',
+         'dielectronCosPhi', 'dielectronPt',
+         'dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
+         'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadJetEn', 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', 
+         'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL'
+        ]
+
+vars_to_add:

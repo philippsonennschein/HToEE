@@ -65,11 +65,9 @@ class ROOTHelpers(object):
     :type presel_str: string
     :param read_systs: option to read in variables resulting from systematic variations e.g. JEC, JER, ...
     :type read_systs: bool
-    :param read_weight_systs: option to read in systematics that can affect MC weights (effect is held in dedicated weight branches e.g. l1PreFire_Up/Down/Nom)
-    :type read_weight_systs: bool
     """
   
-    def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str='', read_systs=False, read_weight_systs=False):
+    def __init__(self, out_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel_str='', read_systs=False):
         self.years              = set()
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
@@ -125,7 +123,7 @@ class ROOTHelpers(object):
                 self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
                 #self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
 
-        if read_weight_systs:
+        #if read_weight_systs:
             for weight_syst in weight_systs.keys():
                 self.nominal_vars += [weight_syst+'_'+ext for ext in weight_systs[weight_syst]]
 

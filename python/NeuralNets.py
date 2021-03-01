@@ -273,6 +273,7 @@ class LSTM_DNN(object):
            output tag from the configuration file for the wrapper script e.g. LSTM_DNN
         """ 
 
+        print ('loading X scaler: models/{}_X_scaler.pkl'.format(out_tag))
         self.X_scaler = load(open('models/{}_X_scaler.pkl'.format(out_tag),'rb'))
     
     def X_scale_train_test(self, do_data=False):

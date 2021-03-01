@@ -21,7 +21,21 @@ syst_map  = {'jerUp'  :
                       ['leadJetEn', 'leadJetMass', 'leadJetPt',
                        'subleadJetEn', 'subleadJetMass', 'subleadJetPt',
                        'subsubleadJetEn', 'subsubleadJetMass', 'subsubleadJetPt',
-                       'dijetPt', 'dijetMass']
+                       'dijetPt', 'dijetMass'],
+
+             'ElPtScaleUp': 
+                      ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
+                       'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt',
+                       'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt',
+                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
+                      ],
+
+             'ElPtScaleDown': 
+                      ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
+                       'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt',
+                       'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt',
+                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
+                      ]
             }
 
 #variables that effect only event weights e.g. pre-firing correction. Fill nominal tree for these

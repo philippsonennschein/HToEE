@@ -30,11 +30,15 @@ def main(options):
         event_vars        = config['event_vars']
         vars_to_add       = config['vars_to_add']
         presel            = config['preselection']
-                 
+
                                            #Data handling stuff#
-                 
+
         #load the mc dataframe for all years
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel) 
+        if options.pt_reweight: 
+            cr_selection = config['reweight_cr']
+            output_tag += '_pt_reweighted'
+            root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, cr_selection) 
+        else:  root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, flat_obj_vars+event_vars, vars_to_add, presel) 
 
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -47,6 +51,9 @@ def main(options):
             #overwrite background attribute, for compat with DNN class
             root_obj.mc_df_bkg = root_obj.data_df
         root_obj.concat()
+
+        if options.pt_reweight and options.reload_samples: 
+            root_obj.apply_pt_rew('DYMC', presel)
 
         #apply cut-based selection if not optimising BDT score (pred probs still evaluated for compatability w exisiting catOpt constructor). 
         if len(options.cut_based_str)>0:
@@ -130,5 +137,6 @@ if __name__ == "__main__":
     opt_args.add_argument('-i','--n_iters', action='store', default=3000, type=int)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)
     opt_args.add_argument('-k','--cut_based_str', action='store',type=str, default='')
+    opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
     options=parser.parse_args()
     main(options)
