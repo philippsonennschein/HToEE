@@ -96,5 +96,6 @@ Note that the nominal trees are also filled when running the weight variations, 
 Some other important notes:
 * this script and all the systematics variations should be run once per year, such that the signal models can be split at the fit stage
 * if the memory gets too high, you could to modify DataHandling.py such that we dont read every systematic in every time, since the script is only run once per systematic
-* the output trees need to be hadded over procs
+* the output trees need to be hadded over procs for each year e.g. for 2016 ggH: `hadd ggH_Hee_2016.root output_trees/2016/ggh_125_13TeV_*
+`
 

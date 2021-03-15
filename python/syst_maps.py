@@ -25,15 +25,15 @@ syst_map  = {'jerUp'  :
 
              'ElPtScaleUp': 
                       ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
-                       'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt',
-                       'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt',
+                       #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', #never use these
+                       #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', never use these
                        'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
                       ],
 
              'ElPtScaleDown': 
                       ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
-                       'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt',
-                       'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt',
+                       #'subleadElectronEn','subleadElectronMass', 'subleadElectronPt', #never use these
+                       #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', #never use these
                        'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
                       ]
             }

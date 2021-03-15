@@ -25,8 +25,8 @@ def main(options):
 
         proc_to_tree_name = config['proc_to_tree_name']
 
-        sig_colour        = 'forestgreen'
-        #sig_colour        = 'red'
+        #sig_colour        = 'forestgreen'
+        sig_colour        = 'red'
  
                                            #Data handling stuff#
 

@@ -18,7 +18,7 @@ class Plotter(object):
     Class to plot input variables and output scores
     '''
     #def __init__(self, data_obj, input_vars, sig_col='forestgreen', normalise=False, log=False, norm_to_data=False): 
-    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, log=False, norm_to_data=False): 
+    def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, norm_to_data=False): 
         self.sig_df       = data_obj.mc_df_sig
         self.bkg_df       = data_obj.mc_df_bkg
         self.data_df      = data_obj.data_df
@@ -32,12 +32,12 @@ class Plotter(object):
         self.normalise    = normalise
 
         self.sig_scaler   = 5*10**7
-        self.log_axis     = log
 
         #get xrange from yaml config
         with open('plotting/var_to_xrange.yaml', 'r') as plot_config_file:
             plot_config        = yaml.load(plot_config_file)
             self.var_to_xrange = plot_config['var_to_xrange']
+            
         missing_vars = [x for x in input_vars if x not in self.var_to_xrange.keys()]
         if len(missing_vars)!=0: raise IOError('Missing variables in var_to_xrange.py: {}'.format(missing_vars))
 
@@ -99,19 +99,13 @@ class Plotter(object):
             k_factor = np.sum(data_binned) / np.sum(bkg_stack_summed) #important to do this after binning, since norm may be different than before (if var has -999's)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
 
             
             bkg_stack_summed *= k_factor
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
-            print 'DEBUG'
-            print bkg_stack
-            print bkg_proc_stack
-            print bkg_w_stack
-            print self.bkg_colours[0:len(bkg_proc_stack)]
-            print ''
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
 
@@ -124,8 +118,12 @@ class Plotter(object):
 
         #change axes limits
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=10, top=current_top*1.35)
+        if self.var_to_xrange[var][2]:
+            axes.set_yscale('log', nonposy='clip')
+            axes.set_ylim(bottom=100, top=current_top*20)
+        else: axes.set_ylim(bottom=10, top=current_top*1.35)
         #axes.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
+        #axes.yaxis.set_label_coords(-0.1,1)
         axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
         self.plot_cms_labels(axes)
            
@@ -222,11 +220,11 @@ class Plotter(object):
             k_factor = np.sum(np.ones_like(data_pred_test))/np.sum(bkg_w_true)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=False, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=self.log_axis, stacked=True, zorder=0)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=False, stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
         #plot mc error 
@@ -235,7 +233,7 @@ class Plotter(object):
 
         axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
         current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=0, top=current_top*1.3)
+        axes.set_ylim(bottom=0, top=current_top*1.35)
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
@@ -252,14 +250,14 @@ class Plotter(object):
         self.plot_cms_labels(axes)
 
         #ggH
-        #axes.axvline(0.751, ymax=0.75, color='black', linestyle='--')
-        #axes.axvline(0.554, ymax=0.75, color='black', linestyle='--')
-        #axes.axvline(0.331, ymax=0.75, color='black', linestyle='--')
-        #axes.axvspan(0, 0.331, ymax=0.75, color='grey', alpha=0.7)
+        axes.axvline(0.769, ymax=0.7, color='black', linestyle='--')
+        axes.axvline(0.587, ymax=0.7, color='black', linestyle='--')
+        axes.axvline(0.276, ymax=0.7, color='black', linestyle='--')
+        axes.axvspan(0, 0.276, ymax=0.7, color='grey', alpha=0.35)
         #VBF BDT
-        #axes.axvline(0.884, ymax=0.75, color='black', linestyle='--')
-        #axes.axvline(0.612, ymax=0.75, color='black', linestyle='--')
-	#axes.axvspan(0, 0.612, ymax=0.75, color='grey', alpha=0.6)
+        #axes.axvline(0.899, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.778, ymax=0.7, color='black', linestyle='--')
+	#axes.axvspan(0, 0.778, ymax=0.7, color='grey', alpha=0.35)
 	#VBF DNN
 	#axes.axvline(0.907, ymax=0.70, color='black', linestyle='--')
 	#axes.axvline(0.655, ymax=0.70, color='black', linestyle='--')

@@ -50,7 +50,7 @@ proc_to_tree_name:
 train_vars:
     ['dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
      'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
-     'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+     'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
      'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
      'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',

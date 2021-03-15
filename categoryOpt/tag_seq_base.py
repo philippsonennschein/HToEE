@@ -55,15 +55,35 @@ class taggerBase(object):
 
         #import variables that may change with each systematic
         from syst_maps import syst_map 
-        syst_vars = [var_name+'_'+self.syst_name for var_name in syst_map[self.syst_name]] 
+        nominal_vars = syst_map[self.syst_name]
+        replacement_vars = [var_name+'_'+self.syst_name for var_name in syst_map[self.syst_name]] 
         #syst_vars = [var_name+self.syst_name for var_name in syst_map[self.syst_name]] 
 
-        #relabel. Delete nominal column frst else pandas throws an exception
-        for syst_var in syst_vars:
-            del self.combined_df[syst_var]
-            self.combined_df.rename(columns={syst_var+self.syst_name : syst_var}, inplace=True)
+
+        #relabel. Delete nominal column frst else pandas throws an exception. Then rename syst col name -> nominal col name
+        for n_var, replacement_var in zip(nominal_vars,replacement_vars):
+            del self.combined_df[n_var]
+            self.combined_df.rename(columns={replacement_var : n_var}, inplace=True)
 
         if del_other_systs: pass
+
+    def get_tag_preselection(self):
+
+        tag_preselection_mask  = {'VBF':[self.combined_df['dielectronMass'].gt(110) & 
+                                         self.combined_df['dielectronMass'].lt(150) &
+                                         self.combined_df['leadElectronPtOvM'].gt(0.333) &
+                                         self.combined_df['subleadElectronPtOvM'].gt(0.25) &
+                                         self.combined_df['dijetMass'].gt(350) &
+                                         self.combined_df['leadJetPt'].gt(40) &
+                                         self.combined_df['subleadJetPt'].gt(30)
+                                        ],
+                                 'ggH': [self.combined_df['dielectronMass'].gt(110) & 
+                                         self.combined_df['dielectronMass'].lt(150) &
+                                         self.combined_df['leadElectronPtOvM'].gt(0.333) &
+                                         self.combined_df['subleadElectronPtOvM'].gt(0.25)
+                                        ]       
+                                 }
+        return tag_preselection_mask
 
     def eval_bdt(self, proc, model, train_vars):
         """
@@ -239,24 +259,34 @@ class taggerBase(object):
         if dump_syst_weights:
             from syst_maps import weight_systs
             for syst_name in weight_systs.keys():
-                self.combined_df['{}Up01Sigma'.format(syst_name)] = (self.combined_df['{}_Up'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight']
-                self.combined_df['{}Down01Sigma'.format(syst_name)] = (self.combined_df['{}_Dn'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight']
-                self.tree_vars.append('{}Up01Sigma'.format(syst_name))
-                self.tree_vars.append('{}Down01Sigma'.format(syst_name))
+                self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['{}_Up'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
+                self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['{}_Dn'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
+                self.tree_vars.append('{}Up01sigma'.format(syst_name))
+                self.tree_vars.append('{}Down01sigma'.format(syst_name))
 
-    def fill_trees(self, branch_names, year):
+    def fill_trees(self, branch_names, year, print_yields=False):
 
         #have to save individual trees as root files (fn=bn), then hadd over single proc on the command line, to get one proc file with all tag trees
         debug_cols = ['dielectronMass', 'leadElectronPtOvM', 'subleadElectronPtOvM', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'ggH_mva', 'VBF_mva', 'VBF_analysis_tag', 'ggH_analysis_tag', 'priority_tag', 'proc', 'tree_name']
 
+        if print_yields: 
+            print_str = '*** Yields ***'
+            lumi_map  = {'2016':35.9, '2017':41.5, '2018':59.7}
+
         for proc in self.true_procs:
             selected_df = self.combined_df[self.combined_df.proc==proc]
+            if print_yields: print_str += '\n \n Process: {}'.format(proc)
             for bn in branch_names[proc]:
                 print bn
                 branch_selected_df = selected_df[selected_df.tree_name==bn]
                 print branch_selected_df[debug_cols].head(10)
                 root_pandas.to_root(branch_selected_df[self.tree_vars], 'output_trees/{}/{}_{}.root'.format(year,bn,year), key=bn)
+                if print_yields: 
+                    if proc is not 'Data': print_str += '\n Summed events in category {}: {}'.format( bn, np.sum(branch_selected_df['weight'])*lumi_map[year]*1000) 
+                    else: print_str += '\n Summed events in category {}: {}'.format( bn, np.sum(branch_selected_df['weight'])) 
                 print
+
+        if print_yields: print print_str
     
     def plot_matrix(self, branch_names, output_tag):
         """

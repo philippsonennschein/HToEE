@@ -48,7 +48,8 @@ def main(options):
                                            #Data handling stuff#
         #apply loosest selection (ggh) first, else memory requirements are ridiculous. Fine to do this since all cuts all looser than VBF (not removing events with higher priority)
         #also note we norm the MC before applying this cut. In data we apply it when reading in.
-        loosest_selection = 'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25' 
+        #loosest_selection = 'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25' cant do this since these vars change with systematics!
+        loosest_selection = 'dielectronMass > 100' 
  
         #load the mc dataframe for all years. Do not apply any specific preselection to sim samples
         root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection, read_systs=(read_syst or options.dump_weight_systs)) 
@@ -83,24 +84,10 @@ def main(options):
     if (not read_syst) and (not options.dump_weight_systs) : true_procs.append('Data') 
     if options.data_only: true_procs = ['Data']
 
-    tag_preselection  = {'VBF': [combined_df['dielectronMass'].gt(110) & 
-                                 combined_df['dielectronMass'].lt(150) &
-                                 combined_df['leadElectronPtOvM'].gt(0.333) &
-                                 combined_df['subleadElectronPtOvM'].gt(0.25) &
-                                 combined_df['dijetMass'].gt(350) &
-                                 combined_df['leadJetPt'].gt(40) &
-                                 combined_df['subleadJetPt'].gt(30)
-                                ],
-                         'ggH': [combined_df['dielectronMass'].gt(110) & 
-                                 combined_df['dielectronMass'].lt(150) &
-                                 combined_df['leadElectronPtOvM'].gt(0.333) &
-                                 combined_df['subleadElectronPtOvM'].gt(0.25)
-                                ]       
-                        }
-
     #create tag object 
     tag_obj = taggerBase(tag_sequence, true_procs, combined_df, syst_name=options.syst_name)
     if read_syst: tag_obj.relabel_syst_vars() #not run if reading weight systematics
+
 
     #get number models and tag boundaries from config
     with open(options.mva_config, 'r') as mva_config_file:
@@ -125,13 +112,19 @@ def main(options):
 
     del root_obj
 
+    #need to do this after eval MVAs, since LSTM class used in eval_lstm needs some Data in df for constructor
+    if (read_syst or options.dump_weight_systs): 
+        tag_obj.combined_df = tag_obj.combined_df[tag_obj.combined_df.proc!='Data'].copy() #avoid copy warnings later
+    tag_preselection = tag_obj.get_tag_preselection()
+
     #set up tag boundaries for each process being targeted
     tag_obj.decide_tag(tag_preselection, tag_boundaries)
     tag_obj.decide_priority()
     branch_names = tag_obj.get_tree_names(tag_boundaries, year)
     tag_obj.set_tree_names(tag_boundaries,options.dump_weight_systs)
-    tag_obj.fill_trees(branch_names, year)
-    if not read_syst: pass #tag_obj.plot_matrix(branch_names, output_tag)  #struct error?
+    tag_obj.fill_trees(branch_names, year, print_yields=True)
+    if not read_syst: 
+        pass #tag_obj.plot_matrix(branch_names, output_tag)  #struct error?
     
 
 if __name__ == "__main__":
