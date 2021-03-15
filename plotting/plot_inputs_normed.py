@@ -75,14 +75,11 @@ def main(options):
             var_bkg     = root_obj.mc_df_bkg[var].values
             bkg_weights = root_obj.mc_df_bkg['weight'].values
 
-            sig_weights /= np.sum(sig_weights)
-            bkg_weights /= np.sum(bkg_weights) 
-
             bins = np.linspace(var_to_xrange[var][0], var_to_xrange[var][1], 56)
 
             #add sig mc
-            axes.hist(var_sig, bins=bins, label=plotter.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$)', weights=sig_weights, histtype='stepfilled', color='red', zorder=10, alpha=0.4)
-            axes.hist(var_bkg, bins=bins, label='Simulated background', weights=bkg_weights, histtype='stepfilled', color='blue', zorder=0, alpha=0.4)
+            axes.hist(var_sig, bins=bins, label=plotter.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$)', weights=sig_weights, histtype='stepfilled', color='red', zorder=10, alpha=0.4, normed=True)
+            axes.hist(var_bkg, bins=bins, label='Simulated background', weights=bkg_weights, histtype='stepfilled', color='blue', zorder=0, alpha=0.4, normed=True)
 
             axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
             axes.set_ylim(bottom=0)

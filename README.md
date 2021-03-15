@@ -65,18 +65,37 @@ python categoryOpt/dnn_category_opt.py -c configs/lstm_config_ggh.yaml -a models
 ```
 
 ## Final Tag Producer
-To produce the trees with the category information needed for final fits, we use `categoryOpt/make_tag_sequence.py`. This takes a config specifying the BDT boundaries for each set of tags (see `configs/bdt_boundaries_config.yaml` for an example). The script also requires an additional config with sample and training varaible info (see `configs/tag_seq_config.yaml` for info an example)
+To produce the trees with the category information needed for final fits, we use `categoryOpt/make_tag_sequence.py`. This takes a config specifying the BDT boundaries for each set of tags (see `configs/bdt_boundaries_config.yaml` for an example). The script also requires an additional config with sample and training varaible info (see `configs/tag_seq_config.yaml` for info an example). An example command to run the tagger for 2016 without any systematic variations is:
+
+```
+python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M configs/mva_boundaries_config.yaml -d 
+```
+
+The potion `-d` is important since it tells the script to use data as replacement for simulated background.
 
 ### systematics
-The script which handles systematic variations and their affect on category compisition is `categoryOpt/make_tag_sequence_with_systs.py`. This should be run for each systematic variation being considered, and the Up/Down fluctuation type. An example for running the categorisation for the JEC Up variation is:
+The same script can handle systematic variations and their affect on category composition. The name of the systematic is specified with the `-S` options. This should be run for each systematic variation being considered, and the Up/Down fluctuation type. An example for running the categorisation for the JEC Up variation is:
 
 ```
-python categoryOpt/make_tag_sequence_with_systs.py -c configs/tag_seq_config.yaml -M configs/mva_boundaries_config.yaml -d -S JecUp -r
+python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M configs/mva_boundaries_config.yaml -d -S jecUp -r
 ```
 
-Some important notes:
-* if the memory gets too high, may need to modify DataHandling.py such that we dont read every systematic in every time, since the script is only run once per systematic
-* the output trees need to be hadded over procs, along with the nominal trees
+For variations that only effect the event weight, we do not split by systematic. Instead, we run with the `-W` option, which dumps all weight variations alongside the nominal event weight in the nominal tree. This tree should be hadded as usual with the other systematics trees at the end. Note that the script takes care not to dump these weight variation branches in the Data trees.
 
-### To do:
-* break plotting class up to avoid duplicating code
+Any additional systematics should be added to the dictionary keys in `python/syst_maps.py`
+
+Since we only dump systematics for signal events, if we run the above scripts then we will be missing our data trees. Hence, to run the data categorisation only at the end you can add the `-D` option:
+
+```
+python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M configs/mva_boundaries_config.yaml -d -D
+```
+
+Note that the nominal trees are also filled when running the weight variations, so no need to run the tagger with no systematics again. This would actually overwrite the weight variation trees, since they have the same naming convention (same nominal tree names that is, since there are additional weight systematic branches in the latter).
+
+
+Some other important notes:
+* this script and all the systematics variations should be run once per year, such that the signal models can be split at the fit stage
+* if the memory gets too high, you could to modify DataHandling.py such that we dont read every systematic in every time, since the script is only run once per systematic
+* the output trees need to be hadded over procs for each year e.g. for 2016 ggH: `hadd ggH_Hee_2016.root output_trees/2016/ggh_125_13TeV_*
+`
+

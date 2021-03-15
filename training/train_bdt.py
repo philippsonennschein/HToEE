@@ -47,9 +47,8 @@ def main(options):
         #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
         # is applied here and all df's are resaved for smaller mem
         if options.pt_reweight and options.reload_samples: 
-            for year in root_obj.years:
-                root_obj.pt_reweight('DYMC', year, presel)
-                #root_obj.pt_njet_reweight('DYMC', year, presel)
+            root_obj.apply_pt_rew('DYMC', presel)
+            #root_obj.pt_njet_reweight('DYMC', year, presel)
 
                                                 #BDT stuff#
 
@@ -97,7 +96,8 @@ def main(options):
 
         #else just train BDT with default HPs
         else:
-            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
+            #bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
+            bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
             bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))

@@ -42,13 +42,17 @@ def main(options):
             read_syst=True
         else: read_syst=False
 
+        if read_syst and options.dump_weight_systs: raise IOError('Cannot dump weight variations and tree systematics at the same time. Please run separately for each.')
+        if options.data_only and (read_syst or options.dump_weight_systs): raise IOError('Cannot read Data and apply sysetmatic shifts')
+
                                            #Data handling stuff#
         #apply loosest selection (ggh) first, else memory requirements are ridiculous. Fine to do this since all cuts all looser than VBF (not removing events with higher priority)
         #also note we norm the MC before applying this cut. In data we apply it when reading in.
-        loosest_selection = 'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25' 
+        #loosest_selection = 'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25' cant do this since these vars change with systematics!
+        loosest_selection = 'dielectronMass > 100' 
  
         #load the mc dataframe for all years. Do not apply any specific preselection to sim samples
-        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection, read_systs=read_syst) 
+        root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, all_train_vars, vars_to_add, loosest_selection, read_systs=(read_syst or options.dump_weight_systs)) 
         root_obj.no_lumi_scale()
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
@@ -63,7 +67,11 @@ def main(options):
             root_obj.mc_df_bkg = root_obj.data_df
         root_obj.concat()
 
-    #if read_syst: combined_df = root_obj.mc_df_sig
+    #get year of samples for roob obj and check we didn't accidentally read in more than 1 year
+    if len(root_obj.years)!=1: raise IOError('Reading in more than one year at a time! Tagging should be split by year')
+    else: year = list(root_obj.years)[0]
+
+    #if read_syst: combined_df = root_obj.mc_df_sig doesnt work with DNN set up since need bkg class in _init_ 
     #else: combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
     combined_df = pd.concat([root_obj.mc_df_sig, root_obj.mc_df_bkg])
 
@@ -73,26 +81,13 @@ def main(options):
 
     tag_sequence      = ['VBF','ggH']
     true_procs        = ['VBF','ggH']
-    if not read_syst: true_procs.append('Data') 
-
-    tag_preselection  = {'VBF': [combined_df['dielectronMass'].gt(110) & 
-                                 combined_df['dielectronMass'].lt(150) &
-                                 combined_df['leadElectronPtOvM'].gt(0.333) &
-                                 combined_df['subleadElectronPtOvM'].gt(0.25) &
-                                 combined_df['dijetMass'].gt(350) &
-                                 combined_df['leadJetPt'].gt(40) &
-                                 combined_df['subleadJetPt'].gt(30)
-                                ],
-                         'ggH': [combined_df['dielectronMass'].gt(110) & 
-                                 combined_df['dielectronMass'].lt(150) &
-                                 combined_df['leadElectronPtOvM'].gt(0.333) &
-                                 combined_df['subleadElectronPtOvM'].gt(0.25)
-                                ]       
-                        }
+    if (not read_syst) and (not options.dump_weight_systs) : true_procs.append('Data') 
+    if options.data_only: true_procs = ['Data']
 
     #create tag object 
     tag_obj = taggerBase(tag_sequence, true_procs, combined_df, syst_name=options.syst_name)
-    if read_syst: tag_obj.relabel_syst_vars()
+    if read_syst: tag_obj.relabel_syst_vars() #not run if reading weight systematics
+
 
     #get number models and tag boundaries from config
     with open(options.mva_config, 'r') as mva_config_file:
@@ -117,13 +112,19 @@ def main(options):
 
     del root_obj
 
+    #need to do this after eval MVAs, since LSTM class used in eval_lstm needs some Data in df for constructor
+    if (read_syst or options.dump_weight_systs): 
+        tag_obj.combined_df = tag_obj.combined_df[tag_obj.combined_df.proc!='Data'].copy() #avoid copy warnings later
+    tag_preselection = tag_obj.get_tag_preselection()
+
     #set up tag boundaries for each process being targeted
     tag_obj.decide_tag(tag_preselection, tag_boundaries)
     tag_obj.decide_priority()
-    branch_names = tag_obj.get_tree_names(tag_boundaries)
-    tag_obj.set_tree_names(tag_boundaries)
-    tag_obj.fill_trees(branch_names)
-    if not read_syst: tag_obj.plot_matrix(branch_names, output_tag) 
+    branch_names = tag_obj.get_tree_names(tag_boundaries, year)
+    tag_obj.set_tree_names(tag_boundaries,options.dump_weight_systs)
+    tag_obj.fill_trees(branch_names, year, print_yields=True)
+    if not read_syst: 
+        pass #tag_obj.plot_matrix(branch_names, output_tag)  #struct error?
     
 
 if __name__ == "__main__":
@@ -136,5 +137,7 @@ if __name__ == "__main__":
     required_args.add_argument('-S','--syst_name', action='store', default=None)
     opt_args.add_argument('-r','--reload_samples', help='re-load the .root files and convert into pandas DataFrames', action='store_true', default=False)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)
+    opt_args.add_argument('-D','--data_only', action='store_true', default=False)
+    opt_args.add_argument('-W','--dump_weight_systs', help='Dump all weight variations in the nominal output trees e.g. effect of pre-firing', action='store_true', default=False)
     options=parser.parse_args()
     main(options)

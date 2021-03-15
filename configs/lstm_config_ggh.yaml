@@ -13,19 +13,29 @@ data_file_dir:
 mc_file_names:
     sig:
         ggH:
+            '2016': 'ggH_UL2017.root' #re-use 2017 in 2016 for noe
             '2017': 'ggH_UL2017.root'
+            '2018': 'ggH_UL2017.root' #re-use 2017 in 2018 for noe
     bkg:
         DYMC:
+            '2016': 'DY_UL2016.root'
             '2017': 'DY_UL2017.root'
+            '2018': 'DY_UL2018.root'
+
         TT2L2Nu:
+            '2016': 'TTLNu_UL2016.root'
             '2017': 'TTLNu_UL2017.root'
+            '2018': 'TTLNu_UL2018.root'
         TTSemiL:
+            '2016': 'TTSemi_UL2016.root'
             '2017': 'TTSemi_UL2017.root'
+            '2018': 'TTSemi_UL2018.root'
 
 data_file_names:
     Data:
+        '2016': 'Data_UL2016.root'
         '2017': 'Data_UL2017.root'
-        #'2018': 'DYData_2018_PAS5.root'
+        '2018': 'Data_UL2018.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
@@ -35,7 +45,7 @@ proc_to_tree_name:
     TT2L2Nu: 'Events'
     TTSemiL: 'Events'
 
-#X variables to train with (4 vectors of jets... and maybe photons... anything else that is low-level and maybe useful?)
+#X variables to train with (4 vectors of jets and QGL... anything else that is low-level and maybe useful?)
 object_vars:
     [['leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL'], 
      ['subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL']
@@ -46,23 +56,23 @@ event_vars:
     ['leadElectronPtOvM', 'subleadElectronPtOvM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
-     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
-     'dijetAbsDEta', 'dijetAbsDPhi'] 
+     'dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
+     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+     'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'  
+    ]
 
 train_vars: #all vars for plotting inputs
     ['leadElectronPtOvM', 'subleadElectronPtOvM',
      'leadElectronEta', 'subleadElectronEta',
      'dielectronCosPhi', 'dielectronPt',
-     'leadJetPt','subleadJetPt', 'leadJetPhi', 'subleadJetPhi', 
-     'dijetMinDRJetEle', 'dijetDieleAbsDEta','dijetDieleAbsDPhiTrunc', 'dijetCentrality', 'dijetMass',
-     'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
+     'dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
+     'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+     'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+     'leadJetEn', 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', 
      'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-     'dijetAbsDEta', 'dijetAbsDPhi'] 
-     #'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL']
+    ]
     
 vars_to_add:
-    leadElectronPToM:
-    subleadElectronPToM:
 
 #preselection that will be applied to all samples
 preselection:

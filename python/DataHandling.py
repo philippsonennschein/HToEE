@@ -11,7 +11,7 @@ import pickle
 from pickle import load, dump
 
 from variables import nominal_vars, gen_vars, gev_vars
-from syst_maps import syst_map
+from syst_maps import syst_map, weight_systs
 from Utils import Utils
 
 
@@ -72,7 +72,11 @@ class ROOTHelpers(object):
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
         self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57} #all in pb. also have BR for signals
-        self.eff_acc            = {'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897} #Pass5 from dumper. update if selection changes
+        self.eff_acc            = {'2016':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0599756, 'TT2L2Nu':0.0160820, 'TTSemiL':0.0000938}, #Pass8 from dumper, year dependent. update if selection changes
+                                   '2017':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165499, 'TTSemiL':0.0000897},
+                                   '2018':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0633516, 'TT2L2Nu':0.0167196, 'TTSemiL':0.0000873}
+                                  }     
+        #self.eff_acc            = {'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897} #Pass5 from dumper. update if selection changes
         #self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. Pass2
         #self.eff_acc            = {'ggH':0.4014615, 'VBF':0.4044795, 'DYMC':0.0660393, 'TT2L2Nu':0.0176973, 'TTSemiL':0.0001307} #from dumper. Pass3
 
@@ -112,16 +116,20 @@ class ROOTHelpers(object):
         self.vars_to_add        = vars_to_add
 
         self.data_vars = nominal_vars
-        self.nominal_vars = nominal_vars
+        self.nominal_vars = nominal_vars[:] #return copy so self.data_vars isn't modified
+
         if read_systs: 
             for syst_type in syst_map.keys():
-                #self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
-                self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
+                self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
+                #self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
+
+        #if read_weight_systs:
+            for weight_syst in weight_systs.keys():
+                self.nominal_vars += [weight_syst+'_'+ext for ext in weight_systs[weight_syst]]
 
         missing_vars = [x for x in train_vars if x not in (nominal_vars+list(vars_to_add.keys()))]
         if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))
         self.train_vars         = train_vars
-
         self.cut_string         = presel_str
 
     def no_lumi_scale(self):
@@ -244,22 +252,11 @@ class ROOTHelpers(object):
         del df_file
 
         if flag == 'Data':
-            #can cut on data now as dont need to run MC_norm
-            #needed for preselection and training
-            #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>110 and dielectronMass<150 and dijetMass>250 and leadJetPt>40 and subleadJetPt>30')
-            #FIXME: temp fix until ptOm in samples. Then can just do normal query string again (which is set up to to only read wider mass range if pT reweighting)
-            #df = df_tree.pandas.df(data_vars.remove('genWeight')).query('dielectronMass>80 and dielectronMass<150')
+            #can cut on data here as dont need to run MC_norm
             df = df_tree.pandas.df(self.data_vars).query(self.cut_string)
-            #df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass'] 
-            #df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
-            #df = df.query(self.cut_string)
-            #df['weight'] = np.ones_like(df.shape[0])
         else:
-            #cant cut on sim now as need to run MC_norm and need sumW before selection!
+            #cannot cut on sim now as need to run MC_norm and need sumGenW before selection!
             df = df_tree.pandas.df(self.nominal_vars+gen_vars)
-            #needed for preselection and training
-            #df['leadElectronPToM'] = df['leadElectronPt']/df['dielectronMass']
-            #df['subleadElectronPToM'] = df['subleadElectronPt']/df['dielectronMass']
             #NOTE: dont apply cuts yet as need to do MC norm!
 
 
@@ -280,10 +277,9 @@ class ROOTHelpers(object):
         #save everything
         Utils.check_dir(file_dir+'DataFrames/') 
         df.to_csv('{}/{}_{}_df_{}.csv'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
+        print('Saved dataframe: {}/{}_{}_df_{}.csv'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
         #df.to_pickle('{}/{}_{}_df_{}.pkl'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
         #df.to_hdf('{}/{}_{}_df_{}.h5'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year), 'df', mode='w', format='t')
-        print('Saved dataframe: {}/{}_{}_df_{}.csv'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
-        #print('Saved dataframe: {}/{}_{}_df_{}.pkl'.format(file_dir+'DataFrames', proc_tag, self.out_tag, year))
 
         return df
 
@@ -317,8 +313,8 @@ class ROOTHelpers(object):
             print 'scaling by {} by Lumi: {} * 1000 /pb'.format(proc_tag, self.lumi_map[year])
             df['weight'] *= self.lumi_map[year]*1000 #lumi is added earlier but XS is in pb, so need * 1000
 
-        print 'scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[proc_tag])
-        df['weight'] *= (self.eff_acc[proc_tag])
+        print 'scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[year][proc_tag])
+        df['weight'] *= (self.eff_acc[year][proc_tag])
         df['weight'] /= sum_w_gen
 
         print 'sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values))
@@ -360,10 +356,13 @@ class ROOTHelpers(object):
         elif len(self.data_df) == 0 : pass
         else: self.data_df = pd.concat(self.data_df)
    
-    def pt_reweight(self, bkg_proc, year, presel, norm_first=True):
+    def apply_pt_rew(self, bkg_proc, presel, norm=True):
         """
         Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee),
-        to map bkg process to Data. Then apply this in the signal region
+        to map bkg process to Data. SFs for each year are derived separately. Then apply to SR.
+
+        Note that if norming, we must apply the flat k-factor in the SR after pt-reweighting, since the latter
+        doesn't preserve the normalisation
 
         Arguments
         ---------
@@ -373,29 +372,99 @@ class ROOTHelpers(object):
             year to be re-weighted (perform this separately for each year)
         presel: string
             preselection to apply to go from the CR -> SR
-        norm_first: bool
+        norm: bool
             normalise the simulated background to data. Results in a shape-only correction
         """
 
-        pt_bins = np.linspace(0,180,101)
-        scaled_list = []
+        #derive SFs
+        year_to_scale_factors = {}
+        for year in self.years:
 
-        bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
-        data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
+            pt_bins = np.linspace(0,180,101)
+            bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
+            data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
 
-        #FIXME: here only norming DY events to data...
-        if norm_first: bkg_df['weight'] *= (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
+            #FIXME: here only norming DY events to data which is mainly DY...
+            if norm: bkg_df['weight'] *= (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
 
-        bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
-        data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
-        scale_factors = data_pt_binned/bkg_pt_binned
+            bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
+            data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
+            year_to_scale_factors[year] = data_pt_binned/bkg_pt_binned
 
-        #now apply the proc targeting selection on all dfs, and re-save. Now samples are back in SR
+        print 'DEBUG: scale factors for year are', year_to_scale_factors
+
+        #put samples into SR phase space. 
         self.apply_more_cuts(presel)
-        #FIXME: ... but here scaling DY + other backgrounds before doing pT reweighting? is this ok. Think so since in m_ee ctrl region we only have DY really
-        if norm_first: self.mc_df_bkg['weight'] *= (np.sum(self.data_df['weight'])/np.sum(self.mc_df_bkg['weight']))
-        self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, scale_factors, False])
-        self.save_modified_dfs(year)
+
+        #apply pt-reweighting inSR
+        #self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_reweight_helper, axis=1, args=[bkg_proc, bin_edges, year_to_scale_factors])
+
+        #do not get an inedxing error when we try do index = length + 1, since len SFs = len bin_edges -1
+        scaled_bkg_dfs = []
+        for year in self.years:
+            df_year_i = self.mc_df_bkg.query('year=="{}"'.format(year))
+            scale_factors = year_to_scale_factors[year]
+            for i_bin in range(len(scale_factors)):
+                temp_df = df_year_i[df_year_i.dielectronPt > bin_edges[i_bin]] 
+                temp_df = temp_df[temp_df.dielectronPt < bin_edges[i_bin+1]] 
+                temp_df['weight'] *= scale_factors[i_bin]
+                scaled_bkg_dfs.append(temp_df)  
+            outside_rng_df = df_year_i[df_year_i.dielectronPt > bin_edges[-1]]
+            scaled_bkg_dfs.append(outside_rng_df)
+        
+        self.mc_df_bkg = pd.concat(scaled_bkg_dfs)
+        del scaled_bkg_dfs
+
+        #use numpy select to apply year dependent k-factor to events. Much quicker than using pandas apply! can probs do it the same way as above for clarity but whatev
+        if norm:
+            normed_year_dfs_bkg = []
+            for year in self.years:
+                    df_bkg_year_i = self.mc_df_bkg.query('year=="{}"'.format(year))
+                    df_data_year_i = self.data_df.query('year=="{}"'.format(year))
+                    norm_factor = np.sum(df_data_year_i['weight']) / np.sum(df_bkg_year_i['weight'])
+                    df_bkg_year_i['weight'] *= norm_factor
+                    normed_year_dfs_bkg.append(df_bkg_year_i)
+
+            self.mc_df_bkg = pd.concat( normed_year_dfs_bkg )
+
+        for year in self.years:
+            self.save_modified_dfs(year)
+
+
+    def pt_reweight_helper(self, row, bkg_proc, bin_edges, scale_factors):
+        """
+        Function called in pandas apply() function, looping over rows and testing conditions. Can be called for
+        single or double differential re-weighting.
+
+        Tests which pT a bkg proc is, and if it is the proc to reweight, before
+        applying a pT dependent scale factor to apply (derived from CR)
+        
+        If dielectron pT is above the max pT bin, just return the nominal weight (very small num of events)
+
+        Arguments
+        ---------
+        row: pandas Series
+            a single row of the dataframe being looped through. Automatically generated as first argument
+            when using pandas apply()
+        bkg_proc: string
+            name of the physics process we want to re-weight. Nominally this is for Drell-Yan.
+        bin_edges: numpy array
+            edges of each pT bin, in which the re-weighting is applied
+        scale_factors: numpy array
+            scale factors to be applied in each pT bin
+
+        Returns
+        -------
+        row['weight'] * scale-factor : float of the (modified) MC weight for a single event/dataframe row
+        """
+
+        if row['proc']==bkg_proc and row['dielectronPt']<bin_edges[-1]:
+            rew_factors = scale_factors[row['year']]
+            for i_bin in range(len(bin_edges)):
+                if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
+                    return row['weight'] * rew_factors[i_bin] 
+        else:
+            return row['weight'] 
 
 
     def pt_njet_reweight(self, bkg_proc, year, presel, norm_first=True):
@@ -414,6 +483,7 @@ class ROOTHelpers(object):
         norm_first: bool
             normalise the simulated background to data. Results in a shape-only correction
         """
+        #FIXME: function is out of date with rest of code
 
         #can remove this once nJets is put in ntuples from dumper
         outcomes_mc_bkg = [ self.mc_df_bkg['leadJetPt'].lt(0),
@@ -464,51 +534,6 @@ class ROOTHelpers(object):
         else: self.mc_df_bkg['weight'] = self.mc_df_bkg.apply(self.pt_njet_reweight_helper, axis=1, args=[bkg_proc, year, bin_edges, n_jets_to_sfs_map, True, None])
         self.save_modified_dfs(year)
          
-    def pt_njet_reweight_helper(self, row, bkg_proc, year, bin_edges, scale_factors, do_jets, norm_first_dict=None):
-        """
-        Function called in pandas apply() function, looping over rows and testing conditions. Can be called for
-        single or double differential re-weighting.
-
-        Tests which pT a bkg proc is, and if it is the proc to reweight, before
-        applying a pT dependent scale factor to apply (derived from CR)
-        
-        If dielectron pT is above the max pT bin, just return the nominal weight (very small num of events)
-
-        Arguments
-        ---------
-        row: pandas Series
-            a single row of the dataframe being looped through. Automatically generated as first argument
-            when using pandas apply()
-        bkg_proc: string
-            name of the physics process we want to re-weight. Nominally this is for Drell-Yan.
-        year: float
-            year to be re-weighted (perform this separately for each year)
-        bin_edges: numpy array
-            edges of each pT bin, in which the re-weighting is applied
-        scale_factors: numpy array
-            scale factors to be applied in each pT bin
-        do_jets: bool
-            if true, perform double differential re-weighting in bins of pT and jet multiplicity
-        norm_first_dict: dict
-            optional dict that contains normalisations in the SR, for each jet bin
-
-        Returns
-        -------
-        row['weight'] * scale-factor : float of the (modified) MC weight for a single event/dataframe row
-        """
-
-        if row['proc']==bkg_proc and row['year']==year and row['dielectronPt']<bin_edges[-1]:
-            if do_jets: rew_factors = scale_factors[row['nJets']]
-            else: rew_factors = scale_factors
-            for i_bin in range(len(bin_edges)):
-                if (row['dielectronPt'] > bin_edges[i_bin]) and (row['dielectronPt'] < bin_edges[i_bin+1]):
-                    if norm_first_dict is not None: 
-                        if row['nJets'] >= 2: jet_bin = 2
-                        else: jet_bin = row['nJets']
-                        return row['weight'] * rew_factors[i_bin] * norm_first_dict[jet_bin]
-                    else: return row['weight'] * rew_factors[i_bin]
-        else:
-            return row['weight']
 
 
     def save_modified_dfs(self,year):
