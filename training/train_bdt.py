@@ -96,11 +96,11 @@ def main(options):
 
         #else just train BDT with default HPs
         else:
-            #bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
-            bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
+            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
+            #bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
-            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
+            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=True)
 
 if __name__ == "__main__":
 

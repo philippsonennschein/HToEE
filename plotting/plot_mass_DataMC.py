@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import yaml
+import pickle
 
 from DataHandling import ROOTHelpers
 from PlottingUtils import Plotter
@@ -48,24 +49,45 @@ def main(options):
         if options.pt_reweight and options.reload_samples: 
             root_obj.apply_pt_rew('DYMC', presel)
 
+    #load MVA
+        with open(options.mva_config, 'r') as mva_config_file:
+            config            = yaml.load(mva_config_file)
+            model             = config['models'][options.mva_proc]
+            boundaries        = config['boundaries'][options.mva_proc]
+
+            #add DNN later
+            if isinstance(model,str): 
+                print 'evaluating BDT: {}'.format(model)
+                clf = pickle.load(open('models/{}'.format(model), "rb"))
+                root_obj.mc_df_sig[options.mva_proc+'_mva'] = clf.predict_proba(root_obj.mc_df_sig[train_vars].values)[:,1:].ravel()
+                root_obj.mc_df_bkg[options.mva_proc+'_mva'] = clf.predict_proba(root_obj.mc_df_bkg[train_vars].values)[:,1:].ravel()
+                root_obj.data_df[options.mva_proc+'_mva']   = clf.predict_proba(root_obj.data_df[train_vars].values)[:,1:].ravel()
+
+            else: raise IOError('Did not get a classifier models in correct format in config')
+
                                             #Plotter stuff#
- 
-        #set up X, w and y, train-test 
+
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
-        #for var in train_vars+['dielectronMass','dielectronPt']:
-        for var in ['dielectronPt']:
-            plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
+        cat_counter = 0
+        for b in boundaries:
+            if cat_counter==0: extra_cuts = options.mva_proc+'_mva >' + str(boundaries['tag_0'])
+            else: extra_cuts = (options.mva_proc+'_mva <' + str(boundaries['tag_'+str(cat_counter-1)])) + ' and ' + (options.mva_proc+'_mva >' + str(boundaries['tag_'+str(cat_counter)]))
+            plotter.plot_input(options.mass_var_name, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True, extra_cuts=extra_cuts, extra_tag=cat_counter, blind=True)
+            cat_counter += 1
+
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     required_args = parser.add_argument_group('Required Arguments')
     required_args.add_argument('-c','--config', action='store', required=True)
+    required_args.add_argument('-m','--mass_var_name',  action='store', type=str, required=True)
+    required_args.add_argument('-M','--mva_config', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
+    required_args.add_argument('-p','--mva_proc', action='store', default='VBF')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-b','--n_bins',  default=26, type=int)
     opt_args.add_argument('-P','--pt_reweight',  action='store_true', default=False)
     opt_args.add_argument('-R','--ratio_plot',  action='store_true', default=False)
-    #opt_args.add_argument('-D','--no_data',  action='store_true', default=False)
     options=parser.parse_args()
     main(options)

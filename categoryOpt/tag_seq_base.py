@@ -83,6 +83,7 @@ class taggerBase(object):
                                          self.combined_df['subleadElectronPtOvM'].gt(0.25)
                                         ]       
                                  }
+
         return tag_preselection_mask
 
     def eval_bdt(self, proc, model, train_vars):
@@ -229,7 +230,7 @@ class taggerBase(object):
 
         return branch_names
 
-    def set_tree_names(self, tag_boundaries, dump_syst_weights):
+    def set_tree_names(self, tag_boundaries, dump_syst_weights, year):
         """
         Use the tag priority and tag number (for each process) to decide on a final tag
         """
@@ -259,8 +260,25 @@ class taggerBase(object):
         if dump_syst_weights:
             from syst_maps import weight_systs
             for syst_name in weight_systs.keys():
-                self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['{}_Up'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
-                self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['{}_Dn'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
+                if year not in weight_systs[syst_name]['years']: continue
+                #self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['{}_Up'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
+                #self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['{}_Dn'.format(syst_name)] / self.combined_df['{}_Nom'.format(syst_name)]) * self.combined_df['centralObjectWeight'].copy()
+                down_tag, nom_tag, up_tag = weight_systs[syst_name]['exts'][0], weight_systs[syst_name]['exts'][1], weight_systs[syst_name]['exts'][2]
+
+                #FIXME: can remove this if statement and keep the else, when proper per-event RECO and ID SFs are in ntuples (added since pass11)
+                #if syst_name == 'leadElectronIDSF':
+                #    self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['ElectronIDSF_weight_Up'] / self.combined_df['ElectronIDSF_weight_Nom']) * self.combined_df['centralObjectWeight'].copy()
+                #    self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['ElectronIDSF_weight_Dn'] / self.combined_df['ElectronIDSF_weight_Nom']) * self.combined_df['centralObjectWeight'].copy()
+                #elif syst_name == 'leadElectronRecoSF':
+                #    self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['ElectronRecoSF_weight_Up'] / self.combined_df['ElectronRecoSF_weight_Nom']) * self.combined_df['centralObjectWeight'].copy()
+                #    self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['ElectronRecoSF_weight_Dn'] / self.combined_df['ElectronRecoSF_weight_Nom']) * self.combined_df['centralObjectWeight'].copy()
+                #elif syst_name == 'subleadElectronRecoSF' or syst_name == 'subleadElectronRecoSF': continue #skip repeats until above FIXME is sorted
+                #else:
+                #    self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['{}{}'.format(syst_name,up_tag)] / self.combined_df['{}{}'.format(syst_name,nom_tag)]) * self.combined_df['centralObjectWeight'].copy()
+                #    self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['{}{}'.format(syst_name,down_tag)] / self.combined_df['{}{}'.format(syst_name,nom_tag)]) * self.combined_df['centralObjectWeight'].copy()
+
+                self.combined_df['{}Up01sigma'.format(syst_name)] = (self.combined_df['{}{}'.format(syst_name,up_tag)] / self.combined_df['{}{}'.format(syst_name,nom_tag)]) * self.combined_df['centralObjectWeight'].copy()
+                self.combined_df['{}Down01sigma'.format(syst_name)] = (self.combined_df['{}{}'.format(syst_name,down_tag)] / self.combined_df['{}{}'.format(syst_name,nom_tag)]) * self.combined_df['centralObjectWeight'].copy()
                 self.tree_vars.append('{}Up01sigma'.format(syst_name))
                 self.tree_vars.append('{}Down01sigma'.format(syst_name))
 

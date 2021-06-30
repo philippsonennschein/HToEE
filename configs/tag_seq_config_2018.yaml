@@ -16,24 +16,16 @@ data_file_dir:
 mc_file_names:
     sig:
         VBF:
-            #'2016': 'VBF_UL2017.root'
-            #'2017': 'VBF_UL2017.root'
             '2018': 'VBF_UL2017.root'
         ggH:
-            #'2016': 'ggH_UL2017.root'
-            #'2017': 'ggH_UL2017.root'
             '2018': 'ggH_UL2017.root'
             
     bkg:
         DYMC:
-            #'2016': 'DY_UL2016.root' #not used here!
-            #'2017': 'DY_UL2017.root' #not used here!
             '2018': 'DY_UL2018.root' #not used here!
 
 data_file_names:
     Data:
-        #'2016': 'Data_UL2016.root'
-        #'2017': 'Data_UL2017.root'
         '2018': 'Data_UL2018.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
@@ -48,7 +40,7 @@ train_vars:
     VBF:
         ['dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
          'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
-         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
          'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
          'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
          'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
@@ -56,14 +48,14 @@ train_vars:
         ] 
 
     ggH:
-        ['leadElectronPtOvM', 'subleadElectronPtOvM',
+        ['dielectronPt','dielectronCosPhi',      
+         'leadElectronPtOvM', 'subleadElectronPtOvM',
          'leadElectronEta', 'subleadElectronEta',
-         'dielectronCosPhi', 'dielectronPt',
          'dijetAbsDEta', 'dijetDPhi','dijetMinDRJetEle', 'dijetMass', 
          'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
-         'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
+         'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
          'leadJetEn', 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', 
          'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL'
-        ]
+         ]
 
 vars_to_add:

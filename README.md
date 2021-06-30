@@ -16,6 +16,9 @@ For this, use the `training/train_bdt.py` script. This requires a configuration 
 
 An example config for VBF training can be found here:  `bdt_config_vbf.yaml`
 
+Note that for each sample, the effeciency x acceptance, and XS (x BR) should also be specified in the constructor of the `python/DataHandling.py` class.
+
+
 The command to train a simple VBF vs Bkg BDT with a train-test splitting fraction of 0.7, is:
 
 ```
@@ -36,7 +39,7 @@ An extra word of warning on this - reading in the control region to derive the r
 
 ## LSTM training
 
-To use an LSTM neural network to perform separate VBF/ggJ signal from background, we use the script `training/train_lstm.py`. This takes a separate config, similar to the BDT, but with a nested list of low-level variables to be used in the LSTM layers. High level variables are also used, interfaced with the outputs of the LSTM units in fully connected layers. For an example config, see: `configs/lstm_config.yaml`.
+To use an LSTM neural network to perform separate VBF/ggH signal from background, we use the script `training/train_lstm.py`. This takes a separate config, similar to the BDT, but with a nested list of low-level variables to be used in the LSTM layers. High level variables are also used, interfaced with the outputs of the LSTM units in fully connected layers. For an example config, see: `configs/lstm_config.yaml`.
 
 The training can be run with the same syntax used in the BDT training. For example, to train a simple LSTM with default architecture and equalised class weights:
 
@@ -71,7 +74,7 @@ To produce the trees with the category information needed for final fits, we use
 python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M configs/mva_boundaries_config.yaml -d 
 ```
 
-The potion `-d` is important since it tells the script to use data as replacement for simulated background.
+The option `-d` is important since it tells the script to use data as replacement for simulated background. Note that this step is really just a check - producing trees for workspaces (inlcuding the nominal trees) is all handled below.
 
 ### systematics
 The same script can handle systematic variations and their affect on category composition. The name of the systematic is specified with the `-S` options. This should be run for each systematic variation being considered, and the Up/Down fluctuation type. An example for running the categorisation for the JEC Up variation is:
@@ -82,20 +85,19 @@ python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M conf
 
 For variations that only effect the event weight, we do not split by systematic. Instead, we run with the `-W` option, which dumps all weight variations alongside the nominal event weight in the nominal tree. This tree should be hadded as usual with the other systematics trees at the end. Note that the script takes care not to dump these weight variation branches in the Data trees.
 
+Note that the nominal trees are also filled when running the weight variations, so no need to run the tagger with no systematics again. This would actually overwrite the weight variation trees, since they have the same naming convention (same nominal tree names that is, since there are additional weight systematic branches in the latter).
+
 Any additional systematics should be added to the dictionary keys in `python/syst_maps.py`
 
-Since we only dump systematics for signal events, if we run the above scripts then we will be missing our data trees. Hence, to run the data categorisation only at the end you can add the `-D` option:
+Finally, since we only dump systematics for signal events, if we run the above scripts then we will be missing our data trees. Hence, to run the data categorisation only at the end you can add the `-D` option:
 
 ```
 python categoryOpt/generic_tagger.py -c configs/tag_seq_config_2016.yaml -M configs/mva_boundaries_config.yaml -d -D
 ```
 
-Note that the nominal trees are also filled when running the weight variations, so no need to run the tagger with no systematics again. This would actually overwrite the weight variation trees, since they have the same naming convention (same nominal tree names that is, since there are additional weight systematic branches in the latter).
-
-
 Some other important notes:
+* `submissions/sub_complete_tagger/sh` is a nice script that produces all needed ROOT files for the fits, including syst varied files. You may add/subtract systs here as needed.
+* the order of the variables in the tag sequence config **must be the same** as the order they are given in the training config
 * this script and all the systematics variations should be run once per year, such that the signal models can be split at the fit stage
 * if the memory gets too high, you could to modify DataHandling.py such that we dont read every systematic in every time, since the script is only run once per systematic
-* the output trees need to be hadded over procs for each year e.g. for 2016 ggH: `hadd ggH_Hee_2016.root output_trees/2016/ggh_125_13TeV_*
-`
-
+* the output trees need to be hadded over procs for each year e.g. for 2016 ggH: `hadd ggH_Hee_2016.root output_trees/2016/ggh_125_13TeV_*`

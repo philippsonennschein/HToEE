@@ -27,8 +27,12 @@ class Plotter(object):
         self.sig_labels   = np.unique(self.sig_df['proc'].values).tolist()
         self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
 
+        self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs
+        self.bkg_colours  = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61'] #temo better for VBF
+
         self.sig_colour   = sig_col
-        self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59']
+        #self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59'] #better for ggH
+        #self.bkg_colours  = ['#abd9e9', '#2c7bb6', '#ffffbf', '#fdae61'] #better for VBF
         self.normalise    = normalise
 
         self.sig_scaler   = 5*10**7
@@ -45,14 +49,26 @@ class Plotter(object):
     def num_to_str(self, num):
         ''' 
         Convert basic number into scientific form e.g. 1000 -> 10^{3}.
-        Not considering decimal inputs for now. Also ignores first unit.
+        Not considering decimal inputs (see decimal_to_str). Also ignores first unit.
         '''
         str_rep = str(num) 
         if str_rep[0] == 0: return num 
         exponent = len(str_rep)-1
         return r'$\times 10^{%s}$'%(exponent)
 
-    def plot_input(self, var, n_bins, out_label, ratio_plot=False, norm_to_data=False):
+    @classmethod 
+    def decimal_to_str(self, num):
+        ''' 
+        Convert basic number into scientific form e.g. 0.001 -> 10^{-3}.
+        Not considering non-decimal inputs for now. Also ignores first unit.
+        '''
+        str_rep = str(num) 
+        if str_rep[0] is not '0': raise IOError('Need a decimal input for string formatting, rather than:'.format(num))
+        exponent = len(str_rep)-2 #minus one for the decimal point counted in string length
+        return r'$\times 10^{-%s}$'%(exponent)
+
+    def plot_input(self, var, n_bins, out_label, ratio_plot=False, norm_to_data=False, extra_cuts=None, extra_tag=None, blind=False):
+        if blind and ('dielectronMass' not in var): raise IOError('blinding only configured for plotting dielectron Mass!')
         if ratio_plot: 
             plt.rcParams.update({'figure.figsize':(6,5.8)})
             fig, axes = plt.subplots(nrows=2, ncols=1, dpi=200, sharex=True,
@@ -67,11 +83,22 @@ class Plotter(object):
         bkg_w_stack    = []
         bkg_proc_stack = []
         
-        var_sig     = self.sig_df[var].values
-        sig_weights = self.sig_df['weight'].values
+        if extra_cuts is not None:
+            var_sig     = self.sig_df.query(extra_cuts)[var].values
+            sig_weights = self.sig_df.query(extra_cuts)['weight'].values
+        else:
+            var_sig     = self.sig_df[var].values
+            sig_weights = self.sig_df['weight'].values
+
         for bkg in self.bkg_labels:
-            var_bkg     = self.bkg_df[self.bkg_df.proc==bkg][var].values
-            bkg_weights = self.bkg_df[self.bkg_df.proc==bkg]['weight'].values
+            if extra_cuts is not None:
+                tmp_bkg     = self.bkg_df[self.bkg_df.proc==bkg]
+                var_bkg     = tmp_bkg.query(extra_cuts)[var].values
+                bkg_weights = tmp_bkg.query(extra_cuts)['weight'].values
+            else: 
+                var_bkg     = self.bkg_df[self.bkg_df.proc==bkg][var].values
+                bkg_weights = self.bkg_df[self.bkg_df.proc==bkg]['weight'].values
+
             bkg_stack.append(var_bkg)
             bkg_w_stack.append(bkg_weights)
             bkg_proc_stack.append(bkg)
@@ -83,14 +110,27 @@ class Plotter(object):
         bins = np.linspace(self.var_to_xrange[var][0], self.var_to_xrange[var][1], n_bins)
 
         #add sig mc
-        axes.hist(var_sig, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) '+self.num_to_str(self.sig_scaler), weights=sig_weights*(self.sig_scaler), histtype='step', color=self.sig_colour, zorder=10)
+        #FIXME add this back in!
+        #axes.hist(var_sig, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) '+self.num_to_str(self.sig_scaler), weights=sig_weights*(self.sig_scaler), histtype='step', color=self.sig_colour, zorder=10)
 
         #data
-        data_binned, bin_edges = np.histogram(self.data_df[var].values, bins=bins)
+        if extra_cuts is not None:  data_binned, bin_edges = np.histogram(self.data_df.query(extra_cuts)[var].values, bins=bins)
+        else: data_binned, bin_edges = np.histogram(self.data_df[var].values, bins=bins)
         bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
         x_err    = (bin_edges[-1] - bin_edges[-2])/2
         data_down, data_up = self.poisson_interval(data_binned, data_binned)
-        axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=3, color='black', capsize=0, zorder=1)
+
+        if blind: 
+            blinded_mask = []
+            for i_bin, bin_val in enumerate(bin_centres): #use list comprehension
+                if bin_val > 115 and bin_val < 135: blinded_mask.append(np.NaN)
+                else: blinded_mask.append(1)
+                  
+            blinded_data_binned = np.asarray(data_binned) * (blinded_mask)
+            blinded_data_down   = np.asarray(data_down) * (blinded_mask)
+            blinded_data_up     = np.asarray(data_up) * (blinded_mask)
+            axes.errorbar( bin_centres, blinded_data_binned, yerr=[blinded_data_binned-blinded_data_down, blinded_data_up-blinded_data_binned], label='Data', fmt='o', ms=3, color='black', capsize=0, zorder=1)
+        else: axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=3, color='black', capsize=0, zorder=1)
 
         #add stacked bkg
         if norm_to_data: 
@@ -121,28 +161,36 @@ class Plotter(object):
         if self.var_to_xrange[var][2]:
             axes.set_yscale('log', nonposy='clip')
             axes.set_ylim(bottom=100, top=current_top*20)
-        else: axes.set_ylim(bottom=10, top=current_top*1.35)
+        else: axes.set_ylim(bottom=0, top=current_top*1.35)
         #axes.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
         #axes.yaxis.set_label_coords(-0.1,1)
-        axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
+        axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
         self.plot_cms_labels(axes)
            
         var_name_safe = var.replace('_',' ')
         if ratio_plot:
-            ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=3, color='black', capsize=0)
-            bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
-            bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
+            if blind: 
+                ratio.errorbar(bin_centres, (blinded_data_binned/bkg_stack_summed), yerr=[ (blinded_data_binned-blinded_data_down)/bkg_stack_summed, (blinded_data_up-blinded_data_binned)/bkg_stack_summed], fmt='o', ms=3, color='black', capsize=0)
+                bkg_std_down_ratio = (np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)) * blinded_mask
+                bkg_std_up_ratio   = (np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)) * blinded_mask
+            else:
+                ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=3, color='black', capsize=0)
+                bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
+                bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
             ratio.fill_between(bins, list(bkg_std_down_ratio)+[bkg_std_down_ratio[-1]], list(bkg_std_up_ratio)+[bkg_std_up_ratio[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4)
 
             ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
             ratio.set_ylabel('Data/MC', size=13)
             ratio.set_ylim(0, 2)
-            #ratio.set_ylim(0.5, 1.5)
+            #ratio.set_ylim(0.8, 1.2)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
        
         Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(), out_label))
-        fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(), out_label, var))
+        if extra_tag is not None: 
+            fig.savefig('{0}/plotting/plots/{1}/{1}_{2}_cat{3}.pdf'.format(os.getcwd(), out_label, var, extra_tag))
+        else:
+            fig.savefig('{0}/plotting/plots/{1}/{1}_{2}.pdf'.format(os.getcwd(), out_label, var))
         plt.close()
 
     @classmethod 
@@ -171,7 +219,7 @@ class Plotter(object):
         #np.savez('{}/models/{}_ROC_sig_bkg_arrays_NOJETVARS.npz'.format(os.getcwd(), out_tag), sig_eff_test=sig_eff_test, bkg_eff_test=bkg_eff_test)
         return fig
 
-    def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test, MVA='BDT', ratio_plot=False, norm_to_data=False):
+    def plot_output_score(self, y_test, y_pred_test, test_weights, proc_arr_test, data_pred_test, MVA='BDT', ratio_plot=False, norm_to_data=False, log=False):
         if ratio_plot: 
             plt.rcParams.update({'figure.figsize':(6,5.8)})
             fig, axes = plt.subplots(nrows=2, ncols=1, dpi=200, sharex=True,
@@ -220,20 +268,19 @@ class Plotter(object):
             k_factor = np.sum(np.ones_like(data_pred_test))/np.sum(bkg_w_true)
             for w_arr in bkg_w_stack:
                 rew_stack.append(w_arr*k_factor)
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=False, stacked=True, zorder=0)
+            bkg_mc_binned, _, _ = axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
         else: 
-            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], log=False, stacked=True, zorder=0)
+            axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
             bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
             sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
         #plot mc error 
         bkg_std_down, bkg_std_up  = self.poisson_interval(bkg_stack_summed, sumw2_bkg)                                                   
         axes.fill_between(bins, list(bkg_std_down)+[bkg_std_down[-1]], list(bkg_std_up)+[bkg_std_up[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4, label='Simulation stat. unc.')
 
-        axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
-        current_bottom, current_top = axes.get_ylim()
-        axes.set_ylim(bottom=0, top=current_top*1.35)
+        #axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
+        axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
         if self.normalise: axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
         else: axes.set_ylabel('Events', ha='right', y=1, size=13)
 
@@ -249,35 +296,48 @@ class Plotter(object):
         else: axes.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
         self.plot_cms_labels(axes)
 
+        current_bottom, current_top = axes.get_ylim()
+        if log: 
+            axes.set_yscale('log', nonposy='clip')
+            axes.set_ylim(bottom=1, top=current_top*20)
+        else: 
+            axes.set_ylim(bottom=0, top=current_top*1.45)
         #ggH
-        axes.axvline(0.769, ymax=0.7, color='black', linestyle='--')
-        axes.axvline(0.587, ymax=0.7, color='black', linestyle='--')
-        axes.axvline(0.276, ymax=0.7, color='black', linestyle='--')
-        axes.axvspan(0, 0.276, ymax=0.7, color='grey', alpha=0.35)
+        #axes.axvline(0.769, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.587, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.276, ymax=0.7, color='black', linestyle='--')
+        #axes.axvspan(0, 0.276, ymax=0.7, color='grey', alpha=0.35)
         #VBF BDT
         #axes.axvline(0.899, ymax=0.7, color='black', linestyle='--')
         #axes.axvline(0.778, ymax=0.7, color='black', linestyle='--')
 	#axes.axvspan(0, 0.778, ymax=0.7, color='grey', alpha=0.35)
 	#VBF DNN
-	#axes.axvline(0.907, ymax=0.70, color='black', linestyle='--')
-	#axes.axvline(0.655, ymax=0.70, color='black', linestyle='--')
-        #axes.axvspan(0, 0.655, ymax=0.70, color='grey', lw=0, alpha=0.5)
+	#axes.axvline(0.907, ymax=0.71, color='black', linestyle='--')
+	#axes.axvline(0.750, ymax=0.71, color='black', linestyle='--')
+        #axes.axvspan(0, 0.750, ymax=0.71, color='grey', lw=0, alpha=0.5)
 
         return fig
 
 
     @classmethod
-    def cats_vs_ams(self, cats, AMS, out_tag):
+    def cats_vs_ams(self, cats, AMS, out_tag, scaler=0.0001):
         fig  = plt.figure(1)
         axes = fig.gca()
-        axes.plot(cats,AMS, '-ro')
+
+        exponent_label = self.decimal_to_str(scaler)
+        scaled_AMS = [point / scaler for point in AMS]
+
+        axes.plot(cats,scaled_AMS, '-ro')
         axes.set_xlim((0, cats[-1]+1))
+        #current_bottom, current_top = axes.get_ylim()
+        #axes.set_ylim(bottom=0, top=current_top*1.5)
         axes.set_xlabel('$N_{\mathrm{cat}}$', ha='right', x=1, size=13)
         axes.set_ylabel('Combined AMS', ha='right', y=1, size=13)
+        axes.text(-0.15, 1.01, '{}'.format(exponent_label), ha='left', va='bottom', transform=axes.transAxes, size=11)
         Plotter.plot_cms_labels(axes)
         fig.savefig('{}/categoryOpt/nCats_vs_AMS_{}.pdf'.format(os.getcwd(), out_tag))
 
-    def poisson_interval(self, x, variance, level=0.68):                                                                      
+    def poisson_interval(self, x, variance, level=0.68): 
         neff = x**2/variance
         scale = x/neff
      

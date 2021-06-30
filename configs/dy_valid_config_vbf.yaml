@@ -1,6 +1,6 @@
 # custom tag that will be added to all saved df's and models. 
 output_tag:
-    'VBF_BDT'
+    'DY_validation_VBF_BDT'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 mc_file_dir:
@@ -13,27 +13,19 @@ data_file_dir:
 mc_file_names:
     sig:
         VBF:
-            #'2016': 'VBF_UL2017.root' #re-use 17 as 16 for now
+            #'2016': 'VBF_UL2017.root' #dont end up using this in dy plots
             '2017': 'VBF_UL2017.root'
-            #'2018': 'VBF_UL2017.root' #re-use 17 as 18 for now
+            #'2018': 'VBF_UL2017.root'
     bkg:
         DYMC:
             #'2016': 'DY_UL2016.root'
             '2017': 'DY_UL2017.root'
             #'2018': 'DY_UL2018.root'
 
-        TT2L2Nu:
-            #'2016': 'TTLNu_UL2016.root'
-            '2017': 'TTLNu_UL2017.root'
-            #'2018': 'TTLNu_UL2018.root'
-        TTSemiL:
-            #'2016': 'TTSemi_UL2016.root'
-            '2017': 'TTSemi_UL2017.root'
-            #'2018': 'TTSemi_UL2018.root'
-        EWKZ:
-            #'2016': 'EWKZ_2016.root'
-            '2017': 'EWKZ_2017.root'
-            #'2018': 'EWKZ_2018.root'
+        EWKZlowmass:
+            #'2016': 'EWKZlowmass_2016.root'
+            '2017': 'EWKZlowmass_2017.root'
+            #'2018': 'EWKZlowmass_2018.root'
 
 data_file_names:
     Data:
@@ -41,15 +33,12 @@ data_file_names:
         '2017': 'Data_UL2017.root'
         #'2018': 'Data_UL2018.root'
 
-
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     VBF: 'Events'
     DYMC: 'Events'
     Data: 'Events'
-    TT2L2Nu: 'Events'
-    TTSemiL: 'Events'
-    EWKZ: 'Events'
+    EWKZlowmass: 'Events'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 train_vars:
@@ -59,16 +48,20 @@ train_vars:
      'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
      'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-     'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
-     #'nSoftJets'
+     'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', 
+    # 'nSoftJets'
     ] 
 
 vars_to_add:
-    #'subsubleadJetCentrality':
 
-#preselection that will be applied to all samples
+# "baseline" selection that will be applied to all samples. None of these variables should be inputs!
 preselection:
-    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>25 and (leadElectronCharge == -subleadElectronCharge)'
+    'dielectronMass > 75 and dielectronMass < 105' #FIXME mass range needs to be looser since a syst with mass variations can push outisde of the nominal range. This tightness is just for mem, ideally would have no initial selection
 
-reweight_cr: #looser selection (CR region is taken from this, but not exactly the same as this)
-    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and dijetMass>250 and leadJetPt>40 and subleadJetPt>25 and (leadElectronCharge == -subleadElectronCharge)'
+cut_map:
+    dielectronMass: ['>80','<100']
+    leadElectronPtOvM: ['>0.333']
+    subleadElectronPtOvM: ['>0.25']
+    dijetMass: ['>250']
+    leadJetPt: ['>40']
+    subleadJetPt: ['>25']

@@ -4,9 +4,10 @@ models:
 
 boundaries:
     VBF: 
-        tag_0: 0.899
-        tag_1: 0.778
+        tag_0: 0.908 #lower mass
+        tag_1: 0.753
     ggH:
-        tag_0: 0.769
-        tag_1: 0.587
-        tag_2: 0.276
+        tag_0: 0.831
+        tag_1: 0.717
+        tag_2: 0.551
+        tag_3: 0.267
