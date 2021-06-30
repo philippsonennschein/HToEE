@@ -28,13 +28,18 @@ class SampleObject(object):
     :type file_name: string
     :param tree_path: name of the TTree for the sample, contained in the ROOT TDirectory
     :type tree_path: string
+    :param vars_to_read: variables to read in from TTree. Dependent on the year e.g. L1PreFire weights for 16, 17 only.
+     Note that currently only weight varying systematics vars can vary across years. All other variables are read in for every year
+     including systematics that affect dont affect event weights. If we ever need this, can implement in the same way as weight systs.
+    :type vars_to_read: list
     ''' 
 
-    def __init__(self, proc_tag, year, file_name, tree_path):
-        self.proc_tag  = proc_tag
-        self.year      = year
-        self.file_name = file_name
-        self.tree_name = tree_path
+    def __init__(self, proc_tag, year, file_name, tree_path, vars_to_read):
+        self.proc_tag     = proc_tag
+        self.year         = year
+        self.file_name    = file_name
+        self.tree_name    = tree_path
+        self.vars_to_read = vars_to_read
 
 class ROOTHelpers(object):
     """
@@ -71,19 +76,32 @@ class ROOTHelpers(object):
         self.years              = set()
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
-        self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57} #all in pb. also have BR for signals
-        self.eff_acc            = {'2016':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0599756, 'TT2L2Nu':0.0160820, 'TTSemiL':0.0000938}, #Pass8 from dumper, year dependent. update if selection changes
-                                   '2017':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165499, 'TTSemiL':0.0000897},
-                                   '2018':{'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0633516, 'TT2L2Nu':0.0167196, 'TTSemiL':0.0000873}
+        self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'ggH_Hgg':48.58*0.002, 'VBF_Hgg':3.782*0.002, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57, 'EWKZ':0.077, 'EWKZlowmass':1.014} #all in pb. also have BR for signals
+        #self.eff_acc            = {'2016':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0585919, 'TT2L2Nu':0.0157311, 'TTSemiL':0.0000669, 'EWKZ':0.1377463, 'EWKZlowmass':0.0910068}, #Pass11 from dumper, year dependent. update if selec changes
+        #                           '2017':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0628011, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897, 'EWKZ':0.1498280, 'EWKZlowmass':0.1010014},
+        #                           '2018':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0633490, 'TT2L2Nu':0.0167453, 'TTSemiL':0.0000873, 'EWKZ':0.1449787, 'EWKZlowmass':0.0633490}
+        #                          }     
+        self.eff_acc            = {'2016':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0609090, 'TT2L2Nu':0.0169947, 'TTSemiL':0.0000744, 'EWKZ':0.1459372, 'EWKZlowmass':0.0916680}, #Pass12 from dumper, year dependent. update if selec changes. Some 2018 samples missing so used 2017 replacements
+                                   '2017':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0657847, 'TT2L2Nu':0.0179210, 'TTSemiL':0.0000992, 'EWKZ':0.1591736, 'EWKZlowmass':0.1017548},
+                                   '2018':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0661408, 'TT2L2Nu':0.0187125, 'TTSemiL':0.0000992, 'EWKZ':0.1591736, 'EWKZlowmass':0.1017548}
                                   }     
-        #self.eff_acc            = {'ggH':0.3736318, 'VBF':0.3766126, 'DYMC':0.0628066, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897} #Pass5 from dumper. update if selection changes
-        #self.eff_acc            = {'ggH':0.4515728, 'VBF':0.4670169, 'DYMC':0.0748512, 'TT2L2Nu':0.0405483, 'TTSemiL':0.0003810} #from dumper. Pass2
-        #self.eff_acc            = {'ggH':0.4014615, 'VBF':0.4044795, 'DYMC':0.0660393, 'TT2L2Nu':0.0176973, 'TTSemiL':0.0001307} #from dumper. Pass3
 
         self.out_tag            = out_tag
         self.mc_dir             = mc_dir #FIXME: remove '\' using if_ends_with()
         self.data_dir           = data_dir
        
+
+        if vars_to_add is None: vars_to_add = {}
+        self.vars_to_add        = vars_to_add
+        data_vars = nominal_vars
+        core_vars = nominal_vars[:] #return copy so data_vars isn't modified
+        missing_vars = [x for x in train_vars if x not in (nominal_vars+list(vars_to_add.keys()))]
+        if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))
+
+        self.train_vars         = train_vars
+        self.cut_string         = presel_str
+
+
         self.sig_procs          = []
         self.sig_objects        = []
         for proc, year_to_file in mc_fnames['sig'].items():
@@ -91,7 +109,9 @@ class ROOTHelpers(object):
             else: raise IOError('Multiple versions of same signal proc trying to be read')
             for year, file_name in year_to_file.iteritems():
                 self.years.add(year)
-                self.sig_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc]) )
+                if read_systs: final_mc_vars = self.add_year_dep_systs(core_vars, year)
+                else: final_mc_vars = core_vars
+                self.sig_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=final_mc_vars) )
  
         self.bkg_procs          = []
         self.bkg_objects        = []
@@ -100,37 +120,46 @@ class ROOTHelpers(object):
             else: raise IOError('Multiple versions of same background proc trying to be read')
             for year, file_name in year_to_file.iteritems():
                 if year not in self.years:  raise IOError('Incompatible sample years')
-                self.bkg_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc]) )
+                self.years.add(year)
+                if read_systs: final_mc_vars = self.add_year_dep_systs(core_vars, year)
+                else: final_mc_vars = core_vars
+                self.bkg_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=final_mc_vars) )
 
         self.data_objects       = []
         for proc, year_to_file in data_fnames.items():
             for year, file_name in year_to_file.iteritems():
                 if year not in self.years:  raise IOError('Incompatible sample years')
-                self.data_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc]) )
+                self.years.add(year)
+                self.data_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=data_vars) )
 
         self.mc_df_sig          = []
         self.mc_df_bkg          = []
         self.data_df            = []
 
-        if vars_to_add is None: vars_to_add = {}
-        self.vars_to_add        = vars_to_add
+    def add_year_dep_systs(self, core_vars, year):
+        """
+        Add systematic variables to nominal vars. Weight systematics are dependent on the year being considered.
 
-        self.data_vars = nominal_vars
-        self.nominal_vars = nominal_vars[:] #return copy so self.data_vars isn't modified
+        Arguments
+        ---------
+        core_vars: list
+            all variables being read in except for systematics
+        year: str
+            year for dataframe being read in
+            
+        Returns
+        -------
+        final_mc_vars: new list of variables with year dependent weight systs and other systs added
+        """
 
-        if read_systs: 
-            for syst_type in syst_map.keys():
-                self.nominal_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
-                #self.nominal_vars += [var_name+syst_type for var_name in syst_map[syst_type]]
+        final_mc_vars = core_vars[:]
+        for syst_type in syst_map.keys():
+            final_mc_vars += [var_name+'_'+syst_type for var_name in syst_map[syst_type]]
 
-        #if read_weight_systs:
-            for weight_syst in weight_systs.keys():
-                self.nominal_vars += [weight_syst+'_'+ext for ext in weight_systs[weight_syst]]
+        for weight_syst in weight_systs.keys():
+            if year in weight_systs[weight_syst]['years']: final_mc_vars += [weight_syst+ext for ext in weight_systs[weight_syst]['exts']]
 
-        missing_vars = [x for x in train_vars if x not in (nominal_vars+list(vars_to_add.keys()))]
-        if len(missing_vars)!=0: raise IOError('Missing variables: {}'.format(missing_vars))
-        self.train_vars         = train_vars
-        self.cut_string         = presel_str
+        return final_mc_vars
 
     def no_lumi_scale(self):
         """ 
@@ -164,14 +193,16 @@ class ROOTHelpers(object):
                                                                sample_obj.proc_tag,
                                                                sample_obj.file_name,
                                                                sample_obj.tree_name,
-                                                               'sig', sample_obj.year
+                                                               'sig', sample_obj.year,
+                                                               sample_obj.vars_to_read
                                                               )
                                              )
             else: self.mc_df_bkg.append( self.root_to_df(self.mc_dir,
                                                          sample_obj.proc_tag,
                                                          sample_obj.file_name, 
                                                          sample_obj.tree_name,
-                                                         'bkg', sample_obj.year
+                                                         'bkg', sample_obj.year,
+                                                         sample_obj.vars_to_read
                                                         )
                                        )
 
@@ -193,7 +224,7 @@ class ROOTHelpers(object):
             if reload_samples: raise IOError
             else: self.data_df.append( self.load_df(self.data_dir+'DataFrames/', 'Data', sample_obj.year) )
         except IOError: 
-            self.data_df.append( self.root_to_df(self.data_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'Data', sample_obj.year) )
+            self.data_df.append( self.root_to_df(self.data_dir, sample_obj.proc_tag, sample_obj.file_name, sample_obj.tree_name, 'Data', sample_obj.year, sample_obj.vars_to_read) )
 
     def load_df(self, df_dir, proc, year):
         """
@@ -205,7 +236,7 @@ class ROOTHelpers(object):
             directory where pandas dataframes for each process x year are kept. 
         proc: string
             physics process name for dataframe being read in
-        year: int
+        year: string
             year for dataframe being read in
             
         Returns
@@ -223,7 +254,7 @@ class ROOTHelpers(object):
 
         return df    
 
-    def root_to_df(self, file_dir, proc_tag, file_name, tree_name, flag, year):
+    def root_to_df(self, file_dir, proc_tag, file_name, tree_name, flag, year, vars_to_read):
         """
         Load a single root file for signal, background or data, for a given year. Apply any preselection.
         If reading in simulated samples, apply lumi scaling and read in gen-level variables too
@@ -253,10 +284,10 @@ class ROOTHelpers(object):
 
         if flag == 'Data':
             #can cut on data here as dont need to run MC_norm
-            df = df_tree.pandas.df(self.data_vars).query(self.cut_string)
+            df = df_tree.pandas.df(vars_to_read).query(self.cut_string)
         else:
             #cannot cut on sim now as need to run MC_norm and need sumGenW before selection!
-            df = df_tree.pandas.df(self.nominal_vars+gen_vars)
+            df = df_tree.pandas.df(vars_to_read+gen_vars)
             #NOTE: dont apply cuts yet as need to do MC norm!
 
 
@@ -272,6 +303,21 @@ class ROOTHelpers(object):
         df = df.dropna()
         df['proc'] = proc_tag
         df['year'] = year
+
+        #FIXME: add missing third jet centrality. Can delete once in dumper
+        #df['thirdJetZepp'] = np.abs( df['subsubleadJetEta'] - 0.5*(df['leadJetEta'] - df['subleadJetEta']) )
+        #df['subsubleadJetCentrality'] = np.exp( -4*(df['thirdJetZepp']/np.abs(df['leadJetEta'] - df['subleadJetEta']))**2 )
+        #df[df.subsubleadJetEta<-100]['subsubleadJetCentrality'] = -999
+
+        #FIXME: add missing ele ID and Reco systs. Now included in samples (since pass11)
+        #if flag!='Data':
+        #    df['ElectronIDSF_weight_Nom']   = df['leadElectronIDSF'] * df['subleadElectronIDSF'] 
+        #    df['ElectronIDSF_weight_Dn']    = df['leadElectronIDSFDown'] * df['subleadElectronIDSFDown']
+        #    df['ElectronIDSF_weight_Up']    = df['leadElectronIDSFUp'] * df['subleadElectronIDSFUp']
+
+        #    df['ElectronRecoSF_weight_Nom'] = df['leadElectronRecoSF'] * df['subleadElectronRecoSF'] 
+        #    df['ElectronRecoSF_weight_Dn']  = df['leadElectronRecoSFDown'] * df['subleadElectronRecoSFDown']
+        #    df['ElectronRecoSF_weight_Up']  = df['leadElectronRecoSFUp'] * df['subleadElectronRecoSFUp']
 
         print('Number of events in final dataframe: {}'.format(np.sum(df['weight'].values)))
         #save everything
@@ -296,7 +342,7 @@ class ROOTHelpers(object):
             dataframe for simulated signal or background with weights to be normalised
         :param proc_tag: string
             name of the physics process for the dataframe
-        :param year: int
+        :param year: string
             year corresponding to the dataframe being read in
 
         Returns
@@ -361,14 +407,14 @@ class ROOTHelpers(object):
         Derive a reweighting for a single bkg process in a m(ee) control region around the Z-peak, in bins on pT(ee),
         to map bkg process to Data. SFs for each year are derived separately. Then apply to SR.
 
-        Note that if norming, we must apply the flat k-factor in the SR after pt-reweighting, since the latter
+        Note that if norming, we must apply the flat k-factor in the SR *after* pt-reweighting, since the latter
         doesn't preserve the normalisation
 
         Arguments
         ---------
         bkg_proc: string
             name of the physics process we want to re-weight. Nominally this is for Drell-Yan.
-        year: float
+        year: string
             year to be re-weighted (perform this separately for each year)
         presel: string
             preselection to apply to go from the CR -> SR
@@ -380,9 +426,13 @@ class ROOTHelpers(object):
         year_to_scale_factors = {}
         for year in self.years:
 
-            pt_bins = np.linspace(0,180,101)
-            bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year))
-            data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       
+            #pt_bins = np.linspace(0,180,101)
+            #try not const binning:
+            pt_bins = np.concatenate((np.linspace(0,40,26),np.linspace(44,80,10),np.linspace(85,180,20)))
+            bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>80 and dielectronMass<100'.format(bkg_proc,year)) #FIXME
+            data_df = self.data_df.query('year=="{}" and dielectronMass>80 and dielectronMass<100'.format(year))       #FIXME
+            #bkg_df = self.mc_df_bkg.query('proc=="{}" and year=="{}" and dielectronMass>90 and dielectronMass<100'.format(bkg_proc,year))
+            #data_df = self.data_df.query('year=="{}" and dielectronMass>90 and dielectronMass<100'.format(year))       
 
             #FIXME: here only norming DY events to data which is mainly DY...
             if norm: bkg_df['weight'] *= (np.sum(data_df['weight'])/np.sum(bkg_df['weight']))
@@ -392,6 +442,8 @@ class ROOTHelpers(object):
             year_to_scale_factors[year] = data_pt_binned/bkg_pt_binned
 
         print 'DEBUG: scale factors for year are', year_to_scale_factors
+        print 'data binned is: {}'.format(data_pt_binned.tolist())
+        print 'mc binned is: {}'.format(bkg_pt_binned.tolist())
 
         #put samples into SR phase space. 
         self.apply_more_cuts(presel)
@@ -476,7 +528,7 @@ class ROOTHelpers(object):
         ---------
         bkg_proc: string
             name of the physics process we want to re-weight. Nominally this is for Drell-Yan.
-        year: float
+        year: string
             year to be re-weighted (perform this separately for each year)
         presel: string
             preselection to apply to go from the CR -> SR
@@ -536,35 +588,38 @@ class ROOTHelpers(object):
          
 
 
-    def save_modified_dfs(self,year):
+    def save_modified_dfs(self, year, ignore_sig=False, ignore_bkg=False, ignore_data=False):
         """
         Save dataframes again. Useful if modifications were made since reading in and saving e.g. pT reweighting or applying more selection
         (or both).
 
         Arguments
         ---------
-        year: int
+        year: string
             year for which all samples being saved correspond to
         """
 
         print 'saving modified dataframes...'
-        for sig_proc in self.sig_procs:
-            sig_df = self.mc_df_sig[np.logical_and(self.mc_df_sig.proc==sig_proc, self.mc_df_sig.year==year)]
-            #sig_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year), 'df', mode='w', format='t')
-            #sig_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
-            sig_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
-            print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+        if not ignore_sig:
+            for sig_proc in self.sig_procs:
+                sig_df = self.mc_df_sig[np.logical_and(self.mc_df_sig.proc==sig_proc, self.mc_df_sig.year==year)]
+                #sig_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year), 'df', mode='w', format='t')
+                #sig_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+                sig_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
+                print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', sig_proc, self.out_tag, year))
 
-        for bkg_proc in self.bkg_procs:
-            bkg_df = self.mc_df_bkg[np.logical_and(self.mc_df_bkg.proc==bkg_proc,self.mc_df_bkg.year==year)]
-            #bkg_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year), 'df', mode='w', format='t')
-            #bkg_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
-            bkg_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
-            print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+        if not ignore_bkg:
+            for bkg_proc in self.bkg_procs:
+                bkg_df = self.mc_df_bkg[np.logical_and(self.mc_df_bkg.proc==bkg_proc,self.mc_df_bkg.year==year)]
+                #bkg_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year), 'df', mode='w', format='t')
+                #bkg_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+                bkg_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
+                print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.mc_dir+'DataFrames', bkg_proc, self.out_tag, year))
 
-        data_df = self.data_df[self.data_df.year==year]
-        #data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
-        #data_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
-        data_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
-        print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+        if not ignore_data:
+            data_df = self.data_df[self.data_df.year==str(year)]
+            #data_df.to_hdf('{}/{}_{}_df_{}.h5'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year), 'df', mode='w', format='t')
+            #data_df.to_pickle('{}/{}_{}_df_{}.pkl'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+            data_df.to_csv('{}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
+            print('saved dataframe: {}/{}_{}_df_{}.csv'.format(self.data_dir+'DataFrames', 'Data', self.out_tag, year))
 

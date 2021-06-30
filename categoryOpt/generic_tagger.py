@@ -121,8 +121,8 @@ def main(options):
     tag_obj.decide_tag(tag_preselection, tag_boundaries)
     tag_obj.decide_priority()
     branch_names = tag_obj.get_tree_names(tag_boundaries, year)
-    tag_obj.set_tree_names(tag_boundaries,options.dump_weight_systs)
-    tag_obj.fill_trees(branch_names, year, print_yields=True)
+    tag_obj.set_tree_names(tag_boundaries,options.dump_weight_systs,year)
+    tag_obj.fill_trees(branch_names, year, print_yields=not read_syst)
     if not read_syst: 
         pass #tag_obj.plot_matrix(branch_names, output_tag)  #struct error?
     

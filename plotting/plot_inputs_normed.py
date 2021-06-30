@@ -83,6 +83,7 @@ def main(options):
 
             axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
             axes.set_ylim(bottom=0)
+            axes.set_xlim(left=var_to_xrange[var][0], right=var_to_xrange[var][1])
             axes.legend(bbox_to_anchor=(0.97,0.97), ncol=1)
             plotter.plot_cms_labels(axes)
                

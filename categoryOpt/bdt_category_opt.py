@@ -65,7 +65,7 @@ def main(options):
         ranges    = [ [0.15,1.] ]
         names     = ['{} score'.format(output_tag)] #arbitrary
         print_str = ''
-        cats = [1,2,3]
+        cats = [1,2,3,4]
         AMS  = []
 
         #just to use class methods here
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     required_args.add_argument('-m','--model', action='store', required=True)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
-    opt_args.add_argument('-i','--n_iters', action='store', default=3000, type=int)
+    opt_args.add_argument('-i','--n_iters', action='store', default=4000, type=int)
     opt_args.add_argument('-d','--data_as_bkg', action='store_true', default=False)
     opt_args.add_argument('-k','--cut_based_str', action='store',type=str, default='')
     options=parser.parse_args()
