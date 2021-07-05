@@ -39,8 +39,8 @@ class DYPlotter(object):
 	self.k_factor       = None
         self.clf            = None
         self.proc           = None
-        self.colours        = ['lightgrey','#CBCBE5'] #VBF
-        #self.colours        = ['#CBCBE5'] #ggH
+        #self.colours        = ['lightgrey','#CBCBE5'] #VBF
+        self.colours        = ['#CBCBE5'] #ggH
 
     def pt_reweight(self):
         """
@@ -175,7 +175,7 @@ class DYPlotter(object):
         axes[1].errorbar( bin_centres, data_bkg_ratio, yerr=[(data_binned-data_stat_down_up[0])/sumw_all_bkgs,(data_stat_down_up[1] - data_binned)/sumw_all_bkgs], fmt='o', ms=4, color='black', capsize=0, zorder=3)
 
 
-    def plot_systematics(self, cut_string, axes, variable, bins, systematics):
+    def plot_systematics(self, cut_string, axes, variable, bins, systematics, do_mva=True):
         """ self explanatory """
         
         #create and fill one Systematic object info for each syst FIXME FIXME (for each sample?)
@@ -190,7 +190,7 @@ class DYPlotter(object):
             print syst_dfs['Down'][['leadJetEn', 'dijetMass', 'leadJetEta']]
             for syst_type in syst_dfs.keys():
                 syst_dfs[syst_type]['weight'] = syst_dfs[syst_type]['weight'].copy() * self.k_factor
-                syst_dfs[syst_type][self.proc+'_mva'] = self.eval_bdt(self.clf, syst_dfs[syst_type], self.root_obj.train_vars)
+                if do_mva: syst_dfs[syst_type][self.proc+'_mva'] = self.eval_bdt(self.clf, syst_dfs[syst_type], self.root_obj.train_vars)
             syst_objects[syst_name] = Systematic(syst_name, down_frame=syst_dfs['Down'], up_frame=syst_dfs['Up'])
             #print 'DEBUG: for syst: {}, MVA up/down diff are equal: {} !!'.format(syst_name, np.array_equal(syst_dfs['Up'][self.proc+'_mva'],syst_dfs['Down'][self.proc+'_mva']))
             #print 'DEBUG: for syst: {}, leadJetEn up/down diff are equal: {} !!'.format(syst_name, np.array_equal(syst_dfs['Up']['leadJetEn'],syst_dfs['Down']['leadJetEn']))
@@ -281,10 +281,12 @@ class DYPlotter(object):
         #merged_downs = sample_obj.systematics['merged_systs'].merged_syst_stat_down
         #merged_ups   = sample_obj.systematics['merged_systs'].merged_syst_stat_up
 
-        merged_downs = np.sqrt( syst_merged_downs + self.mc_stat_unc[0]**2) 
-        merged_ups   = np.sqrt( syst_merged_ups   + self.mc_stat_unc[1]**2) 
-        #merged_downs = np.sqrt( self.mc_stat_unc[0]**2) 
-        #merged_ups   = np.sqrt( self.mc_stat_unc[1]**2) 
+        #FIXME add back in!
+        #merged_downs = np.sqrt( syst_merged_downs + self.mc_stat_unc[0]**2) 
+        #merged_ups   = np.sqrt( syst_merged_ups   + self.mc_stat_unc[1]**2) 
+
+        merged_downs = np.sqrt( self.mc_stat_unc[0]**2) 
+        merged_ups   = np.sqrt( self.mc_stat_unc[1]**2) 
 
         print 'mc total'
         print self.mc_total
@@ -431,7 +433,8 @@ class DYPlotter(object):
         axes[0].set_ylabel('Events / {0:.2g}'.format(2*x_err) , size=14, ha='right', y=1)
         #if variable.norm: axes[0].set_ylabel('1/N dN/d(%s) /%.2f' % (variable.xlabel,x_err, ha='right', y=1)
         axes[0].text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes[0].transAxes, size=14)
-        axes[0].text(1, 1.01, r'137 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        #axes[0].text(1, 1.01, r'137 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        axes[0].text(1, 1.01, r'41.5 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
        
         x_label = variable.replace("_", " ")
         axes[1].set_xlabel(x_label, size=14, ha='right', x=1)

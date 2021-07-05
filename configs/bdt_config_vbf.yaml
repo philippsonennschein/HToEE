@@ -13,33 +13,33 @@ data_file_dir:
 mc_file_names:
     sig:
         VBF:
-            #'2016': 'VBF_UL2017.root' #re-use 17 as 16 for now
+            '2016': 'VBF_UL2017.root' #re-use 17 as 16 for now
             '2017': 'VBF_UL2017.root'
-            #'2018': 'VBF_UL2017.root' #re-use 17 as 18 for now
+            '2018': 'VBF_UL2017.root' #re-use 17 as 18 for now
     bkg:
         DYMC:
-            #'2016': 'DY_UL2016.root'
+            '2016': 'DY_UL2016.root'
             '2017': 'DY_UL2017.root'
-            #'2018': 'DY_UL2018.root'
+            '2018': 'DY_UL2018.root'
 
         TT2L2Nu:
-            #'2016': 'TTLNu_UL2016.root'
+            '2016': 'TTLNu_UL2016.root'
             '2017': 'TTLNu_UL2017.root'
-            #'2018': 'TTLNu_UL2018.root'
+            '2018': 'TTLNu_UL2018.root'
         TTSemiL:
-            #'2016': 'TTSemi_UL2016.root'
+            '2016': 'TTSemi_UL2016.root'
             '2017': 'TTSemi_UL2017.root'
-            #'2018': 'TTSemi_UL2018.root'
+            '2018': 'TTSemi_UL2017.root' #dont have 2018 atm
         EWKZ:
-            #'2016': 'EWKZ_2016.root'
+            '2016': 'EWKZ_2016.root'
             '2017': 'EWKZ_2017.root'
-            #'2018': 'EWKZ_2018.root'
+            '2018': 'EWKZ_2018.root'
 
 data_file_names:
     Data:
-        #'2016': 'Data_UL2016.root'
+        '2016': 'Data_UL2016.root'
         '2017': 'Data_UL2017.root'
-        #'2018': 'Data_UL2018.root'
+        '2018': 'Data_UL2018.root'
 
 
 #.root files for all years should have these tree paths. Keys should match keys above
@@ -60,7 +60,8 @@ train_vars:
      'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL', 
      'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
      'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
-     #'nSoftJets'
+     'nSoftJets', #'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
+     #'nSoftJets' ,'metSumET', 'metPt', 'metPhi', 'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
     ] 
 
 vars_to_add:

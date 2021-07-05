@@ -318,6 +318,94 @@ class Plotter(object):
 
         return fig
 
+    def plot_output_score_three_class(self, y_test, y_pred_test, test_weights, MVA='BDT', norm_to_data=False, log=False, clf_class=''):
+        fig  = plt.figure(1)
+        axes = fig.gca()
+
+        bins = np.linspace(0,1,41)
+
+        #bkg_stack      = []
+        #bkg_w_stack    = []
+        #bkg_proc_stack = []
+
+
+        bkg_scores = y_pred_test.ravel()  * (y_test==0)
+        bkg_w_true = test_weights.ravel() * (y_test==0)
+
+        third_class_scores = y_pred_test.ravel()  * (y_test==1)
+        third_class_w_true   = test_weights.ravel() * (y_test==1)
+
+        sig_scores = y_pred_test.ravel()  * (y_test==2)
+        sig_w_true = test_weights.ravel() * (y_test==2)
+
+        #normalise snice only care about shape for now
+        sig_w_true         /= np.sum(sig_w_true)
+        bkg_w_true         /= np.sum(bkg_w_true)
+        third_class_w_true /= np.sum(third_class_w_true)
+
+        #for bkg in self.bkg_labels:
+        #    bkg_score     = bkg_scores * (proc_arr_test==bkg)
+        #    bkg_weights   = bkg_w_true * (proc_arr_test==bkg)
+        #    bkg_stack.append(bkg_score)
+        #    bkg_w_stack.append(bkg_weights)
+        #    bkg_proc_stack.append(bkg)
+
+        #sig
+        axes.hist(sig_scores, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) ', weights=sig_w_true, histtype='step', color=self.sig_colour)
+
+        #data - need to take test frac of data
+        #data_binned, bin_edges = np.histogram(data_pred_test, bins=bins)
+        #bin_centres = (bin_edges[:-1] + bin_edges[1:])/2
+        #x_err    = (bin_edges[-1] - bin_edges[-2])/2
+        #data_down, data_up = self.poisson_interval(data_binned, data_binned)
+        #axes.errorbar( bin_centres, data_binned, yerr=[data_binned-data_down, data_up-data_binned], label='Data', fmt='o', ms=4, color='black', capsize=0, zorder=1)
+
+        #if norm_to_data: 
+        #    rew_stack = []
+        #    k_factor = np.sum(np.ones_like(data_pred_test))/np.sum(bkg_w_true)
+        #    for w_arr in bkg_w_stack:
+        #        rew_stack.append(w_arr*k_factor)
+        #    bkg_mc_binned, _, _ = axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=rew_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
+        #    bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack))
+        #    sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(rew_stack)**2)
+        #else: 
+        #    axes.hist(bkg_stack, bins=bins, label=bkg_proc_stack, weights=bkg_w_stack, histtype='stepfilled', color=self.bkg_colours[0:len(bkg_proc_stack)], stacked=True, zorder=0)
+        #    bkg_stack_summed, _ = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack))
+        #    sumw2_bkg, _  = np.histogram(np.concatenate(bkg_stack), bins=bins, weights=np.concatenate(bkg_w_stack)**2)
+
+        axes.hist(bkg_scores, bins=bins, label='Other backgrounds', weights=bkg_w_true, histtype='step', color=self.bkg_colours[0], zorder=0)
+        axes.hist(third_class_scores, bins=bins, label='VBF Z', weights=third_class_w_true, histtype='step', color=self.bkg_colours[1], zorder=0)
+
+        #plot mc error 
+        #bkg_std_down, bkg_std_up  = self.poisson_interval(bkg_stack_summed, sumw2_bkg)                                                   
+        #axes.fill_between(bins, list(bkg_std_down)+[bkg_std_down[-1]], list(bkg_std_up)+[bkg_std_up[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4, label='Simulation stat. unc.')
+
+        #axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
+        axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
+        axes.set_ylabel('Arbitrary Units', ha='right', y=1, size=13)
+        axes.set_xlabel('{} Score'.format(clf_class.replace('_',' ')), ha='right', x=1, size=13)
+
+        #if ratio_plot:
+        #    ratio.errorbar(bin_centres, (data_binned/bkg_stack_summed), yerr=[ (data_binned-data_down)/bkg_stack_summed, (data_up-data_binned)/bkg_stack_summed], fmt='o', ms=4, color='black', capsize=0)
+        #    bkg_std_down_ratio = np.ones_like(bkg_std_down) - ((bkg_stack_summed - bkg_std_down)/bkg_stack_summed)
+        #    bkg_std_up_ratio   = np.ones_like(bkg_std_up)   + ((bkg_std_up - bkg_stack_summed)/bkg_stack_summed)
+        #    ratio.fill_between(bins, list(bkg_std_down_ratio)+[bkg_std_down_ratio[-1]], list(bkg_std_up_ratio)+[bkg_std_up_ratio[-1]], alpha=0.3, step="post", color="grey", lw=1, zorder=4)
+
+        #    ratio.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
+        #    ratio.set_ylim(0, 2)
+        #    ratio.grid(True, linestyle='dotted')
+        #else: axes.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
+        #self.plot_cms_labels(axes)
+
+        #current_bottom, current_top = axes.get_ylim()
+        #if log: 
+        #    axes.set_yscale('log', nonposy='clip')
+        #    axes.set_ylim(bottom=1, top=current_top*20)
+        #else: 
+        #    axes.set_ylim(bottom=0, top=current_top*1.45)
+
+        return fig
+
 
     @classmethod
     def cats_vs_ams(self, cats, AMS, out_tag, scaler=0.0001):

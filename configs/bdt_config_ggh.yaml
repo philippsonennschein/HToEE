@@ -31,7 +31,7 @@ mc_file_names:
         TTSemiL:
             #'2016': 'TTSemi_UL2016.root'
             '2017': 'TTSemi_UL2017.root'
-            #'2018': 'TTSemi_UL2018.root'
+            #'2018': 'TTSemi_UL2017.root'
 
 data_file_names:
     Data:
@@ -57,7 +57,8 @@ train_vars:
      'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
      'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
      'leadJetEn', 'leadJetPt','leadJetEta', 'leadJetPhi','leadJetQGL', 
-     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL'
+     'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     #'metSumET', 'metPt', 'metPhi', 'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
     ]
 
 vars_to_add:
