@@ -65,8 +65,9 @@ vars_to_add:
 
 #preselection that will be applied to all samples
 preselection:
-    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and (leadElectronCharge == -subleadElectronCharge)'
+    #'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and (leadElectronCharge == -subleadElectronCharge)'
+    'dielectronMass > 110 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and (leadElectronCharge == -subleadElectronCharge) and leadJetPt>25 and subleadJetPt>25'
 
 #need looser cut for re-weighting around Z mass. Actual CR selection is defined is DataHandling.py
 reweight_cr:
-    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and (leadElectronCharge == -subleadElectronCharge)'
+    'dielectronMass > 80 and dielectronMass < 150 and leadElectronPtOvM > 0.333 and subleadElectronPtOvM > 0.25 and (leadElectronCharge == -subleadElectronCharge) and leadJetPt>25 and subleadJetPt>25'

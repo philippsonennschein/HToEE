@@ -282,11 +282,12 @@ class DYPlotter(object):
         #merged_ups   = sample_obj.systematics['merged_systs'].merged_syst_stat_up
 
         #FIXME add back in!
-        #merged_downs = np.sqrt( syst_merged_downs + self.mc_stat_unc[0]**2) 
-        #merged_ups   = np.sqrt( syst_merged_ups   + self.mc_stat_unc[1]**2) 
+        merged_downs = np.sqrt( syst_merged_downs + self.mc_stat_unc[0]**2) 
+        merged_ups   = np.sqrt( syst_merged_ups   + self.mc_stat_unc[1]**2) 
 
-        merged_downs = np.sqrt( self.mc_stat_unc[0]**2) 
-        merged_ups   = np.sqrt( self.mc_stat_unc[1]**2) 
+        #FIXME switch below and above fixme's if wanting stat only
+        #merged_downs = np.sqrt( self.mc_stat_unc[0]**2) 
+        #merged_ups   = np.sqrt( self.mc_stat_unc[1]**2) 
 
         print 'mc total'
         print self.mc_total

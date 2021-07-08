@@ -162,8 +162,7 @@ class Plotter(object):
             axes.set_yscale('log', nonposy='clip')
             axes.set_ylim(bottom=100, top=current_top*20)
         else: axes.set_ylim(bottom=0, top=current_top*1.35)
-        #axes.set_xlim(left=self.var_to_xrange[var][0], right=self.var_to_xrange[var][1])
-        #axes.yaxis.set_label_coords(-0.1,1)
+
         axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
         self.plot_cms_labels(axes)
            
@@ -181,8 +180,8 @@ class Plotter(object):
 
             ratio.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
             ratio.set_ylabel('Data/MC', size=13)
-            ratio.set_ylim(0, 2)
-            #ratio.set_ylim(0.8, 1.2)
+            #ratio.set_ylim(0, 2)
+            ratio.set_ylim(0.8, 1.2)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{}'.format(var_name_safe), ha='right', x=1, size=13)
        
@@ -194,9 +193,9 @@ class Plotter(object):
         plt.close()
 
     @classmethod 
-    def plot_cms_labels(self, axes, label='Work in progress', energy='(13 TeV)'):
+    def plot_cms_labels(self, axes, label='Work in progress', lumi='41.5',energy='(13 TeV)'):
         axes.text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes.transAxes, size=14)
-        axes.text(1, 1.01, r'{}'.format(energy), ha='right', va='bottom', transform=axes.transAxes, size=14)
+        axes.text(1, 1.01, r'%s fb\textsuperscript{-1} %s'%(lumi,energy), ha='right', va='bottom', transform=axes.transAxes, size=14)
 
     def plot_roc(self, y_train, y_pred_train, train_weights, y_test, y_pred_test, test_weights, out_tag='MVA'):
         bkg_eff_train, sig_eff_train, _ = roc_curve(y_train, y_pred_train, sample_weight=train_weights)

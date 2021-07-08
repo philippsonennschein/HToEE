@@ -10,9 +10,9 @@ def main(options):
         output_tag        = config['output_tag']
         train_vars        = config['train_vars']
 
-    #for var in train_vars + ['{}_mva'.format(options.proc)]:
-    for var in ['{}_mva'.format(options.proc)]:
-    #for var in ['dijetMass']:
+    for var in train_vars + ['{}_mva'.format(options.proc)]:
+    #for var in ['{}_mva'.format(options.proc)]:
+    #for var in ['leadJetEta']:
 
         os.system('mkdir -p {}/submissions/{}_DYJobs'.format(os.getcwd(),output_tag))
         sub_file_name = '{}/submissions/{}_DYJobs/sub_DY_{}.sh'.format(os.getcwd(),output_tag,var)

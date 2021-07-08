@@ -79,7 +79,6 @@ def main(options):
         else: var_to_plot = all_train_vars+[dy_plotter.proc+'_mva']
 
         for var in vars_to_plot:
-        #for var in ['dijetMass']:
 
             if 'mva' in var: var_bins = np.linspace(0, 1, options.n_bins)
             else: var_bins = np.linspace(var_to_xrange[var][0], var_to_xrange[var][1], options.n_bins)
