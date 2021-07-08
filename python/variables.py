@@ -10,7 +10,8 @@ nominal_vars = ['weight', 'centralObjectWeight', 'leadElectronIDMVA', 'subleadEl
                 'dijetAbsDEta', 'dijetMass', 'dijetDieleAbsDEta', 'dijetDieleAbsDPhiTrunc', 
                 'dijetMinDRJetEle', 'dijetCentrality', 'dielectronSigmaMoM', 'dijetDPhi', 'dijetPt',
                 'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta',
-                'leadElectronCharge', 'subleadElectronCharge', 'nSoftJets'
+                'leadElectronCharge', 'subleadElectronCharge',
+                'nSoftJets','metSumET','metPhi','metPt' , 'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
                ]
 
 #for MVA training, hence not including masses

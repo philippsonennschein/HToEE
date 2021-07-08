@@ -26,7 +26,7 @@ class Utils(object):
         os.system('mkdir -p {}'.format(job_dir))
         sub_file_name = '{}/sub_bdt_hp_{}.sh'.format(job_dir,file_safe_string)
         #FIXME: add config name as a function argument to make it general
-        sub_command   = "python train_bdt.py -c bdt_config.yaml -w -H {} -k {}".format(hp_string, k_folds)
+        sub_command   = "python train_bdt.py -c bdt_config.yaml -H {} -k {}".format(hp_string, k_folds)
         if eq_weights: sub_command += ' -w'
         if pt_rew: sub_command += ' -P'
         with open('{}/submissions/sub_bdt_opt_template.sh'.format(os.getcwd())) as f_template:

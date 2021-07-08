@@ -90,7 +90,7 @@ class BDTHelpers(object):
         mc_df_sig = self.data_obj.mc_df_sig
         mc_df_bkg = self.data_obj.mc_df_bkg
 
-        #add y_target label (1 for signal, 0 for background)
+        #add y_target label
         mc_df_sig['y'] = np.ones(self.data_obj.mc_df_sig.shape[0]).tolist()
         mc_df_bkg['y'] = np.zeros(self.data_obj.mc_df_bkg.shape[0]).tolist()
 
@@ -150,6 +150,95 @@ class BDTHelpers(object):
         self.proc_arr_test    = proc_arr_test
 
         self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
+
+    def create_X_and_y_three_class(self, third_class, mass_res_reweight=True):
+        """
+        Create X train/test and y train/test for three class BDR
+
+        Arguments
+        ---------
+        mass_res_reweight: bool
+           re-weight signal events by 1/sigma(m_ee), in training only.
+        third_class: str
+           name third bkg class for the classifier. Remaining classes: 1) all other bkgs, 2) signal
+        """
+
+        mc_df_sig = self.data_obj.mc_df_sig
+        mc_df_bkg = self.data_obj.mc_df_bkg
+
+        #add y_target label
+
+        bkg_procs_key = [0,1]
+        bkg_procs_mask = []
+        bkg_procs_mask.append( mc_df_bkg['proc'].ne(third_class) )
+        bkg_procs_mask.append( mc_df_bkg['proc'].eq(third_class) )
+        mc_df_bkg['y'] = np.select(bkg_procs_mask, bkg_procs_key)
+        mc_df_sig['y'] = np.full(self.data_obj.mc_df_sig.shape[0], 2).tolist()
+
+        if self.eq_train: 
+            if mass_res_reweight:
+                #be careful not to change the real weight variable, or test scores will be invalid
+                mc_df_sig['MoM_weight'] = (mc_df_sig['weight']) * (1./mc_df_sig['dielectronSigmaMoM'])
+                bkg_sumw                = np.sum(mc_df_bkg[mc_df_bkg.y==0]['weight'].values)
+                third_class_sumw        = np.sum(mc_df_bkg[mc_df_bkg.y==1]['weight'].values)
+                sig_sumw                = np.sum(mc_df_sig['MoM_weight'].values)
+                mc_df_sig['eq_weight']  = (mc_df_sig['MoM_weight']) * (bkg_sumw/sig_sumw)
+                mc_df_bkg.loc[mc_df_bkg.y==1,'weight'] = mc_df_bkg.loc[mc_df_bkg.y==1,'weight'] * (bkg_sumw/third_class_sumw)
+            else: 
+                #b_to_s_ratio = np.sum(mc_df_bkg['weight'].values)/np.sum(mc_df_sig['weight'].values)
+                #mc_df_sig['eq_weight'] = (mc_df_sig['weight']) * (b_to_s_ratio) 
+                bkg_sumw                = np.sum(mc_df_bkg[mc_df_bkg.y==0]['weight'].values)
+                third_class_sumw        = np.sum(mc_df_bkg[mc_df_bkg.y==1]['weight'].values)
+                sig_sumw                = np.sum(mc_df_sig['weight'].values)
+                mc_df_sig['eq_weight']  = (mc_df_sig['weight']) * (bkg_sumw/sig_sumw)
+                mc_df_bkg.loc[mc_df_bkg.y==1,'weight'] = mc_df_bkg.loc[mc_df_bkg.y==1,'weight'] * (bkg_sumw/third_class_sumw)
+            mc_df_bkg['eq_weight'] = mc_df_bkg['weight']
+
+            Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+            X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
+                                                                                                                                         Z_tot['eq_weight'], Z_tot['y'], Z_tot['proc'],
+                                                                                                                                         train_size=self.train_frac, 
+                                                                                                                                         #test_size=1-self.train_frac,
+                                                                                                                                         shuffle=True, 
+                                                                                                                                         random_state=1357
+                                                                                                                                         )
+            #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, 
+            #    because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
+            self.train_weights_eq = train_w_eqw.values
+        elif mass_res_reweight:
+           mc_df_sig['MoM_weight'] = (mc_df_sig['weight']) * (1./mc_df_sig['dielectronSigmaMoM'])
+           Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+           X_train, X_test, train_w, test_w, train_w_eqw, test_w_eqw, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], Z_tot['weight'], 
+                                                                                                                                        Z_tot['MoM_weight'], Z_tot['y'], Z_tot['proc'],
+                                                                                                                                        train_size=self.train_frac, 
+                                                                                                                                        #test_size=1-self.train_frac,
+                                                                                                                                        shuffle=True, 
+                                                                                                                                        random_state=1357
+                                                                                                                                        )
+           self.train_weights_eq = train_w_eqw.values
+           self.eq_train = True #use alternate weight in training. could probs rename this to something better
+        else:
+           print 'not applying any reweighting...'
+           Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
+           X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], 
+                                                                                                               Z_tot['weight'],
+                                                                                                               Z_tot['y'], Z_tot['proc'],
+                                                                                                               train_size=self.train_frac, 
+                                                                                                               #test_size=1-self.train_frac,
+                                                                                                               shuffle=True, random_state=1357
+                                                                                                               )
+        self.X_train          = X_train.values
+        self.y_train          = y_train.values
+        self.train_weights    = train_w.values
+        self.proc_arr_train   = proc_arr_train
+
+        self.X_test           = X_test.values
+        self.y_test           = y_test.values
+        self.test_weights     = test_w.values
+        self.proc_arr_test    = proc_arr_test
+
+        self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
+
 
     def train_classifier(self, file_path, save=False, model_name='my_model'):
         """
@@ -331,15 +420,7 @@ class BDTHelpers(object):
         sig_y_true_test  = self.y_test[self.y_test==1]
         data_weights_test = np.ones(self.X_data_test.values.shape[0])
         data_y_true_test  = np.zeros(self.X_data_test.values.shape[0])
-        #data_y_pred_test  = self.clf.predict_proba(self.X_data_test.query('dielectronMass<115 and dielectonMass>135').values)[:,1:]
         data_y_pred_test  = self.clf.predict_proba(self.X_data_test.values)[:,1:]
-        #print sig_y_pred_test
-        #print sig_weights_test
-        #print sig_y_true_test
-        #print self.X_data_test.values.shape[0]
-        #print data_weights_test
-        #print data_y_true_test
-        #print data_y_pred_test
         print 'Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
                                                                                        np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
                                                                                        sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
@@ -347,6 +428,45 @@ class BDTHelpers(object):
                                                                        )
 
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
+
+    def compute_roc_three_class(self, third_class):
+        """
+        Compute the area under the associated ROC curves for three class problem, with mc weights. Also compute with blinded data as bkg
+
+        """
+
+        self.y_pred_train = self.clf.predict_proba(self.X_train)
+        self.y_pred_test  = self.clf.predict_proba(self.X_test)
+
+        sig_y_train = np.where(self.y_train==2, 1, 0)
+        sig_y_test  = np.where(self.y_test==2, 1, 0)
+                  
+        bkg_y_train = np.where(self.y_train>0, 0, 1)
+        bkg_y_test  = np.where(self.y_test>0, 0, 1)
+                  
+        third_class_y_train = np.where(self.y_train==1, 1, 0)
+        third_class_y_test  = np.where(self.y_test==1, 1, 0)
+
+        print 'area under roc curve for training set (sig vs rest) = %1.3f'%( roc_auc_score(sig_y_train, self.y_pred_train[:,2], sample_weight=self.train_weights) )
+        print 'area under roc curve for test set = %1.3f \n'%( roc_auc_score(sig_y_test, self.y_pred_test[:,2], sample_weight=self.test_weights) )
+        print 'area under roc curve for training set (bkg vs rest) = %1.3f'%( roc_auc_score(bkg_y_train, self.y_pred_train[:,0], sample_weight=self.train_weights) )
+        print 'area under roc curve for test set = %1.3f \n'%( roc_auc_score(bkg_y_test, self.y_pred_test[:,0], sample_weight=self.test_weights) )
+        print 'area under roc curve for training set (third class vs rest) = %1.3f'%( roc_auc_score(third_class_y_train, self.y_pred_train[:,1], sample_weight=self.train_weights) )
+        print 'area under roc curve for test set = %1.3f'%( roc_auc_score(third_class_y_test, self.y_pred_test[:,1], sample_weight=self.test_weights) ) 
+
+        #get auc for bkg->data
+        #sig_y_pred_test  = self.y_pred_test[self.y_test==1]
+        #sig_weights_test = self.test_weights[self.y_test==1]
+        #sig_y_true_test  = self.y_test[self.y_test==1]
+        #data_weights_test = np.ones(self.X_data_test.values.shape[0])
+        #data_y_true_test  = np.zeros(self.X_data_test.values.shape[0])
+        #data_y_pred_test  = self.clf.predict_proba(self.X_data_test.values)[:,1:]
+        #print 'Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
+        #                                                                               np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
+        #                                                                               sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
+        #                                                                             )
+        #                                                               )
+        
 
     def plot_roc(self, out_tag):
         """
@@ -383,4 +503,31 @@ class BDTHelpers(object):
         output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
         print('saving: {0}/plotting/plots/{1}/{1}_output_score.pdf'.format(os.getcwd(), out_tag))
         plt.close()
+
+    def plot_output_score_three_class(self, out_tag, ratio_plot=False, norm_to_data=False, log=False, third_class=''):
+        """
+        Plot the output score for the classifier, for signal, background, and data
+
+        Arguments
+        ---------
+        out_tag: string
+            output tag used as part of the image name, when saving
+        ratio_plot: bool
+            whether to plot the ratio between simulated background and data
+        norm_to_data: bool
+            whether to normalise the integral of the simulated background, to the integral in data
+        """
+
+        #class_id = {'Background':0, 'Third_Class':1 ,'Signal':2}
+        class_id = {'Other_backgrounds':0, 'VBF_Z':1 ,'VBF_Signal':2}
+        for clf_class, _id in class_id.iteritems():
+            #plot all processes for each predicted class
+            y_pred_test  = self.y_pred_test[:,_id]
+            output_score_fig = self.plotter.plot_output_score_three_class(self.y_test, y_pred_test, self.test_weights, 
+                                                                          norm_to_data=norm_to_data, log=log, clf_class=clf_class)
+
+            Utils.check_dir('{}/plotting/plots/{}'.format(os.getcwd(),out_tag))
+            output_score_fig.savefig('{0}/plotting/plots/{1}/{1}_output_score_clf_class_{2}.pdf'.format(os.getcwd(), out_tag, clf_class))
+            print('saving: {0}/plotting/plots/{1}/{1}_output_score_clf_class_{2}.pdf'.format(os.getcwd(), out_tag, clf_class))
+            plt.close()
 

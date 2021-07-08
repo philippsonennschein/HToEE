@@ -77,13 +77,9 @@ class ROOTHelpers(object):
         self.lumi_map           = {'2016':35.9, '2017':41.5, '2018':59.7}
         self.lumi_scale         = True
         self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'ggH_Hgg':48.58*0.002, 'VBF_Hgg':3.782*0.002, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57, 'EWKZ':0.077, 'EWKZlowmass':1.014} #all in pb. also have BR for signals
-        #self.eff_acc            = {'2016':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0585919, 'TT2L2Nu':0.0157311, 'TTSemiL':0.0000669, 'EWKZ':0.1377463, 'EWKZlowmass':0.0910068}, #Pass11 from dumper, year dependent. update if selec changes
-        #                           '2017':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0628011, 'TT2L2Nu':0.0165516, 'TTSemiL':0.0000897, 'EWKZ':0.1498280, 'EWKZlowmass':0.1010014},
-        #                           '2018':{'ggH':0.3736318, 'VBF':0.3766126,'ggH_Hgg':0.0002956, 'VBF_Hgg':0.0003075, 'DYMC':0.0633490, 'TT2L2Nu':0.0167453, 'TTSemiL':0.0000873, 'EWKZ':0.1449787, 'EWKZlowmass':0.0633490}
-        #                          }     
-        self.eff_acc            = {'2016':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0609090, 'TT2L2Nu':0.0169947, 'TTSemiL':0.0000744, 'EWKZ':0.1459372, 'EWKZlowmass':0.0916680}, #Pass12 from dumper, year dependent. update if selec changes. Some 2018 samples missing so used 2017 replacements
-                                   '2017':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0657847, 'TT2L2Nu':0.0179210, 'TTSemiL':0.0000992, 'EWKZ':0.1591736, 'EWKZlowmass':0.1017548},
-                                   '2018':{'ggH':0.3914771, 'VBF':0.3984174,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0661408, 'TT2L2Nu':0.0187125, 'TTSemiL':0.0000992, 'EWKZ':0.1591736, 'EWKZlowmass':0.1017548}
+        self.eff_acc            = {'2016':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0616372, 'TT2L2Nu':0.0174159, 'TTSemiL':0.0000767, 'EWKZ':0.1486675, 'EWKZlowmass':0.0918884}, #Pass12 from dumper, year dependent. update if selec changes. Some 2018 samples missing so used 2017 replacements
+                                   '2017':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0666640, 'TT2L2Nu':0.0183775, 'TTSemiL':0.0001024, 'EWKZ':0.1622887, 'EWKZlowmass':0.1020059},
+                                   '2018':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0670423, 'TT2L2Nu':0.0190231, 'TTSemiL':0.0000873, 'EWKZ':0.1536919, 'EWKZlowmass':0.0984495}
                                   }     
 
         self.out_tag            = out_tag

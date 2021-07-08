@@ -46,7 +46,7 @@ def main(options):
   
         #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
         # is applied here and all df's are resaved for smaller mem
-        if options.pt_reweight and options.reload_samples:  #FIXME what about reading files in first time, wanting to pT rew, but not including options.reload samples? It wont reweight and save the reweighted df's
+        if options.pt_reweight and options.reload_samples: 
             root_obj.apply_pt_rew('DYMC', presel)
             #root_obj.pt_njet_reweight('DYMC', year, presel)
 
@@ -54,7 +54,7 @@ def main(options):
 
         #set up X, w and y, train-test 
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
-        bdt_hee.create_X_and_y(mass_res_reweight=True)
+        bdt_hee.create_X_and_y_three_class(options.third_class, mass_res_reweight=True)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -96,17 +96,18 @@ def main(options):
 
         #else just train BDT with default HPs
         else:
-            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
+            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_three_class_clf')
             #bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
-            bdt_hee.compute_roc()
-            bdt_hee.plot_roc(output_tag)
-            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=True)
+            bdt_hee.compute_roc_three_class(third_class=options.third_class)
+            #bdt_hee.plot_roc(output_tag)
+            bdt_hee.plot_output_score_three_class(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=False)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     required_args = parser.add_argument_group('Required Arguments')
     required_args.add_argument('-c','--config', action='store', required=True)
+    required_args.add_argument('-T','--third_class', action='store', required=True, type=str)
     opt_args = parser.add_argument_group('Optional Arguements')
     opt_args.add_argument('-r','--reload_samples', action='store_true', default=False)
     opt_args.add_argument('-w','--eq_train', action='store_true', default=False)
