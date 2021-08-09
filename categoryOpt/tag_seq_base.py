@@ -75,14 +75,12 @@ class taggerBase(object):
                                          self.combined_df['subleadElectronPtOvM'].gt(0.25) &
                                          self.combined_df['dijetMass'].gt(350) &
                                          self.combined_df['leadJetPt'].gt(40) &
-                                         self.combined_df['subleadJetPt'].gt(30)
+                                         self.combined_df['subleadJetPt'].gt(25)
                                         ],
                                  'ggH': [self.combined_df['dielectronMass'].gt(110) & 
                                          self.combined_df['dielectronMass'].lt(150) &
                                          self.combined_df['leadElectronPtOvM'].gt(0.333) &
-                                         self.combined_df['subleadElectronPtOvM'].gt(0.25) &
-                                         self.combined_df['leadJetPt'].gt(25) &
-                                         self.combined_df['subleadJetPt'].gt(25)
+                                         self.combined_df['subleadElectronPtOvM'].gt(0.25)
                                         ]       
                                  }
 

@@ -43,7 +43,7 @@ def main(options):
         for data_obj in root_obj.data_objects:
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat() 
-  
+
         #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
         # is applied here and all df's are resaved for smaller mem
         if options.pt_reweight and options.reload_samples:  #FIXME what about reading files in first time, wanting to pT rew, but not including options.reload samples? It wont reweight and save the reweighted df's
@@ -56,6 +56,7 @@ def main(options):
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
         bdt_hee.create_X_and_y(mass_res_reweight=True)
 
+
         #submit the HP search if option true
         if options.hp_perm is not None:
             if options.opt_hps and options.train_best:
@@ -63,7 +64,7 @@ def main(options):
             elif options.opt_hps and options.hp_perm:
                 raise Exception('opt_hps option submits scripts with the hp_perm option; Cannot submit a script with both!')
             else: 
-                print 'About to train + validate on dataset with {} fold splitting'.format(options.k_folds)
+                print( 'About to train + validate on dataset with {} fold splitting'.format(options.k_folds))
                 bdt_hee.set_hyper_parameters(options.hp_perm)
                 bdt_hee.set_k_folds(options.k_folds)
                 for i_fold in range(options.k_folds):
@@ -87,7 +88,7 @@ def main(options):
             with open('{}/bdt_hp_opt_{}.txt'.format(mc_dir, output_tag),'r') as val_roc_file:
                 hp_roc = val_roc_file.readlines()
                 best_params = hp_roc[-1].split(';')[0]
-                print 'Best classifier params are: {}'.format(best_params)
+                print ('Best classifier params are: {}'.format(best_params))
                 bdt_hee.set_hyper_parameters(best_params)
                 bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag)
                 bdt_hee.compute_roc()
@@ -100,6 +101,7 @@ def main(options):
             #bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
+            #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=False)
             bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=True)
 
 if __name__ == "__main__":

@@ -1,37 +1,53 @@
-#pass 6 names
+
 syst_map  = {'jerUp'  : 
-                      ['leadJetEn', 'leadJetMass', 'leadJetPt',
-                       'subleadJetEn', 'subleadJetMass', 'subleadJetPt',
-                       'subsubleadJetEn', 'subsubleadJetMass', 'subsubleadJetPt',
-                       'dijetPt', 'dijetMass'],
+                      ['leadJetEn','leadJetPt', 'leadJetEta', 'leadJetPhi', 'leadJetQGL', #'leadJetMass',
+                       'subleadJetEn', 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #'subleadJetMass', 
+                       'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #'subsubleadJetMass', 
+                       'dijetPt', 'dijetMass', 'dijetAbsDEta', 'dijetDPhi', 'dijetMinDRJetEle', 
+                       'dijetCentrality', 'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta','leadJetDieleDPhi',
+                       'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'],
              'jerDown': 
-                      ['leadJetEn', 'leadJetMass', 'leadJetPt',
-                       'subleadJetEn', 'subleadJetMass', 'subleadJetPt',
-                       'subsubleadJetEn', 'subsubleadJetMass', 'subsubleadJetPt',
-                       'dijetPt', 'dijetMass'],
+                      ['leadJetEn','leadJetPt', 'leadJetEta', 'leadJetPhi', 'leadJetQGL', #'leadJetMass',
+                       'subleadJetEn', 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #'subleadJetMass', 
+                       'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #'subsubleadJetMass', 
+                       'dijetPt', 'dijetMass', 'dijetAbsDEta', 'dijetDPhi', 'dijetMinDRJetEle', 
+                       'dijetCentrality', 'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta','leadJetDieleDPhi',
+                       'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'],
 
              'jesTotalUp': 
-                      ['leadJetEn', 'leadJetMass', 'leadJetPt',
-                      'subleadJetEn', 'subleadJetMass', 'subleadJetPt',
-                      'subsubleadJetEn', 'subsubleadJetMass', 'subsubleadJetPt',
-                      'dijetPt', 'dijetMass'],
+                      ['leadJetEn','leadJetPt', 'leadJetEta', 'leadJetPhi', 'leadJetQGL', #'leadJetMass',
+                       'subleadJetEn', 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #'subleadJetMass', 
+                       'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #'subsubleadJetMass', 
+                       'dijetPt', 'dijetMass', 'dijetAbsDEta', 'dijetDPhi', 'dijetMinDRJetEle', 
+                       'dijetCentrality', 'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta','leadJetDieleDPhi',
+                       'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'],
              'jesTotalDown': 
-                      ['leadJetEn', 'leadJetMass', 'leadJetPt',
-                       'subleadJetEn', 'subleadJetMass', 'subleadJetPt',
-                       'subsubleadJetEn', 'subsubleadJetMass', 'subsubleadJetPt',
-                       'dijetPt', 'dijetMass'],
+                      ['leadJetEn','leadJetPt', 'leadJetEta', 'leadJetPhi', 'leadJetQGL', #'leadJetMass',
+                       'subleadJetEn', 'subleadJetPt','subleadJetEta', 'subleadJetPhi', 'subleadJetQGL', #'subleadJetMass', 
+                       'subsubleadJetEn', 'subsubleadJetPt','subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL', #'subsubleadJetMass', 
+                       'dijetPt', 'dijetMass','dijetAbsDEta', 'dijetDPhi', 'dijetMinDRJetEle', 
+                       'dijetCentrality', 'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta','leadJetDieleDPhi',
+                       'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'],
 
              'ElPtScaleUp': 
-                      ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
+                      ['leadElectronEn', 'leadElectronPt', 'leadElectronEta', #'leadElectronPhi', #'leadElectronMass', 
+                       'subleadElectronEta', #'subleadElectronPhi', #do we use phi?
                        #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', #never use these
                        #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', never use these
-                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
+                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt',
+                       'dielectronCosPhi', 'dijetMinDRJetEle', 'dijetCentrality', 'dijetDieleAbsDPhiTrunc',
+                       'dijetDieleAbsDEta', 'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi',
+                       'subleadJetDieleDEta'
                       ],
              'ElPtScaleDown': 
-                      ['leadElectronEn', 'leadElectronMass', 'leadElectronPt', 
-                       #'subleadElectronEn','subleadElectronMass', 'subleadElectronPt', #never use these
-                       #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', #never use these
-                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt'
+                      ['leadElectronEn', 'leadElectronPt', 'leadElectronEta', #'leadElectronPhi', #'leadElectronMass', 
+                       'subleadElectronEta', #'subleadElectronPhi', #do we use phi?
+                       #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', #never use these
+                       #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', never use these
+                       'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronMass', 'dielectronPt',
+                       'dielectronCosPhi', 'dijetMinDRJetEle', 'dijetCentrality', 'dijetDieleAbsDPhiTrunc',
+                       'dijetDieleAbsDEta', 'leadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDPhi',
+                       'subleadJetDieleDEta'
                       ],
             }
 
@@ -43,3 +59,5 @@ weight_systs = {'L1PreFiringWeight': {'exts':['_Dn', '_Nom', '_Up'], 'years':['2
                 'ElectronRecoSF':    {'exts':['Down', '', 'Up'], 'years':['2016', '2017', '2018']},
                 'TriggerSF':         {'exts':['Down', '', 'Up'], 'years':['2016', '2017', '2018']}
                }
+
+

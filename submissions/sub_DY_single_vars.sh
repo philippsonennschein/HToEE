@@ -24,6 +24,7 @@ ls .
 
 source setup.sh
 
+ulimit -s unlimited 
 echo "About to run the following command:"
 echo $CMD
 if ( $CMD ) then

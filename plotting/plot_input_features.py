@@ -53,7 +53,7 @@ def main(options):
         #set up X, w and y, train-test 
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
         #for var in train_vars+['dielectronMass','dielectronPt']:
-        for var in ['dielectronPt']:
+        for var in ['dielectronMass']:
             plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
 
 if __name__ == "__main__":

@@ -17,18 +17,18 @@ mc_file_names:
         ggH:
             #'2016': 'ggH_UL2017.root' #re-use 2017 in 2016 for now
             '2017': 'ggH_UL2017.root'
-            '2018': 'ggH_UL2017.root' #re-use 2017 in 2018 for now
+            #'2018': 'ggH_UL2017.root' #re-use 2017 in 2018 for now
     bkg:
         DYMC:
             #'2016': 'DY_UL2016.root'
             '2017': 'DY_UL2017.root'
-            '2018': 'DY_UL2018.root'
+            #'2018': 'DY_UL2018.root'
 
 data_file_names:
     Data:
         #'2016': 'Data_UL2016.root'
         '2017': 'Data_UL2017.root'
-        '2018': 'Data_UL2018.root'
+        #'2018': 'Data_UL2018.root'
 
 #.root MC files for all years (bkg) should have these tree path:
 proc_to_tree_name:
@@ -69,11 +69,9 @@ vars_to_add:
 
 #preselection that will be applied to all samples. Here we want events in a ggH-like Z-mass control region 
 preselection:
-    'dielectronMass > 75 and dielectronMass < 105'
+    'dielectronMass > 80 and dielectronMass < 100'
 
 cut_map:
     dielectronMass: ['>80','<100']
     leadElectronPtOvM: ['>0.333']
     subleadElectronPtOvM: ['>0.25']
-    leadJetPt: ['>25']
-    subleadJetPt: ['>25']

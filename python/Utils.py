@@ -9,7 +9,7 @@ class Utils(object):
         Check directory exists; if not make it.
         '''
         if not os.path.isdir(file_dir):
-            print 'making directory: {}'.format(file_dir)
+            print ('making directory: {}'.format(file_dir))
             os.system('mkdir -p %s' %file_dir)
 
     @classmethod 

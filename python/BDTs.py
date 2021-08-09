@@ -95,6 +95,7 @@ class BDTHelpers(object):
         mc_df_bkg['y'] = np.zeros(self.data_obj.mc_df_bkg.shape[0]).tolist()
 
 
+
         if self.eq_train: 
             if mass_res_reweight:
                 #be careful not to change the real weight variable, or test scores will be invalid
@@ -130,7 +131,7 @@ class BDTHelpers(object):
            self.train_weights_eq = train_w_eqw.values
            self.eq_train = True #use alternate weight in training. could probs rename this to something better
         else:
-           print 'not applying any reweighting...'
+           print ('not applying any reweighting...')
            Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
            X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], 
                                                                                                                Z_tot['weight'],
@@ -139,6 +140,7 @@ class BDTHelpers(object):
                                                                                                                #test_size=1-self.train_frac,
                                                                                                                shuffle=True, random_state=1357
                                                                                                                )
+
         self.X_train          = X_train.values
         self.y_train          = y_train.values
         self.train_weights    = train_w.values
@@ -218,7 +220,7 @@ class BDTHelpers(object):
            self.train_weights_eq = train_w_eqw.values
            self.eq_train = True #use alternate weight in training. could probs rename this to something better
         else:
-           print 'not applying any reweighting...'
+           print ('not applying any reweighting...')
            Z_tot = pd.concat([mc_df_sig, mc_df_bkg], ignore_index=True)
            X_train, X_test, train_w, test_w, y_train, y_test, proc_arr_train, proc_arr_test = train_test_split(Z_tot[self.train_vars], 
                                                                                                                Z_tot['weight'],
@@ -257,9 +259,9 @@ class BDTHelpers(object):
         if self.eq_train: train_weights = self.train_weights_eq
         else: train_weights = self.train_weights
 
-        print 'Training classifier... '
+        print ('Training classifier... ')
         clf = self.clf.fit(self.X_train, self.y_train, sample_weight=train_weights)
-        print 'Finished Training classifier!'
+        print ('Finished Training classifier!')
         self.clf = clf
 
         Utils.check_dir(os.getcwd() + '/models')
@@ -391,7 +393,7 @@ class BDTHelpers(object):
 
         hp_roc = roc_file.readlines()
         avg_val_auc = np.average(self.validation_rocs)
-        print 'avg. validation roc is: {}'.format(avg_val_auc)
+        print ('avg. validation roc is: {}'.format(avg_val_auc))
         if len(hp_roc)==0: 
             roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
         elif float(hp_roc[-1].split(';')[-1]) < avg_val_auc:
@@ -409,10 +411,10 @@ class BDTHelpers(object):
         """
 
         self.y_pred_train = self.clf.predict_proba(self.X_train)[:,1:]
-        print 'Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights))
+        print ('Area under ROC curve for train set is: {:.4f}'.format(roc_auc_score(self.y_train, self.y_pred_train, sample_weight=self.train_weights)))
 
         self.y_pred_test = self.clf.predict_proba(self.X_test)[:,1:]
-        print 'Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights))
+        print ('Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)))
 
         #get auc for bkg->data
         sig_y_pred_test  = self.y_pred_test[self.y_test==1]
@@ -421,11 +423,11 @@ class BDTHelpers(object):
         data_weights_test = np.ones(self.X_data_test.values.shape[0])
         data_y_true_test  = np.zeros(self.X_data_test.values.shape[0])
         data_y_pred_test  = self.clf.predict_proba(self.X_data_test.values)[:,1:]
-        print 'Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
+        print ('Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
                                                                                        np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
                                                                                        sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
                                                                                      )
-                                                                       )
+                                                                        ))
 
         return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
@@ -447,12 +449,12 @@ class BDTHelpers(object):
         third_class_y_train = np.where(self.y_train==1, 1, 0)
         third_class_y_test  = np.where(self.y_test==1, 1, 0)
 
-        print 'area under roc curve for training set (sig vs rest) = %1.3f'%( roc_auc_score(sig_y_train, self.y_pred_train[:,2], sample_weight=self.train_weights) )
-        print 'area under roc curve for test set = %1.3f \n'%( roc_auc_score(sig_y_test, self.y_pred_test[:,2], sample_weight=self.test_weights) )
-        print 'area under roc curve for training set (bkg vs rest) = %1.3f'%( roc_auc_score(bkg_y_train, self.y_pred_train[:,0], sample_weight=self.train_weights) )
-        print 'area under roc curve for test set = %1.3f \n'%( roc_auc_score(bkg_y_test, self.y_pred_test[:,0], sample_weight=self.test_weights) )
-        print 'area under roc curve for training set (third class vs rest) = %1.3f'%( roc_auc_score(third_class_y_train, self.y_pred_train[:,1], sample_weight=self.train_weights) )
-        print 'area under roc curve for test set = %1.3f'%( roc_auc_score(third_class_y_test, self.y_pred_test[:,1], sample_weight=self.test_weights) ) 
+        print ('area under roc curve for training set (sig vs rest) = %1.3f'%( roc_auc_score(sig_y_train, self.y_pred_train[:,2], sample_weight=self.train_weights) ))
+        print ('area under roc curve for test set = %1.3f \n'%( roc_auc_score(sig_y_test, self.y_pred_test[:,2], sample_weight=self.test_weights) ))
+        print ('area under roc curve for training set (bkg vs rest) = %1.3f'%( roc_auc_score(bkg_y_train, self.y_pred_train[:,0], sample_weight=self.train_weights) ))
+        print ('area under roc curve for test set = %1.3f \n'%( roc_auc_score(bkg_y_test, self.y_pred_test[:,0], sample_weight=self.test_weights) ))
+        print ('area under roc curve for training set (third class vs rest) = %1.3f'%( roc_auc_score(third_class_y_train, self.y_pred_train[:,1], sample_weight=self.train_weights) ))
+        print ('area under roc curve for test set = %1.3f'%( roc_auc_score(third_class_y_test, self.y_pred_test[:,1], sample_weight=self.test_weights) ))
 
         #get auc for bkg->data
         #sig_y_pred_test  = self.y_pred_test[self.y_test==1]
