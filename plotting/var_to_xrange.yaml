@@ -1,5 +1,5 @@
 var_to_xrange: 
-    'leadJetEn':               [0,4000,false]
+    'leadJetEn':               [0,2000,false]
     'leadJetPt':               [0,350,false]
     'leadJetEta':              [-5.,5,false]
     'leadJetPhi':              [-4.,4,false]
@@ -29,7 +29,6 @@ var_to_xrange:
     'subleadElectronEta':      [-2.6,2.6,false]
     'dielectronCosPhi':        [-1.,1,true]
     'dielectronPt':            [0,200,false]
-    'dielectronMass':          [110,150,false]
     'leadJetDieleDPhi':        [-4.,4,false]
     'leadJetDieleDEta':        [-8.,8,false]
     'subleadJetDieleDPhi':     [-4.,4,false]
@@ -42,3 +41,12 @@ var_to_xrange:
     'leadJetBTagScore':        [0,1]
     'subleadJetBTagScore':     [0,1]
     'subsubleadJetBTagScore':  [0,1]
+
+    #'dielectronMass':          [110,150,false]
+    'dielectronMass':          [80,100,false]
+    'leadJetPUJID':            [0,7,false]
+    'subleadJetPUJID':         [0,7,false]
+    'subsubleadJetPUJID':      [0,7,false]
+    'leadJetID':               [0,7,false]
+    'subleadJetID':            [0,7,false]
+    'subsubleadJetID':         [0,7,false]

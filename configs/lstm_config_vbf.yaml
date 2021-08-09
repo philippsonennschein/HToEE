@@ -29,7 +29,11 @@ mc_file_names:
         TTSemiL:
             '2016': 'TTSemi_UL2016.root'
             '2017': 'TTSemi_UL2017.root'
-            '2018': 'TTSemi_UL2018.root'
+            '2018': 'TTSemi_UL2017.root' #dont have 2018 atm
+        EWKZ:
+            '2016': 'EWKZ_2016.root'
+            '2017': 'EWKZ_2017.root'
+            '2018': 'EWKZ_2018.root'
 
 data_file_names:
     Data:
@@ -44,6 +48,7 @@ proc_to_tree_name:
     Data: 'Events'
     TT2L2Nu: 'Events'
     TTSemiL: 'Events'
+    EWKZ: 'Events'
 
 #X variables to train with (4 vectors of jets... and maybe photons... anything else that is low-level and maybe useful?)
 object_vars:

@@ -27,12 +27,11 @@ class Plotter(object):
         self.sig_labels   = np.unique(self.sig_df['proc'].values).tolist()
         self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
 
-        self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs
+        self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs for VBF
         self.bkg_colours  = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61'] #temo better for VBF
+        #self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59'] #better for ggH
 
         self.sig_colour   = sig_col
-        #self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59'] #better for ggH
-        #self.bkg_colours  = ['#abd9e9', '#2c7bb6', '#ffffbf', '#fdae61'] #better for VBF
         self.normalise    = normalise
 
         self.sig_scaler   = 5*10**7
@@ -293,23 +292,27 @@ class Plotter(object):
             ratio.set_ylim(0, 2)
             ratio.grid(True, linestyle='dotted')
         else: axes.set_xlabel('{} Score'.format(MVA), ha='right', x=1, size=13)
-        self.plot_cms_labels(axes)
+        self.plot_cms_labels(axes, lumi='137')
 
         current_bottom, current_top = axes.get_ylim()
         if log: 
             axes.set_yscale('log', nonposy='clip')
-            axes.set_ylim(bottom=1, top=current_top*20)
+            axes.set_ylim(bottom=1, top=current_top*100)
         else: 
             axes.set_ylim(bottom=0, top=current_top*1.45)
+
         #ggH
-        #axes.axvline(0.769, ymax=0.7, color='black', linestyle='--')
-        #axes.axvline(0.587, ymax=0.7, color='black', linestyle='--')
-        #axes.axvline(0.276, ymax=0.7, color='black', linestyle='--')
-        #axes.axvspan(0, 0.276, ymax=0.7, color='grey', alpha=0.35)
+        #axes.axvline(0.890, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.741, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.577, ymax=0.7, color='black', linestyle='--')
+        #axes.axvline(0.213, ymax=0.7, color='black', linestyle='--')
+        #axes.axvspan(0, 0.213, ymax=0.7, color='grey', alpha=0.35)
+
         #VBF BDT
-        #axes.axvline(0.899, ymax=0.7, color='black', linestyle='--')
-        #axes.axvline(0.778, ymax=0.7, color='black', linestyle='--')
-	#axes.axvspan(0, 0.778, ymax=0.7, color='grey', alpha=0.35)
+        axes.axvline(0.890, ymax=0.7, color='black', linestyle='--')
+        axes.axvline(0.741, ymax=0.7, color='black', linestyle='--')
+	axes.axvspan(0, 0.741, ymax=0.7, color='grey', alpha=0.35)
+
 	#VBF DNN
 	#axes.axvline(0.907, ymax=0.71, color='black', linestyle='--')
 	#axes.axvline(0.750, ymax=0.71, color='black', linestyle='--')

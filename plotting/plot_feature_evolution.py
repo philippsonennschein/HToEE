@@ -24,7 +24,7 @@ def annotate_and_save(axes, plotter, var):
     axes.set_ylim(bottom=0, top=current_top*1.3)
     #axes.legend(bbox_to_anchor=(0.97,0.97), ncol=2)
     axes.legend(loc='upper center', bbox_to_anchor=(0.5,0.97), ncol=2)
-    plotter.plot_cms_labels(axes)
+    plotter.plot_cms_labels(axes, lumi='137')
 
     var_name_safe = var.replace('_',' ')
     #axes.set_xlim(left=plotter.var_to_xrange[var][0], right=plotter.var_to_xrange[var][1])

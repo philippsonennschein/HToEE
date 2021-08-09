@@ -1,9 +1,9 @@
 #data handling imports
-import uproot as upr
+import sys 
+import uproot as upr 
 import numpy as np
 import pandas as pd
 import os
-from numpy import pi
 from os import path, system
 import yaml
 
@@ -78,7 +78,7 @@ class ROOTHelpers(object):
         self.lumi_scale         = True
         self.XS_map             = {'ggH':48.58*5E-9, 'VBF':3.782*5E-9, 'ggH_Hgg':48.58*0.002, 'VBF_Hgg':3.782*0.002, 'DYMC': 6225.4, 'TT2L2Nu':86.61, 'TTSemiL':358.57, 'EWKZ':0.077, 'EWKZlowmass':1.014} #all in pb. also have BR for signals
         self.eff_acc            = {'2016':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0616372, 'TT2L2Nu':0.0174159, 'TTSemiL':0.0000767, 'EWKZ':0.1486675, 'EWKZlowmass':0.0918884}, #Pass12 from dumper, year dependent. update if selec changes. Some 2018 samples missing so used 2017 replacements
-                                   '2017':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0666640, 'TT2L2Nu':0.0183775, 'TTSemiL':0.0001024, 'EWKZ':0.1622887, 'EWKZlowmass':0.1020059},
+                                   '2017':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0682672, 'TT2L2Nu':0.0183775, 'TTSemiL':0.0001024, 'EWKZ':0.1622887, 'EWKZlowmass':0.1020059},
                                    '2018':{'ggH':0.3974256, 'VBF':0.4056857,'ggH_Hgg':0.0003021, 'VBF_Hgg':0.0003171, 'DYMC':0.0670423, 'TT2L2Nu':0.0190231, 'TTSemiL':0.0000873, 'EWKZ':0.1536919, 'EWKZlowmass':0.0984495}
                                   }     
 
@@ -240,7 +240,7 @@ class ROOTHelpers(object):
         df: pandas dataframe that was read in.
         """
 
-        #print 'loading {}{}_{}_df_{}.pkl'.format(df_dir, proc, self.out_tag, year)
+        #print ('loading {}{}_{}_df_{}.pkl'.format(df_dir, proc, self.out_tag, year))
         #df = pd.read_hdf('{}{}_{}_df_{}.h5'.format(df_dir, proc, self.out_tag, year))
         #df = pd.read_pickle('{}{}_{}_df_{}.pkl'.format(df_dir, proc, self.out_tag, year))
         df = pd.read_csv('{}{}_{}_df_{}.csv'.format(df_dir, proc, self.out_tag, year))
@@ -348,18 +348,18 @@ class ROOTHelpers(object):
 
         #Do scaling that used to happen in flashgg: XS * BR(for sig only) eff * acc
         sum_w_gen = np.sum(df['genWeight'].values)
-        print 'scaling by {} by XS: {}'.format(proc_tag, self.XS_map[proc_tag])
+        print ('scaling by {} by XS: {}'.format(proc_tag, self.XS_map[proc_tag]))
         df['weight'] *= (self.XS_map[proc_tag]) 
 
         if self.lumi_scale: #should not be doing this in the final Tag producer
-            print 'scaling by {} by Lumi: {} * 1000 /pb'.format(proc_tag, self.lumi_map[year])
+            print ('scaling by {} by Lumi: {} * 1000 /pb'.format(proc_tag, self.lumi_map[year]))
             df['weight'] *= self.lumi_map[year]*1000 #lumi is added earlier but XS is in pb, so need * 1000
 
-        print 'scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[year][proc_tag])
+        print ('scaling by {} by eff*acc: {}'.format(proc_tag, self.eff_acc[year][proc_tag]))
         df['weight'] *= (self.eff_acc[year][proc_tag])
         df['weight'] /= sum_w_gen
 
-        print 'sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values))
+        print ('sumW for proc {}: {}'.format(proc_tag, np.sum(df['weight'].values)))
 
         return df
 
@@ -436,10 +436,6 @@ class ROOTHelpers(object):
             bkg_pt_binned, _ = np.histogram(bkg_df['dielectronPt'], bins=pt_bins, weights=bkg_df['weight'])
             data_pt_binned, bin_edges = np.histogram(data_df['dielectronPt'], bins=pt_bins)
             year_to_scale_factors[year] = data_pt_binned/bkg_pt_binned
-
-        print 'DEBUG: scale factors for year are', year_to_scale_factors
-        print 'data binned is: {}'.format(data_pt_binned.tolist())
-        print 'mc binned is: {}'.format(bkg_pt_binned.tolist())
 
         #put samples into SR phase space. 
         self.apply_more_cuts(presel)
@@ -595,7 +591,7 @@ class ROOTHelpers(object):
             year for which all samples being saved correspond to
         """
 
-        print 'saving modified dataframes...'
+        print ('saving modified dataframes...')
         if not ignore_sig:
             for sig_proc in self.sig_procs:
                 sig_df = self.mc_df_sig[np.logical_and(self.mc_df_sig.proc==sig_proc, self.mc_df_sig.year==year)]

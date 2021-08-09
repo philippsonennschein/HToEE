@@ -51,10 +51,12 @@ def main(options):
                                                 #LSTM stuff#
 
         LSTM = LSTM_DNN(root_obj, object_vars, event_vars, options.train_frac, options.eq_weights, options.batch_boost)
+
         if not options.opt_hps:
             LSTM.var_transform(do_data=True)
             X_tot, y_tot = LSTM.create_X_y(mass_res_reweight=True)
             LSTM.split_X_y(X_tot, y_tot, do_data=True)
+
             if options.hp_perm is not None: LSTM.get_X_scaler(LSTM.all_vars_X_train, out_tag=output_tag, save=False)
             else: LSTM.get_X_scaler(LSTM.all_vars_X_train, out_tag=output_tag)
             LSTM.X_scale_train_test(do_data=True)

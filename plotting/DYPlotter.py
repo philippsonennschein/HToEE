@@ -56,7 +56,7 @@ class DYPlotter(object):
             else: selection_str.append(var_name+cuts[0])
         separator = ' and '
         all_selection = separator.join(selection_str)
-        print 'DEBUG: final selection looks like: {}'.format(self.cut_map.iteritems())
+        print 'DEBUG: final selection looks like: {}'.format(all_selection)
 
         presel_mc   = self.root_obj.mc_df_bkg.query(all_selection)
         presel_data = self.root_obj.data_df.query(all_selection)
@@ -109,7 +109,10 @@ class DYPlotter(object):
     def plot_data(self, cut_string, axes, variable, bins):
         """ self explanatory """
 
+        print 'DEBUG: cut string is: {}'.format(cut_string)
+        print 'DEBUG: sumW of hist BEFORE CUTS: {}, for data is: {}'.format(variable,np.sum(self.root_obj.data_df['weight'].values))
         cut_df             = self.root_obj.data_df.query(cut_string)
+        print 'DEBUG: sumW of hist AFTER CUTS: {}, for data is: {}'.format(variable,np.sum(cut_df['weight']))
         var_to_plot        = cut_df[variable].values
         var_weights        = cut_df['weight'].values
         del cut_df
@@ -189,7 +192,8 @@ class DYPlotter(object):
             print 'DEBUG: syst down vars '
             print syst_dfs['Down'][['leadJetEn', 'dijetMass', 'leadJetEta']]
             for syst_type in syst_dfs.keys():
-                syst_dfs[syst_type]['weight'] = syst_dfs[syst_type]['weight'].copy() * self.k_factor
+                syst_dfs[syst_type]['weight'] = syst_dfs[syst_type]['weight'].copy() * self.k_factor #FIXME check can remove the copy()
+                #syst_dfs[syst_type]['weight'] *= self.k_factor #FIXME check can remove the copy()
                 if do_mva: syst_dfs[syst_type][self.proc+'_mva'] = self.eval_bdt(self.clf, syst_dfs[syst_type], self.root_obj.train_vars)
             syst_objects[syst_name] = Systematic(syst_name, down_frame=syst_dfs['Down'], up_frame=syst_dfs['Up'])
             #print 'DEBUG: for syst: {}, MVA up/down diff are equal: {} !!'.format(syst_name, np.array_equal(syst_dfs['Up'][self.proc+'_mva'],syst_dfs['Down'][self.proc+'_mva']))
@@ -435,7 +439,10 @@ class DYPlotter(object):
         #if variable.norm: axes[0].set_ylabel('1/N dN/d(%s) /%.2f' % (variable.xlabel,x_err, ha='right', y=1)
         axes[0].text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes[0].transAxes, size=14)
         #axes[0].text(1, 1.01, r'137 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
-        axes[0].text(1, 1.01, r'41.5 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        #axes[0].text(1, 1.01, r'59.7 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        #axes[0].text(1, 1.01, r'41.5 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        #axes[0].text(1, 1.01, r'35.9 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        axes[0].text(1, 1.01, r'(%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
        
         x_label = variable.replace("_", " ")
         axes[1].set_xlabel(x_label, size=14, ha='right', x=1)
