@@ -103,7 +103,8 @@ class ROOTHelpers(object):
         for proc, year_to_file in mc_fnames['sig'].items():
             if proc not in self.sig_procs: self.sig_procs.append(proc) 
             else: raise IOError('Multiple versions of same signal proc trying to be read')
-            for year, file_name in year_to_file.iteritems():
+            #for year, file_name in year_to_file.iteritems():
+            for year, file_name in year_to_file.items():
                 self.years.add(year)
                 if read_systs: final_mc_vars = self.add_year_dep_systs(core_vars, year)
                 else: final_mc_vars = core_vars
@@ -114,7 +115,8 @@ class ROOTHelpers(object):
         for proc, year_to_file in mc_fnames['bkg'].items():
             if proc not in self.bkg_procs: self.bkg_procs.append(proc) 
             else: raise IOError('Multiple versions of same background proc trying to be read')
-            for year, file_name in year_to_file.iteritems():
+            #for year, file_name in year_to_file.iteritems():
+            for file_name in year_to_file.items():
                 if year not in self.years:  raise IOError('Incompatible sample years')
                 self.years.add(year)
                 if read_systs: final_mc_vars = self.add_year_dep_systs(core_vars, year)
@@ -123,7 +125,8 @@ class ROOTHelpers(object):
 
         self.data_objects       = []
         for proc, year_to_file in data_fnames.items():
-            for year, file_name in year_to_file.iteritems():
+            #for year, file_name in year_to_file.iteritems():
+            for year, file_name in year_to_file.items():
                 if year not in self.years:  raise IOError('Incompatible sample years')
                 self.years.add(year)
                 self.data_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=data_vars) )
@@ -273,6 +276,7 @@ class ROOTHelpers(object):
         df: pandas dataframe created from the input ROOT file
         """
 
+        print(proc_tag, file_dir,file_name, year)
         print('Reading {} file: {}, for year: {}'.format(proc_tag, file_dir+file_name, year))
         df_file = upr.open(file_dir+file_name)
         df_tree = df_file[tree_name]

@@ -113,7 +113,8 @@ class BDTHelpers(object):
                                                                                                                                          train_size=self.train_frac, 
                                                                                                                                          #test_size=1-self.train_frac,
                                                                                                                                          shuffle=True, 
-                                                                                                                                         random_state=1357
+                                                                                                                                         random_state=np.random.randint(0,10000)
+                                                                                                                                         #random_state=1357
                                                                                                                                          )
             #NB: will never test/evaluate with equalised weights. This is explicitly why we set another train weight attribute, 
             #    because for overtraining we need to evaluate on the train set (and hence need nominal MC train weights)
@@ -126,7 +127,8 @@ class BDTHelpers(object):
                                                                                                                                         train_size=self.train_frac, 
                                                                                                                                         #test_size=1-self.train_frac,
                                                                                                                                         shuffle=True, 
-                                                                                                                                        random_state=1357
+                                                                                                                                        random_state=np.random.randint(0,10000)
+                                                                                                                                        #random_state=1357
                                                                                                                                         )
            self.train_weights_eq = train_w_eqw.values
            self.eq_train = True #use alternate weight in training. could probs rename this to something better
@@ -138,7 +140,9 @@ class BDTHelpers(object):
                                                                                                                Z_tot['y'], Z_tot['proc'],
                                                                                                                train_size=self.train_frac, 
                                                                                                                #test_size=1-self.train_frac,
-                                                                                                               shuffle=True, random_state=1357
+                                                                                                               shuffle=True,
+                                                                                                               random_state=np.random.randint(0,10000)
+                                                                                                               #random_state=1357
                                                                                                                )
 
         self.X_train          = X_train.values
@@ -151,7 +155,8 @@ class BDTHelpers(object):
         self.test_weights     = test_w.values
         self.proc_arr_test    = proc_arr_test
 
-        self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
+        #self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=1357)
+        self.X_data_train, self.X_data_test = train_test_split(self.data_obj.data_df[self.train_vars], train_size=self.train_frac, test_size=1-self.train_frac, shuffle=True, random_state=np.random.randint(0,10000))
 
     def create_X_and_y_three_class(self, third_class, mass_res_reweight=True):
         """
@@ -400,7 +405,7 @@ class BDTHelpers(object):
             roc_file.write('\n')
             roc_file.write('{};{:.4f}'.format(hp_string, avg_val_auc))
 
-    def compute_roc(self):
+    def compute_roc(self, return_data=False):
         """
         Compute the area under the associated ROC curve, with mc weights. Also compute with blinded data as bkg
 
@@ -417,19 +422,21 @@ class BDTHelpers(object):
         print ('Area under ROC curve for test set is: {:.4f}'.format(roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)))
 
         #get auc for bkg->data
-        sig_y_pred_test  = self.y_pred_test[self.y_test==1]
-        sig_weights_test = self.test_weights[self.y_test==1]
-        sig_y_true_test  = self.y_test[self.y_test==1]
+        sig_y_pred_test   = self.y_pred_test[self.y_test==1]
+        sig_weights_test  = self.test_weights[self.y_test==1]
+        sig_y_true_test   = self.y_test[self.y_test==1]
         data_weights_test = np.ones(self.X_data_test.values.shape[0])
         data_y_true_test  = np.zeros(self.X_data_test.values.shape[0])
         data_y_pred_test  = self.clf.predict_proba(self.X_data_test.values)[:,1:]
-        print ('Area under ROC curve with data as bkg is: {:.4f}'.format(roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
-                                                                                       np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
-                                                                                       sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
-                                                                                     )
-                                                                        ))
+        data_roc          = roc_auc_score( np.concatenate((sig_y_true_test, data_y_true_test), axis=None),
+                                                           np.concatenate((sig_y_pred_test, data_y_pred_test), axis=None),
+                                                           sample_weight=np.concatenate((sig_weights_test, data_weights_test), axis=None) 
+                                                          )
+        print ('Area under ROC curve with data and bkg (test) is: {:.4f}'.format(data_roc))
+                                                           
 
-        return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
+        if return_data: return data_roc
+        else: return roc_auc_score(self.y_test, self.y_pred_test, sample_weight=self.test_weights)
 
     def compute_roc_three_class(self, third_class):
         """

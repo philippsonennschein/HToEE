@@ -1,11 +1,23 @@
 import argparse
 import numpy as np
+import pandas as pd
 import yaml
 import sys
 from os import path,system
 
 from DataHandling import ROOTHelpers
 from BDTs import BDTHelpers
+from sklearn.metrics import roc_auc_score, roc_curve
+
+from BorutaShap import BorutaShap 
+import shap
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+try:
+     plt.style.use("cms10_6_HP")
+except IOError:
+     warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 
 def main(options):
 
@@ -95,6 +107,34 @@ def main(options):
                 bdt_hee.plot_roc(output_tag)
                 bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight))
 
+        elif options.feature_selection:
+            if options.eq_train: tw = bdt_hee.train_weights_eq
+            else: tw = bdt_hee.train_weights 
+            slimmed_vars = BorutaShap(bdt_hee.X_train, bdt_hee.y_train, tw, train_vars, i_iters=2, tolerance=0.05, max_vars_removed=15, n_trainings=20)()
+            bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
+
+            explainer = shap.Explainer(bdt_hee.clf)
+            shap_values = explainer(pd.DataFrame(bdt_hee.X_train, columns=train_vars))
+            vals = np.abs(shap_values.values).mean(0)
+            n_importance = {key:value for (key,value) in zip(train_vars,vals)}
+            n_imp_sorted = {k: v for k, v in sorted(n_importance.items(), key=lambda item: item[1])}
+            print('Shapley Importances: {}'.format(n_imp_sorted))
+
+            plt.rcParams.update({'text.usetex':'false'})
+            plt.figure()
+            shap.plots.beeswarm(shap_values, show=False)
+            plt.tight_layout()
+            plt.savefig('studies/shapley_beeswarm_{}.pdf'.format(output_tag), bbox_inches="tight")
+            print(' --> Saved plot: studies/shapley_beeswarm_{}.pdf'.format(output_tag))
+            plt.close()
+
+            plt.figure()
+            shap.plots.bar(shap_values, show=False)
+            plt.tight_layout()
+            plt.savefig('studies/shapley_bar_chart_{}.pdf'.format(output_tag), bbox_inches="tight")
+            print(' --> Saved plot: studies/shapley_bar_chart_{}.pdf'.format(output_tag))
+            plt.close()
+
         #else just train BDT with default HPs
         else:
             bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
@@ -103,6 +143,12 @@ def main(options):
             bdt_hee.plot_roc(output_tag)
             #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=False)
             bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=True)
+
+            with open('studies/n_training_val_roc_MC.txt','a+') as fn:
+                fn.write('\n ROC MC-bkg: {}'.format(bdt_hee.compute_roc()))
+            with open('studies/n_training_val_roc_Data.txt','a+') as fn:
+                data_roc = bdt_hee.compute_roc(return_data=True)
+                fn.write('\n ROC DATA-bkg: {}'.format(data_roc))
 
 if __name__ == "__main__":
 
@@ -118,5 +164,6 @@ if __name__ == "__main__":
     opt_args.add_argument('-b','--train_best', action='store_true', default=False)
     opt_args.add_argument('-t','--train_frac', action='store', default=0.7, type=float)
     opt_args.add_argument('-P','--pt_reweight', action='store_true',default=False)
+    opt_args.add_argument('-f','--feature_selection', action='store_true',default=False)
     options=parser.parse_args()
     main(options)
