@@ -13,25 +13,25 @@ data_file_dir:
 mc_file_names:
     sig:
         VBF:
-            #'2016': 'VBF_UL2017.root' #dont end up using this in dy plots
+            '2016': 'VBF_UL2017.root' #dont end up using this in dy plots
             '2017': 'VBF_UL2017.root'
-            #'2018': 'VBF_UL2017.root'
+            '2018': 'VBF_UL2017.root'
     bkg:
         DYMC:
-            #'2016': 'DY_UL2016.root'
+            '2016': 'DY_UL2016.root'
             '2017': 'DY_UL2017.root'
-            #'2018': 'DY_UL2018.root'
+            '2018': 'DY_UL2018.root'
 
         EWKZlowmass:
-            #'2016': 'EWKZlowmass_2016.root'
+            '2016': 'EWKZlowmass_2016.root'
             '2017': 'EWKZlowmass_2017.root'
-            #'2018': 'EWKZlowmass_2018.root'
+            '2018': 'EWKZlowmass_2018.root'
 
 data_file_names:
     Data:
-        #'2016': 'Data_UL2016.root'
+        '2016': 'Data_UL2016.root'
         '2017': 'Data_UL2017.root'
-        #'2018': 'Data_UL2018.root'
+        '2018': 'Data_UL2018.root'
 
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:

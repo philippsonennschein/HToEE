@@ -91,20 +91,62 @@ class DYPlotter(object):
         for year in self.root_obj.years:
             self.root_obj.save_modified_dfs(year, ignore_sig=True)
 
-    def manage_memory(self):
+    def manage_memory(self, systematics, syst_types=['Up','Down']):
         """
-        Delete dataframe columns that are not needed for data and mc. 
+        Delete dataframe columns that are not needed for data and mc. Also chanege data types to remove precision where possible.
 
         Could also delete systs that are not used (since atm only removing nominal vars but still reading nonimal+syst in because of config format)
         """
 
+        mc_df_mem = self.root_obj.mc_df_bkg.memory_usage(deep=True).sum() / 1000                                            
+        data_df_mem = self.root_obj.data_df.memory_usage(deep=True).sum() / 1000                                            
+        print('Initial memory usage is {} GB'.format(mc_df_mem+data_df_mem))
+
+        from syst_maps import syst_map 
+
+        f32_precision_vars = ['leadElectronPtOvM','subleadElectronPtOvM','leadElectronEta','subleadElectronEta',
+                              'dielectronCosPhi', 'dielectronPt', 'dielectronMass', 'leadJetPt', 'subleadJetPt',
+                              'leadJetEn', 'leadJetEta', 'leadJetPhi', 'leadJetQGL',
+                              'subleadJetEn', 'subleadJetEta', 'subleadJetPhi', 'subleadJetQGL',
+                              'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
+                              'dijetAbsDEta', 'dijetMass', 'dijetDieleAbsDEta', 'dijetDieleAbsDPhiTrunc',
+                              'dijetMinDRJetEle', 'dijetCentrality', 'dijetDPhi', 'leadJetDieleDPhi', 'leadJetDieleDEta',
+                              'subleadJetDieleDPhi', 'subleadJetDieleDEta', 'leadJetPUJID', 'subleadJetPUJID', 'subsubleadJetPUJID'
+                             ]
+        i8_precision_vars  = ['leadElectronCharge', 'subleadElectronCharge '] 
+
+        #get syst variations
+        f32_syst_vars = []
+        i8_syst_vars  = []
+        for syst_name in systematics:
+            for ext in syst_types:
+                f32_syst_vars += [var_name+'_'+syst_name+ext for var_name in f32_precision_vars] 
+                i8_syst_vars  += [var_name+'_'+syst_name+ext for var_name in i8_precision_vars] 
+
+        #remove unused variables
         used_variables = self.root_obj.train_vars+self.cut_map.keys()+['weight']+['proc']
-        #used_variables_w_systs = self.root_obj.train_vars+self.cut_map.keys()+['weight']
-        #FIXME: add syst variables to this too ^
         for col in self.root_obj.data_df.columns: #looping through data columns wont so we dont delete systs
             if col not in used_variables: 
                 del self.root_obj.mc_df_bkg[col]
                 del self.root_obj.data_df[col]
+
+        #change certain dtypes in remaining variables
+        for v in f32_precision_vars+f32_syst_vars:
+            if v in self.root_obj.mc_df_bkg.columns:
+                self.root_obj.mc_df_bkg[v] = self.root_obj.mc_df_bkg[v].astype('float32')
+            if v in self.root_obj.data_df.columns:
+                self.root_obj.data_df[v]   = self.root_obj.data_df[v].astype('float32')
+
+        for v in i8_precision_vars+i8_syst_vars:
+            if v in self.root_obj.mc_df_bkg.columns:
+                self.root_obj.mc_df_bkg[v] = self.root_obj.mc_df_bkg[v].astype('int8')
+            if v in self.root_obj.data_df.columns:
+                self.root_obj.data_df[v]   = self.root_obj.data_df[v].astype('int8')
+          
+        mc_df_mem = self.root_obj.mc_df_bkg.memory_usage(deep=True).sum() / 1000                                            
+        data_df_mem = self.root_obj.data_df.memory_usage(deep=True).sum() / 1000                                            
+        print('Final memory usage is {} GB'.format(mc_df_mem+data_df_mem))
+        print 'dtypes: {}'.format(self.root_obj.mc_df_bkg.dtypes[:])
 
     def plot_data(self, cut_string, axes, variable, bins):
         """ self explanatory """
@@ -382,8 +424,6 @@ class DYPlotter(object):
             #relabel. Delete nominal column frst else pandas throws an exception. Then rename syst col name -> nominal col name
             for n_var, replacement_var in zip(nominal_vars,replacement_vars):
                 #print 'replacing syst title: {} with nominal title: {}'.format(replacement_var, n_var)
-                #FIXME: (CHECKME) check this for certain: e.g. lead jet mass has syst variation but is removed in earlier step since its not used anywhere in the analysis
-                #FIXME  in general: if the variable isnt used in the classifier, we dont need to read in the syst varied versions of it (removed in manage_memory)
                 if n_var in df_copy.columns:
                     del df_copy[n_var]
                     #df_copy.drop(labels=n_var, inplace=True)
@@ -438,11 +478,11 @@ class DYPlotter(object):
         axes[0].set_ylabel('Events / {0:.2g}'.format(2*x_err) , size=14, ha='right', y=1)
         #if variable.norm: axes[0].set_ylabel('1/N dN/d(%s) /%.2f' % (variable.xlabel,x_err, ha='right', y=1)
         axes[0].text(0, 1.01, r'\textbf{CMS} %s'%label, ha='left', va='bottom', transform=axes[0].transAxes, size=14)
-        #axes[0].text(1, 1.01, r'137 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        axes[0].text(1, 1.01, r'137 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
         #axes[0].text(1, 1.01, r'59.7 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
         #axes[0].text(1, 1.01, r'41.5 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
         #axes[0].text(1, 1.01, r'35.9 fb\textsuperscript{-1} (%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
-        axes[0].text(1, 1.01, r'(%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
+        #axes[0].text(1, 1.01, r'(%s)'%(energy), ha='right', va='bottom', transform=axes[0].transAxes, size=14)
        
         x_label = variable.replace("_", " ")
         axes[1].set_xlabel(x_label, size=14, ha='right', x=1)

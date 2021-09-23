@@ -81,8 +81,9 @@ def main(options):
 
     tag_sequence      = ['VBF','ggH']
     true_procs        = ['VBF','ggH']
-    if (not read_syst) and (not options.dump_weight_systs) : true_procs.append('Data') 
-    if options.data_only: true_procs = ['Data']
+    if (not read_syst) and (not options.dump_weight_systs) : true_procs.append('Data') #is this line needed? guess so since could run mc and data together in a stat-only config
+    if options.data_only: true_procs = ['Data'] #do data on its own (for memory really)
+
 
     #create tag object 
     tag_obj = taggerBase(tag_sequence, true_procs, combined_df, syst_name=options.syst_name)

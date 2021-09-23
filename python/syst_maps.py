@@ -30,7 +30,7 @@ syst_map  = {'jerUp'  :
                        'leadJetDieleDEta', 'subleadJetDieleDPhi', 'subleadJetDieleDEta'],
 
              'ElPtScaleUp': 
-                      ['leadElectronEn', 'leadElectronPt', 'leadElectronEta', #'leadElectronPhi', #'leadElectronMass', 
+                      ['leadElectronEta', #'leadElectronEn', 'leadElectronPt','leadElectronPhi', #'leadElectronMass', 
                        'subleadElectronEta', #'subleadElectronPhi', #do we use phi?
                        #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', #never use these
                        #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', never use these
@@ -40,7 +40,7 @@ syst_map  = {'jerUp'  :
                        'subleadJetDieleDEta'
                       ],
              'ElPtScaleDown': 
-                      ['leadElectronEn', 'leadElectronPt', 'leadElectronEta', #'leadElectronPhi', #'leadElectronMass', 
+                      ['leadElectronEta', #'leadElectronEn', 'leadElectronPt', 'leadElectronPhi', #'leadElectronMass', 
                        'subleadElectronEta', #'subleadElectronPhi', #do we use phi?
                        #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', #never use these
                        #'subsubleadElectronEn', 'subsubleadElectronMass', 'subsubleadElectronPt', never use these

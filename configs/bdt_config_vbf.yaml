@@ -19,7 +19,7 @@ mc_file_names:
     bkg:
         DYMC:
             #'2016': 'DY_UL2016.root'
-            '2017': 'DY_UL2017.root'
+            '2017': 'DY_UL2017.root' #re-use 2018 for now
             #'2018': 'DY_UL2018.root'
 
         TT2L2Nu:

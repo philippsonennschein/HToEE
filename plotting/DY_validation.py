@@ -67,38 +67,7 @@ def main(options):
         if options.reload_samples: #FIXME: reading in for the first time  wont re-weight sample!
             dy_plotter.pt_reweight()
 
-        #FIXME FIXME FIXME: applying tight PUJID for eta plot #FIXME: remove afterwards!
-        #remove a few events for speed
-        #n_bkg = dy_plotter.root_obj.mc_df_bkg.shape[0]
-        #dy_plotter.root_obj.mc_df_bkg = dy_plotter.root_obj.mc_df_bkg[:int(n_bkg*0.8)]
-        #n_data = dy_plotter.root_obj.data_df.shape[0]
-        #dy_plotter.root_obj.data_df = dy_plotter.root_obj.data_df[:int(n_data*0.8)]
-
-        #print dy_plotter.root_obj.mc_df_bkg[['leadJetPUJID','leadJetPt','leadJetEta']].head(200)
-        #print dy_plotter.root_obj.mc_df_bkg.shape
-        #conds_mc = [dy_plotter.root_obj.mc_df_bkg['leadJetPUJID'].lt(6.5) & dy_plotter.root_obj.mc_df_bkg['leadJetPt'].lt(50)]
-        #outcomes = [-999.]
-        #conds_data = [dy_plotter.root_obj.data_df['leadJetPUJID'].lt(6.5) & dy_plotter.root_obj.data_df['leadJetPt'].lt(50)]
-        #dy_plotter.root_obj.mc_df_bkg['leadJetEta'] = np.select(conds_mc, outcomes, default=dy_plotter.root_obj.mc_df_bkg['leadJetEta'])
-        #dy_plotter.root_obj.data_df['leadJetEta'] = np.select(conds_data, outcomes, default=dy_plotter.root_obj.data_df['leadJetEta'])
-
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_jerUp < 6.5, 'leadJetEta_jertUp'] = -999.
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_jerDown < 6.5, 'leadJetEta_jerDown'] = -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_jerUp < 6.5, 'leadJetEta_jerUp'] = -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_jerDown < 6.5, 'leadJetEta_jerDown'] = -999.
-
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_jesTotalUp < 6.5, 'leadJetEta_jesTotalUp'] == -999.
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_jesTotalDown < 6.5, 'leadJetEta_jesTotalDown'] == -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_jesTotalUp < 6.5, 'leadJetEta_jesTotalUp'] == -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_jesTotalDown < 6.5, 'leadJetEta_jesTotalDown'] == -999.
-
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_ElPtScaleUp < 6.5, 'leadJetEta_ElPtScaleUp'] == -999.
-        #dy_plotter.root_obj.mc_df_bkg.loc[dy_plotter.root_obj.mc_df_bkg.leadJetPUJID_ElPtScaleDown < 6.5, 'leadJetEta_ElPtScaleDown'] == -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_ElPtScaleUp < 6.5, 'leadJetEta_ElPtScaleUp'] == -999.
-        #dy_plotter.root_obj.data_df.loc[dy_plotter.root_obj.data_df.leadJetPUJID_ElPtScaleDown < 6.5, 'leadJetEta_ElPtScaleDown'] == -999.
-        #FIXME: applying tight PUJID for eta plot #FIXME: remove afterwards!
-
-        dy_plotter.manage_memory()
+        dy_plotter.manage_memory(options.systematics)
         if (options.var_name is None) or ('mva' in options.var_name.lower()): dy_plotter.eval_mva(options.mva_config, output_tag) #little bit hard coded - be careful if 'mva' not in MVA ouput name. Below line is safer but longer.
         #dy_plotter.eval_mva(options.mva_config, output_tag)
         #--------------------------------------------------------------------------------------------------
