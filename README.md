@@ -1,7 +1,7 @@
 # Categorisation of VBF and ggH HToEE events
 
 ## Setup
-
+Actually, Joe needs to change this (pls)
 The first thing to do is: `source setup.sh`. This appends the appropriate pacakages to your `PYTHONPATH`. It also loads a cms environment; you may remove this line if already using a package manager.
 
 ## BDT Training
