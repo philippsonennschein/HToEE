@@ -1,3 +1,7 @@
+# Definition of array inputs: 
+#First input: first bin
+#Second input: last bin
+#Third input: log scale yes or no
 var_to_xrange: 
     'leadJetEn':               [0,2000,false]
     'leadJetPt':               [0,350,false]
@@ -14,10 +18,10 @@ var_to_xrange:
     'subsubleadJetEta':        [-5.,5,false]
     'subsubleadJetPhi':        [-4.,4,false]
     'subsubleadJetQGL':        [0.,1,false]
-    'leadElectronPtOvM':       [0,1.6,false]
-    'leadElectronIDMVA':       [0.995,1,true]
-    'subleadElectronPtOvM':    [0,1,false]
-    'subleadElectronIDMVA':    [0.995,1,true]
+    'leadPhotonPtOvM':       [0,1.6,false]
+    'leadPhotonIDMVA':       [-1,1,false] #Change: Used to be {0.995,1,true}
+    'subleadPhotonPtOvM':    [0,1,false]
+    'subleadPhotonIDMVA':    [-1,1,false] #Change: Used to be {0.995,1,true}
     'dijetAbsDEta':            [0,8,false]
     'dijetDPhi':               [-4.,4,false]
     'dijetMass':               [0,1500,false]
@@ -25,10 +29,10 @@ var_to_xrange:
     'dijetDieleAbsDEta':       [0, 8,false]
     'dijetCentrality':         [0.,1,true]
     'dijetMinDRJetEle':        [0,5,false]
-    'leadElectronEta':         [-2.6,2.6,false]
-    'subleadElectronEta':      [-2.6,2.6,false]
+    'leadPhotonEta':           [-2.6,2.6,false]
+    'subleadPhotonEta':      [-2.6,2.6,false]
     'dielectronCosPhi':        [-1.,1,true]
-    'dielectronPt':            [0,200,false]
+    'diphotonPt':              [0,200,false]
     'leadJetDieleDPhi':        [-4.,4,false]
     'leadJetDieleDEta':        [-8.,8,false]
     'subleadJetDieleDPhi':     [-4.,4,false]
@@ -41,9 +45,7 @@ var_to_xrange:
     'leadJetBTagScore':        [0,1]
     'subleadJetBTagScore':     [0,1]
     'subsubleadJetBTagScore':  [0,1]
-
-    #'dielectronMass':          [110,150,false]
-    'dielectronMass':          [80,100,false]
+    'diphotonMass':            [110,150,false]
     'leadJetPUJID':            [0,7,false]
     'subleadJetPUJID':         [0,7,false]
     'subsubleadJetPUJID':      [0,7,false]

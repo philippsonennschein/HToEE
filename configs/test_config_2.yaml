@@ -1,0 +1,93 @@
+# custom tag that will be added to all saved df's and models.
+output_tag:
+    'VBF_BDT'
+
+#.root MC files for all years (sig and bkg) should be kept in this dir:
+#Put files in own directory and change location
+mc_file_dir:
+    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017/MC/'
+
+#.root Data files for all years should be kept in this dir:
+data_file_dir:
+    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017/Data/'
+
+mc_file_names:
+    sig:
+        VBF:
+            '2017': 'VBF_M125.root'
+        VH:
+            '2017': 'VH_M125.root'
+        ggH:
+            '2017': 'ggH_M125.root'
+        ttH:
+            '2017': 'ttH_M125.root'
+    bkg:
+        Diphoton40to80:
+            '2017': 'DiPhotonJetsBox_M40_80-sherpa.root'
+        Diphoton80toinf:
+            '2017': 'DiPhotonJetsBox_MGG-80toInf_13TeV-sherpa.root'
+        GJet20to40:
+            '2017': 'GJet_Pt-20to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        GJet20toinf:
+            '2017': 'GJet_Pt-20toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
+        GJet40toinf:
+            '2017': 'GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        QCD30to40:
+            '2017': 'QCD_Pt-30to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        QCD30toinf:
+            '2017': 'QCD_Pt-30toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
+        QCD40toinf:
+            '2017': 'QCD_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+
+
+data_file_names:
+        Data:
+            '2017': 'Data.root'
+
+
+#.root files for all years should have these tree paths. Keys should match keys above
+proc_to_tree_name:
+    VBF: 'Events'
+    VH: 'Events'
+    ggH: 'Events'
+    ttH: 'Events'
+    Diphoton40to80: 'Events'
+    Diphoton80toinf: 'Events'
+    GJet20toinf: 'Events'
+    GJet40toinf: 'Events'
+    GJet20to40: 'Events'
+    QCD30to40: 'Events'
+    QCD30toinf: 'Events'
+    QCD40toinf: 'Events'
+    Data: 'Events'
+
+#X variables to train with. Must be in nominal_vars (unless created from existing features)
+#Interesting variables are: diphotonPt, leadPhotonEta, subleadPhotonEta
+train_vars:
+    ['diphotonMass'
+     #'diphotonMass'
+     #'subleadPhotonIDMVA'
+     #'subleadPhotonEta'
+     #'leadPhotonEta'
+     #'dijetAbsDEta'
+     #'dijetDPhi','dijetMinDRJetEle', 'dijetMass',
+     #'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
+     #'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
+     #'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
+     #'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL',
+     #'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
+     #'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
+     #'nSoftJets', #'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
+     #'leadJetPUJID','subleadJetPUJID', 'subsubleadJetPUJID','leadJetID','subleadJetID','subsubleadJetID'
+     #'nSoftJets' ,'metSumET', 'metPt', 'metPhi', 'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
+    ] 
+
+vars_to_add:
+    #'subsubleadJetCentrality':
+
+#preselection that will be applied to all samples
+preselection:    
+    'diphotonMass > 100 and diphotonMass < 180 and leadPhotonPtOvM > 0.333 and subleadPhotonPtOvM > 0.25' 
+
+# For purely VBF production mode, can include these following preselection parameters:
+#dijetMass>250 and leadJetPt>40 and subleadJetPt>25

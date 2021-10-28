@@ -5,11 +5,14 @@ from sklearn.metrics import roc_auc_score, roc_curve
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import warnings
 try:
      plt.style.use("cms10_6_HP")
 except IOError:
      warnings.warn('Could not import user defined matplot style file. Using default style settings...')
 import scipy.stats
+
+import sys
 
 from Utils import Utils
 
@@ -27,14 +30,14 @@ class Plotter(object):
         self.sig_labels   = np.unique(self.sig_df['proc'].values).tolist()
         self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
 
-        self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs for VBF
-        self.bkg_colours  = ['#2c7bb6', '#abd9e9', '#ffffbf', '#fdae61'] #temo better for VBF
-        #self.bkg_colours  = ['#91bfdb', '#ffffbf', '#fc8d59'] #better for ggH
+        #self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs for VBF
+        #self.bkg_colours  = ['firebrick','mediumblue', 'lime','olive','red','blue','green','orange','yellow','violet','white'] #better for ggH
+        self.bkg_colours  = ['silver','indianred','yellowgreen','lightgreen','green','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
 
         self.sig_colour   = sig_col
         self.normalise    = normalise
-
-        self.sig_scaler   = 5*10**7
+        #This can be change:
+        self.sig_scaler   = 10**2
 
         #get xrange from yaml config
         with open('plotting/var_to_xrange.yaml', 'r') as plot_config_file:
@@ -66,8 +69,10 @@ class Plotter(object):
         exponent = len(str_rep)-2 #minus one for the decimal point counted in string length
         return r'$\times 10^{-%s}$'%(exponent)
 
+#Katharina thinks that this is the key to combine the background
+
     def plot_input(self, var, n_bins, out_label, ratio_plot=False, norm_to_data=False, extra_cuts=None, extra_tag=None, blind=False):
-        if blind and ('dielectronMass' not in var): raise IOError('blinding only configured for plotting dielectron Mass!')
+        if blind and ('diphotonMass' not in var): raise IOError('blinding only configured for plotting diphoton Mass!')
         if ratio_plot: 
             plt.rcParams.update({'figure.figsize':(6,5.8)})
             fig, axes = plt.subplots(nrows=2, ncols=1, dpi=200, sharex=True,
@@ -89,6 +94,16 @@ class Plotter(object):
             var_sig     = self.sig_df[var].values
             sig_weights = self.sig_df['weight'].values
 
+        bkg_stack_qcd = []
+        bkg_w_stack_qcd = []
+        bkg_proc_stack_qcd = []
+        bkg_stack_diphoton = []
+        bkg_w_stack_diphoton = []
+        bkg_proc_stack_diphoton = []
+        bkg_stack_gjet = []
+        bkg_w_stack_gjet = []
+        bkg_proc_stack_gjet = []
+
         for bkg in self.bkg_labels:
             if extra_cuts is not None:
                 tmp_bkg     = self.bkg_df[self.bkg_df.proc==bkg]
@@ -98,9 +113,43 @@ class Plotter(object):
                 var_bkg     = self.bkg_df[self.bkg_df.proc==bkg][var].values
                 bkg_weights = self.bkg_df[self.bkg_df.proc==bkg]['weight'].values
 
-            bkg_stack.append(var_bkg)
-            bkg_w_stack.append(bkg_weights)
-            bkg_proc_stack.append(bkg)
+            if 'QCD' in bkg:
+                bkg_stack_qcd.append(var_bkg)
+                bkg_w_stack_qcd.append(bkg_weights)
+                bkg_proc_stack_qcd.append('QCD')
+            elif 'Diphoton' in bkg:
+                bkg_stack_diphoton.append(var_bkg)
+                bkg_w_stack_diphoton.append(bkg_weights)
+                bkg_proc_stack_diphoton.append('Diphoton')
+            else:
+                bkg_stack_gjet.append(var_bkg)
+                bkg_w_stack_gjet.append(bkg_weights)
+                bkg_proc_stack_gjet.append('GJet')
+
+        bkg_stack.extend(bkg_stack_qcd)
+        bkg_stack.extend(bkg_stack_diphoton)
+        bkg_stack.extend(bkg_stack_gjet)
+
+        bkg_w_stack.extend(bkg_w_stack_qcd)
+        bkg_w_stack.extend(bkg_w_stack_diphoton)
+        bkg_w_stack.extend(bkg_w_stack_gjet)
+
+        bkg_proc_stack.extend(bkg_proc_stack_qcd)
+        bkg_proc_stack.extend(bkg_proc_stack_diphoton)
+        bkg_proc_stack.extend(bkg_proc_stack_gjet)
+
+        #for bkg in self.bkg_labels:
+        #    if extra_cuts is not None:
+        #        tmp_bkg     = self.bkg_df[self.bkg_df.proc==bkg]
+        #        var_bkg     = tmp_bkg.query(extra_cuts)[var].values
+        #        bkg_weights = tmp_bkg.query(extra_cuts)['weight'].values
+        #    else: 
+        #        var_bkg     = self.bkg_df[self.bkg_df.proc==bkg][var].values
+        #        bkg_weights = self.bkg_df[self.bkg_df.proc==bkg]['weight'].values
+
+        #    bkg_stack.append(var_bkg)
+        #    bkg_w_stack.append(bkg_weights)
+        #    bkg_proc_stack.append(bkg)
 
         if self.normalise:
             sig_weights /= np.sum(sig_weights)
@@ -109,9 +158,11 @@ class Plotter(object):
         bins = np.linspace(self.var_to_xrange[var][0], self.var_to_xrange[var][1], n_bins)
 
         #add sig mc
-        #FIXME add this back in!
+        #Changed
+        axes.hist(var_sig, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{Gamma Gamma}$) '+self.num_to_str(self.sig_scaler), weights=sig_weights*(self.sig_scaler), histtype='step', color=self.sig_colour, zorder=10)
+        #Before:
         #axes.hist(var_sig, bins=bins, label=self.sig_labels[0]+r' ($\mathrm{H}\rightarrow\mathrm{ee}$) '+self.num_to_str(self.sig_scaler), weights=sig_weights*(self.sig_scaler), histtype='step', color=self.sig_colour, zorder=10)
-
+        
         #data
         if extra_cuts is not None:  data_binned, bin_edges = np.histogram(self.data_df.query(extra_cuts)[var].values, bins=bins)
         else: data_binned, bin_edges = np.histogram(self.data_df[var].values, bins=bins)
@@ -162,7 +213,9 @@ class Plotter(object):
             axes.set_ylim(bottom=100, top=current_top*20)
         else: axes.set_ylim(bottom=0, top=current_top*1.35)
 
-        axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
+        #Changed!
+        #axes.legend(bbox_to_anchor=(0.9,0.97), ncol=2, prop={'size':10})
+        axes.legend(loc='best', ncol=2, prop={'size':10})
         self.plot_cms_labels(axes)
            
         var_name_safe = var.replace('_',' ')
@@ -428,7 +481,9 @@ class Plotter(object):
         fig.savefig('{}/categoryOpt/nCats_vs_AMS_{}.pdf'.format(os.getcwd(), out_tag))
 
     def poisson_interval(self, x, variance, level=0.68): 
+        #print('variance',variance)
         neff = x**2/variance
+        #print('neff=,',neff)
         scale = x/neff
      
         # CMS statcomm recommendation

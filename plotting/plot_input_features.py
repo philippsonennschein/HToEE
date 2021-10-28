@@ -37,10 +37,10 @@ def main(options):
             root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, cr_selection)
         else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
 
-        for sig_obj in root_obj.sig_objects:
-            root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for bkg_obj in root_obj.bkg_objects:
             root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+        for sig_obj in root_obj.sig_objects:
+            root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
         for data_obj in root_obj.data_objects:
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat()
@@ -53,9 +53,10 @@ def main(options):
         #set up X, w and y, train-test 
         plotter = Plotter(root_obj, train_vars, sig_col=sig_colour, norm_to_data=True)
         #for var in train_vars+['dielectronMass','dielectronPt']:
-        for var in ['dielectronMass']:
+        #for var in ['diphotonMass']:
+        #    plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
+        for var in ['diphotonMass']:
             plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
