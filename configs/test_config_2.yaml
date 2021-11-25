@@ -64,22 +64,15 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 #Interesting variables are: diphotonPt, leadPhotonEta, subleadPhotonEta
 train_vars:
-    ['diphotonMass'
-     #'diphotonMass'
-     #'subleadPhotonIDMVA'
-     #'subleadPhotonEta'
-     #'leadPhotonEta'
-     #'dijetAbsDEta'
-     #'dijetDPhi','dijetMinDRJetEle', 'dijetMass',
-     #'dijetDieleAbsDPhiTrunc', 'dijetDieleAbsDEta', 'dijetCentrality',
-     #'leadJetDieleDPhi', 'subleadJetDieleDPhi', 'leadJetDieleDEta', 'subleadJetDieleDEta',
-     #'leadElectronPtOvM', 'subleadElectronPtOvM', 'dielectronPt',
-     #'leadJetEn', 'leadJetPt', 'leadJetEta', 'leadJetPhi','leadJetQGL',
-     #'subleadJetEn', 'subleadJetPt', 'subleadJetEta', 'subleadJetPhi','subleadJetQGL',
-     #'subsubleadJetEn', 'subsubleadJetPt', 'subsubleadJetEta', 'subsubleadJetPhi', 'subsubleadJetQGL',
-     #'nSoftJets', #'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
-     #'leadJetPUJID','subleadJetPUJID', 'subsubleadJetPUJID','leadJetID','subleadJetID','subsubleadJetID'
-     #'nSoftJets' ,'metSumET', 'metPt', 'metPhi', 'leadJetBTagScore', 'subleadJetBTagScore', 'subsubleadJetBTagScore'
+    ['leadPhotonIDMVA','subleadPhotonIDMVA',
+    'diphotonMass','diphotonPt',
+    'leadPhotonPtOvM','subleadPhotonPtOvM',
+    'leadPhotonEta','subleadPhotonEta',
+    'dijetMass','dijetAbsDEta','dijetDPhi','diphotonCosPhi',
+    'leadJetPUJID','subleadJetPUJID','subsubleadJetPUJID',
+    'leadJetPt','leadJetEn','leadJetEta','leadJetPhi',
+    'subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi',
+    'subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi'
     ] 
 
 vars_to_add:

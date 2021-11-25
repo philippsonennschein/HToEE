@@ -37,7 +37,7 @@ class Plotter(object):
         self.sig_colour   = sig_col
         self.normalise    = normalise
         #This can be change:
-        self.sig_scaler   = 10**2
+        self.sig_scaler   = 50**2
 
         #get xrange from yaml config
         with open('plotting/var_to_xrange.yaml', 'r') as plot_config_file:
@@ -68,8 +68,6 @@ class Plotter(object):
         if str_rep[0] is not '0': raise IOError('Need a decimal input for string formatting, rather than:'.format(num))
         exponent = len(str_rep)-2 #minus one for the decimal point counted in string length
         return r'$\times 10^{-%s}$'%(exponent)
-
-#Katharina thinks that this is the key to combine the background
 
     def plot_input(self, var, n_bins, out_label, ratio_plot=False, norm_to_data=False, extra_cuts=None, extra_tag=None, blind=False):
         if blind and ('diphotonMass' not in var): raise IOError('blinding only configured for plotting diphoton Mass!')

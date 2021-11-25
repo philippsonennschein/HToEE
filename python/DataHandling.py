@@ -115,12 +115,10 @@ class ROOTHelpers(object):
                 else: final_mc_vars = core_vars
                 self.sig_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=final_mc_vars) )
  
- #Making changes here
         self.bkg_procs          = []
         self.bkg_objects        = []
         for proc, year_to_file in mc_fnames['bkg'].items():
             if proc not in self.bkg_procs: self.bkg_procs.append(proc) 
-            # if proc
             else: raise IOError('Multiple versions of same background proc trying to be read')
             for year, file_name in year_to_file.iteritems():
                 if year not in self.years:  raise IOError('Incompatible sample years')
@@ -128,7 +126,6 @@ class ROOTHelpers(object):
                 if read_systs: final_mc_vars = self.add_year_dep_systs(core_vars, year)
                 else: final_mc_vars = core_vars
                 self.bkg_objects.append( SampleObject(proc, year, file_name, proc_to_tree_name[proc], vars_to_read=final_mc_vars) )
-#End of changes
 
         self.data_objects       = []
         for proc, year_to_file in data_fnames.items():
