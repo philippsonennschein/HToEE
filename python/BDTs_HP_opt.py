@@ -29,7 +29,7 @@ class BDTHelpers(object):
     :type eq_train: bool
     """
 
-    def __init__(self, data_obj, train_vars, train_frac, eq_train=False):
+    def __init__(self, data_obj, train_vars, train_frac, eq_train=False,hp_n_estimators=100,hp_learning_rate=0.05,hp_max_depth=4,hp_min_child_weight=0.01,hp_subsample=0.6,hp_colsample_bytree=0.6,hp_gamma=1):
 
         self.data_obj         = data_obj
         self.train_vars       = train_vars
@@ -49,22 +49,25 @@ class BDTHelpers(object):
         self.y_pred_test      = None
         self.proc_arr_test    = None
 
-        #attributes for the hp optmisation and cross validation
-        #self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=100, 
-        #                                          eta=0.05, maxDepth=4, min_child_weight=0.01, 
-        #                                          subsample=0.6, colsample_bytree=0.6, gamma=1)
-        
-        #Improved HPs
-        self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=300, 
-                                                  eta=0.1, maxDepth=7, min_child_weight=0.10, 
-                                                  subsample=0.6, colsample_bytree=1, gamma=3)
+        self.hp_n_estimators = hp_n_estimators
+        self.hp_learning_rate = hp_learning_rate #Eta!
+        self.hp_max_depth = hp_max_depth
+        self.hp_min_child_weight = hp_min_child_weight
+        self.hp_subsample = hp_min_child_weight
+        self.hp_colsample_bytree = hp_colsample_bytree
+        self.hp_gamma = hp_gamma     
 
-        self.hp_grid_rnge     = {'learning_rate': [0.01, 0.05, 0.1],
-                                 'max_depth':[x for x in range(5,8)],
-                                 #'min_child_weight':[x for x in range(0,3)], #FIXME: probs not appropriate range for a small sumw!
-                                 'gamma': np.linspace(2,4,3).tolist(),
+        #attributes for the hp optmisation and cross validation
+        self.clf              = xgb.XGBClassifier(objective='binary:logistic', n_estimators=self.hp_n_estimators, 
+                                                  learning_rate=self.hp_learning_rate, max_depth=self.hp_max_depth, min_child_weight=self.hp_min_child_weight, 
+                                                  subsample=self.hp_subsample, colsample_bytree=self.hp_colsample_bytree, gamma=self.hp_gamma)
+
+        self.hp_grid_rnge     = {'learning_rate': [0.01, 0.05, 0.1, 0.3],
+                                 'max_depth':[x for x in range(6,7)],
+                                 'min_child_weight':[x for x in range(0,3)], #FIXME: probs not appropriate range for a small sumw!
+                                 #'gamma': np.linspace(2,4,3).tolist(),
                                  #'subsample': [0.5, 0.8, 1.0],
-                                 'n_estimators':[300,400,500]
+                                 'n_estimators':[300,400]
                                 }
 
         self.X_folds_train    = []

@@ -192,27 +192,27 @@ for variable1 in list_variables1:
 
 #print(pearson_matrix_combined)   
 fig, ax = plt.subplots(1,figsize=(15,15))
-ax = sns.heatmap(pearson_matrix_combined, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("Signal")
+ax = sns.heatmap(pearson_matrix_combined, vmin=-1.0, vmax=1.0, linewidths=0.3, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("Signal")
 name = 'plotting/plots/Pearson_Own_signal'
 fig.savefig(name)
 
 fig, ax = plt.subplots(1,figsize=(15,15))
-ax = sns.heatmap(pearson_matrix_VBF, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("VBF")
+ax = sns.heatmap(pearson_matrix_VBF, vmin=-1.0, vmax=1.0, linewidths=0.3, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("VBF")
 name = 'plotting/plots/Pearson_Own_VBF'
 fig.savefig(name)
 
 fig, ax = plt.subplots(1,figsize=(15,15))
-ax = sns.heatmap(pearson_matrix_VH, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("VH")
+ax = sns.heatmap(pearson_matrix_VH, vmin=-1.0, vmax=1.0, linewidths=0.3, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("VH")
 name = 'plotting/plots/Pearson_Own_VH'
 fig.savefig(name)
 
 fig, ax = plt.subplots(1,figsize=(15,15))
-ax = sns.heatmap(pearson_matrix_ggH, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("ggH")
+ax = sns.heatmap(pearson_matrix_ggH, vmin=-1.0, vmax=1.0, linewidths=0.3, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("ggH")
 name = 'plotting/plots/Pearson_Own_ggH'
 fig.savefig(name)
 
 fig, ax = plt.subplots(1,figsize=(15,15))
-ax = sns.heatmap(pearson_matrix_ttH, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("ttH")
+ax = sns.heatmap(pearson_matrix_ttH, vmin=-1.0, vmax=1.0, linewidths=0.3, cmap='coolwarm',cbar=True,xticklabels=list_variables1,yticklabels=list_variables1,square=True).set_title("ttH")
 name = 'plotting/plots/Pearson_Own_ttH'
 fig.savefig(name)
 

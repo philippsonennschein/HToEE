@@ -64,7 +64,7 @@ list_variables1 = [
 #'leadPhotonIDMVA','subleadPhotonIDMVA',
 #'min_IDMVA','max_IDMVA',
 #'diphotonMass',
-'DR'
+#'DR'
 #'diphotonPt'
 #'leadPhotonPtOvM','subleadPhotonPtOvM',
 #'leadPhotonEta','subleadPhotonEta',
@@ -72,7 +72,9 @@ list_variables1 = [
 #'dijetAbsDEta'
 #,'dijetDPhi',
 #'leadJetPt'
-#,'leadJetEn','leadJetEta','leadJetPhi',
+#,'leadJetEn',
+'leadJetEta'
+#'leadJetPhi',
 #'subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi',
 #'subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi'
 ]
@@ -81,13 +83,15 @@ list_variables2 = [
 #'leadPhotonIDMVA','subleadPhotonIDMVA',
 #'min_IDMVA','max_IDMVA',
 #'diphotonMass',
-'diphotonPt'
+#'diphotonPt'
 #'leadPhotonPtOvM','subleadPhotonPtOvM',
 #'leadPhotonEta','subleadPhotonEta'
 #'dijetMass','dijetAbsDEta','dijetDPhi',
 #'leadJetPt','leadJetEn','leadJetEta',
 #'leadJetPhi'
-#'subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi',
+#'subleadJetPt','subleadJetEn'
+'subleadJetEta'
+#'subleadJetPhi',
 #'subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi'
 #'diphotonCosPhi'
 ]
@@ -97,7 +101,7 @@ list_variables2 = [
 list_plots = []
 lower_lim = -1000
 upper_lim = 50000
-num_bins = 100
+num_bins = 1000
 
 for variable1 in list_variables1:
   # Signal
@@ -166,25 +170,47 @@ for variable1 in list_variables1:
     if variable1 != variable2:
       cur_var_pair = [variable1,variable2]
       if cur_var_pair not in list_plots:
+        '''
         #Plot all 4 signal modes
         fig, ax = plt.subplots(2,2,sharex=True,sharey=True)
         ax[0][0].hist2d(vbf_sig_1,vbf_sig_2,bins=num_bins,cmap=plt.cm.jet,label='VBF')
         ax[0][0].set_title('VBF')
         ax[0][0].set(ylabel=variable2)
-        ax[0][0].set_ylim(0,300)
+        ax[0][0].set_xlim(-5,5)
+        ax[0][0].set_ylim(-5,5)
         ax[0][1].hist2d(vh_sig_1,vh_sig_2,bins=num_bins,cmap=plt.cm.jet,label='VH')
         ax[0][1].set_title('VH')
-        ax[0][1].set_ylim(0,300)
+        ax[0][1].set_xlim(-5,5)
+        ax[0][1].set_ylim(-5,5)
         ax[1][0].hist2d(ggh_sig_1,ggh_sig_2,bins=num_bins,cmap=plt.cm.jet,label='ggH')
         ax[1][0].set_title('ggH')
         ax[1][0].set(xlabel=variable1)
         ax[1][0].set(ylabel=variable2)
-        ax[1][0].set_ylim(0,300)
+        ax[0][1].set_xlim(-5,5)
+        ax[1][0].set_ylim(-5,5)
         ax[1][1].hist2d(tth_sig_1,tth_sig_2,bins=num_bins,cmap=plt.cm.jet,label='ttH')
         ax[1][1].set_title('ttH')
         ax[1][1].set(xlabel=variable1)
-        ax[1][1].set_ylim(0,300)
+        ax[0][1].set_xlim(-5,5)
+        ax[1][1].set_ylim(-5,5)
         plt.suptitle('Correlation Plot {}'.format(variable1 + variable2))
+        '''
+        #Plot 2 signal modes
+        fig, ax = plt.subplots(2) 
+        ax[0].hist2d(vbf_sig_1,vbf_sig_2,bins=num_bins,cmap=plt.cm.jet,label='VBF')
+        #ax[0].set_title('VBF')
+        ax[0].set(ylabel=variable2)
+        ax[0].set_xlim(-5,5)
+        ax[0].set_ylim(-5,5)
+        ax[0].set_aspect('equal', adjustable='box')
+        ax[1].hist2d(ggh_sig_1,ggh_sig_2,bins=num_bins,cmap=plt.cm.jet,label='ggH')
+        #ax[1].set_title('ggH')
+        ax[1].set(xlabel=variable1)
+        ax[1].set(ylabel=variable2)
+        ax[1].set_xlim(-5,5)
+        ax[1].set_ylim(-5,5)
+        ax[1].set_aspect('equal', adjustable='box')
+      
 
         name = 'plotting/plots/Correlation_' + variable1 + '_' + variable2 
         fig.savefig(name)

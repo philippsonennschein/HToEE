@@ -29,7 +29,9 @@ class Utils(object):
         sub_command   = "python train_bdt.py -c bdt_config.yaml -H {} -k {}".format(hp_string, k_folds)
         if eq_weights: sub_command += ' -w'
         if pt_rew: sub_command += ' -P'
-        with open('{}/submissions/sub_bdt_opt_template.sh'.format(os.getcwd())) as f_template:
+        #Change!
+        #with open('{}/submissions/sub_bdt_opt_template.sh'.format(os.getcwd())) as f_template:
+        with open('{}/submissions/sub_hp_opt_template.sh'.format(os.getcwd())) as f_template:
             with open(sub_file_name,'w') as f_sub:
                 for line in f_template.readlines():
                     if '!CWD!' in line: line = line.replace('!CWD!', os.getcwd())

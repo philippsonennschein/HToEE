@@ -60,6 +60,7 @@ var_to_xrange:
     'diphotonPt':              [0,200,false]
     'diphotonEta':             [-2.6,2.6,false]
     'diphotonPhi':             [-5,5,false]
+    'diphotonSigmaMoM':        [-2000,2000,false]
 
     'leadPhotonEn':            [0,2000,false]
     'leadPhotonMass':          [0,2000,false]
@@ -86,8 +87,8 @@ var_to_xrange:
     #'subsubleadPhotonPhi':     [-5,5,false]
 
     'nSoftJets':               [0.,6,false]
-    'metSumET':                [0,4000]
-    'metPt':                   [0,400]
-    'metPhi':                  [-3.,3]
+    'metSumET':                [0,4000,false]
+    'metPt':                   [0,400,false]
+    'metPhi':                  [-3.,3,false]
 
 #Additional vars: metSumET,metPt,metPhi, jetCentrality, jetQGL

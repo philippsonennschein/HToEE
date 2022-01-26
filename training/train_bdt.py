@@ -44,6 +44,8 @@ def main(options):
             root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat() 
 
+
+
         #reweight samples in bins of pT (and maybe Njets), for each year separely. Note targetted selection
         # is applied here and all df's are resaved for smaller mem
         if options.pt_reweight and options.reload_samples:  #FIXME what about reading files in first time, wanting to pT rew, but not including options.reload samples? It wont reweight and save the reweighted df's
@@ -56,6 +58,7 @@ def main(options):
         #set up X, w and y, train-test 
         bdt_hee = BDTHelpers(root_obj, train_vars, options.train_frac, eq_train=options.eq_train)
         bdt_hee.create_X_and_y(mass_res_reweight=True)
+        #df_Z_tot, df_y_test, df_y_train = bdt_hee.create_X_and_y(mass_res_reweight=True)
 
         #submit the HP search if option true
         if options.hp_perm is not None:
@@ -98,11 +101,11 @@ def main(options):
         #else just train BDT with default HPs
         else:
             bdt_hee.train_classifier(root_obj.mc_dir, save=True, model_name=output_tag+'_clf')
-            #bdt_hee.train_classifier(root_obj.mc_dir, save=False, model_name=output_tag+'_clf')
             bdt_hee.compute_roc()
             bdt_hee.plot_roc(output_tag)
-            #bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=False)
-            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=True)
+            bdt_hee.plot_output_score(output_tag, ratio_plot=True, norm_to_data=(not options.pt_reweight), log=False)
+            #bdt_hee.plot_feature_importance(num_plots='single',num_feature=20,imp_type='gain',values = False)
+            #bdt_hee.plot_feature_importance(num_plots='all',num_feature=20,values = False)
 
 if __name__ == "__main__":
 

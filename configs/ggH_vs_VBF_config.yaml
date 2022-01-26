@@ -1,6 +1,6 @@
 # custom tag that will be added to all saved df's and models.
 output_tag:
-    'VBF_BDT'
+    'VBF_ggH_BDT'
 
 #.root MC files for all years (sig and bkg) should be kept in this dir:
 #Put files in own directory and change location
@@ -15,30 +15,9 @@ mc_file_names:
     sig:
         VBF:
             '2017': 'VBF_M125.root'
-        #VH:
-        #    '2017': 'VH_M125.root'
+    bkg:
         ggH:
             '2017': 'ggH_M125.root'
-        #ttH:
-        #    '2017': 'ttH_M125.root'
-    bkg:
-        Diphoton40to80:
-            '2017': 'DiPhotonJetsBox_M40_80-sherpa.root'
-        Diphoton80toinf:
-            '2017': 'DiPhotonJetsBox_MGG-80toInf_13TeV-sherpa.root'
-        GJet20to40:
-            '2017': 'GJet_Pt-20to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        GJet20toinf:
-            '2017': 'GJet_Pt-20toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
-        GJet40toinf:
-            '2017': 'GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        QCD30to40:
-            '2017': 'QCD_Pt-30to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        QCD30toinf:
-            '2017': 'QCD_Pt-30toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
-        QCD40toinf:
-            '2017': 'QCD_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-
 
 data_file_names:
         Data:
@@ -48,17 +27,7 @@ data_file_names:
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     VBF: 'Events'
-    #VH: 'Events'
     ggH: 'Events'
-    #ttH: 'Events'
-    Diphoton40to80: 'Events'
-    Diphoton80toinf: 'Events'
-    GJet20toinf: 'Events'
-    GJet40toinf: 'Events'
-    GJet20to40: 'Events'
-    QCD30to40: 'Events'
-    QCD30toinf: 'Events'
-    QCD40toinf: 'Events'
     Data: 'Events'
 
 #X variables to train with. Must be in nominal_vars (unless created from existing features)

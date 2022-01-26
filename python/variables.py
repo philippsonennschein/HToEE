@@ -1,5 +1,5 @@
 #electron vars
-nominal_vars = ['diphotonMass','diphotonPt','diphotonEta','diphotonPhi','diphotonCosPhi',
+nominal_vars = ['diphotonMass','diphotonPt','diphotonEta','diphotonPhi','diphotonCosPhi','diphotonSigmaMoM', 
                 'leadPhotonIDMVA','leadPhotonPtOvM','leadPhotonEta','leadPhotonEn','leadPhotonMass','leadPhotonPt','leadPhotonPhi',
                 'subleadPhotonIDMVA','subleadPhotonPtOvM','subleadPhotonEta','subleadPhotonEn','subleadPhotonMass','subleadPhotonPt','subleadPhotonPhi',
                 #'subsubleadPhotonIDMVA','subsubleadPhotonPtOvM','subsubleadPhotonEta','subsubleadPhotonEn','subsubleadPhotonMass','subsubleadPhotonPt','subsubleadPhotonPhi',
