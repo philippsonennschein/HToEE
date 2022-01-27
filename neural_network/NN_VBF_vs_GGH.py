@@ -92,6 +92,11 @@ y_train_labels_num = np.where(y_train_labels=='VBF',1,0)
 #y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=2)
 weights = np.array(data['weight'])
 
+#Temporary for weight adjustments
+new_weight_df = pd. DataFrame()
+new_weight_df['weight'] = data['weight']
+new_weight_df['proc'] = data['proc']
+
 #Remove proc after shuffle
 data = data.drop(columns=['proc'])
 data = data.drop(columns=['weight'])
@@ -125,13 +130,30 @@ model.summary()
 train_w_df = pd.DataFrame()
 train_w_df['weight'] = train_w 
 train_w_norm = train_w_df['weight'] / train_w_df['weight'].sum()
+
+#Scaled training weights (0-1)
 train_w_scaled = pd.DataFrame(scaler.fit_transform(train_w_df), columns=train_w_df.columns)
 train_w_scaled = np.array(train_w_scaled)
 condition = np.ones(len(train_w_scaled))
 train_w_scaled = np.compress(condition=condition, a=np.array(train_w_scaled))
 
+# Adjusting weights for loss function O(1)
+#train_w = 4000*train_w
+
+#Equalizing weights
+train_w_df = pd.DataFrame()
+train_w = 1000 * train_w # to make loss function O(1)
+train_w_df['weight'] = train_w
+train_w_df['proc'] = proc_arr_train
+vbf_sum_w = train_w_df[train_w_df['proc'] == 'VBF']['weight'].sum()
+ggh_sum_w = train_w_df[train_w_df['proc'] == 'ggH']['weight'].sum()
+train_w_df.loc[train_w_df.proc == 'VBF','weight'] = (train_w_df[train_w_df['proc'] == 'VBF']['weight'] * ggh_sum_w / vbf_sum_w)
+#train_w_df[train_w_df['proc'] == 'VBF']['weight'] = train_w_df[train_w_df['proc'] == 'VBF']['weight'] * ggh_sum_w / vbf_sum_w
+train_w = np.array(train_w_df['weight'])
+
+
 #Training the model
-history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,sample_weight=train_w_scaled,verbose=2)
+history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,sample_weight=train_w,verbose=2)
 
 # Output Score
 # Output Score
@@ -139,9 +161,6 @@ y_pred_test = model.predict_proba(x=x_test)
 x_test['proc'] = proc_arr_test #.tolist()
 x_test['weight'] = test_w #.to_numpy()
 x_test['output_score'] = y_pred_test
-#_test['output_score_vbf'] = y_pred_test
-#x_test['output_score_ggh'] = 1 - x_test['output_score_vbf']
-
 
 x_test_vbf = x_test[x_test['proc'] == 'VBF']
 x_test_ggh = x_test[x_test['proc'] == 'ggH']
@@ -154,10 +173,18 @@ output_vbf = np.array(x_test_vbf['output_score'])
 output_ggh = np.array(x_test_ggh['output_score'])
 
 #Accuracy Score
-output_score_vbf = np.array(x_test['output_score'],ndmin=2)
-output_score_ggh = np.array(x_test['output_score'],ndmin=2)
-output_score = np.concatenate((output_score_ggh,output_score_vbf),axis=0)
-y_pred = output_score.argmax(axis=0)
+#output_score_vbf = np.array(x_test_vbf['output_score'],ndmin=2)
+#output_score_ggh = np.array(x_test_ggh['output_score'],ndmin=2)
+#output_score = np.concatenate((output_score_ggh,output_score_vbf),axis=0)
+#y_pred = output_score.argmax(axis=0)
+output_score_vbf = y_pred_test[:,0]
+output_score_vbf_list = list(output_score_vbf)
+y_pred = []
+for i in output_score_vbf_list:
+    if i>0.5:
+        y_pred.append(1)
+    else:
+        y_pred.append(0)
 y_true = y_test
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred)
@@ -165,42 +192,11 @@ print(NNaccuracy)
 
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
+print(cm)
 
-# weights Plot
-train_w_scaled = pd.DataFrame(scaler.fit_transform(train_w_df), columns=train_w_df.columns)
-train_w_scaled['proc'] = proc_arr_train 
-train_w_scaled_vbf = train_w_scaled[train_w_scaled['proc']=='VBF']
-train_w_scaled_ggh = train_w_scaled[train_w_scaled['proc']=='ggH']
-
-train_w_scaled_vbf = np.array(train_w_scaled_vbf['weight'])
-train_w_scaled_ggh = np.array(train_w_scaled_ggh['weight'])
-condition_vbf = np.ones(len(train_w_scaled_vbf))
-condition_ggh = np.ones(len(train_w_scaled_ggh))
-train_w_scaled_vbf = np.compress(condition=condition_vbf, a=train_w_scaled_vbf)
-train_w_scaled_ggh = np.compress(condition=condition_ggh, a=train_w_scaled_ggh)
-
-fig, ax = plt.subplots()
-ax.hist(train_w_scaled_vbf, bins=50, label='VBF Weight', density = True, histtype='step') #density = density,
-ax.hist(train_w_scaled_ggh, bins=50, label='ggH Weight', density = True, histtype='step') #density = density,
-plt.legend()
-plt.title('Weights')
-plt.ylabel('Number of Weights')
-plt.xlabel('Weights')
-plt.savefig('plotting/NN_plots/Weights_Plot', dpi = 200)
-
-'''
-# ----
 # ROC CURVE
-# testing
-#mask_vbf = (y_test[:] == 1)
-#mask_ggh = (y_test[:] == 0)
-#y_test = np.concatenate((y_test[mask_vbf], y_test[mask_ggh]), axis = None)
-#y_pred_test = np.concatenate((output_vbf, output_ggh), axis = None)
-#y_pred_test = model.predict_proba(x = x_test_old)
 fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_pred_test)
 auc_keras_test = roc_auc_score(y_test, y_pred_test)
-#np.savetxt('neural_networks/models/nn_roc_fpr.csv', fpr_keras, delimiter=',')
-#np.savetxt('neural_networks/models/nn_roc_tpr.csv', tpr_keras, delimiter=',')
 print("Area under ROC curve for testing: ", auc_keras_test)
 
 # training
@@ -209,24 +205,114 @@ fpr_keras_tr, tpr_keras_tr, thresholds_keras = roc_curve(y_train, y_pred_train)
 auc_keras_train = roc_auc_score(y_train, y_pred_train)
 print("Area under ROC curve for training: ", auc_keras_train)
 
-# TRAIN VS TEST ON OUTPUT SCORE
+def roc_score(fpr_train = fpr_keras_tr, tpr_train = tpr_keras_tr,fpr_test = fpr_keras, tpr_test = tpr_keras, name = 'plotting/NN_plots/NN_ROC_curve', train = False):
+    fig, ax = plt.subplots()
+    if train:
+        ax.plot(fpr_train, tpr_train, label = 'Train')
+    ax.plot(fpr_test, tpr_test, label = 'Test')
+    ax.legend()
+    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
+    plt.savefig(name, dpi = 200)
+    print("Plotting ROC Score")
+
 def train_vs_test_analysis(x_train = x_train, proc_arr_train = proc_arr_train, train_w = train_w):
-     x_train['proc'] = proc_arr_train.tolist()
-     x_train['weight'] = train_w.to_numpy()
-     x_train_vbf = x_train[x_train['proc'] == 'VBF']
-     # now weights
-     vbf_w_tr = x_train_vbf['weight'] / x_train_vbf['weight'].sum()
+    x_train['proc'] = proc_arr_train
+    x_train['weight'] = train_w
+    x_train_vbf = x_train[x_train['proc'] == 'VBF']
+    # now weights
+    vbf_w_tr = x_train_vbf['weight'] / x_train_vbf['weight'].sum()
+    x_train_vbf = x_train_vbf.drop(columns=['proc'])
+    x_train_vbf = x_train_vbf.drop(columns=['weight'])
+    output_vbf_train = model.predict_proba(x=x_train_vbf)
+return output_vbf_train, vbf_w_tr
 
-     x_train_vbf = x_train_vbf.drop(columns=['proc'])
-     x_train_vbf = x_train_vbf.drop(columns=['weight'])
-     output_vbf_train = model.predict_proba(x=x_train_vbf)
-     return output_vbf_train, vbf_w_tr
+def train_test_ratio_plot(output_vbf_test = output_vbf, vbf_w_te = vbf_w, bins = bins, histtype='step', name = 'plotting/NN_plots/test_train_ratio', closeup = False):
+    output_vbf_train, vbf_w_tr = train_vs_test_analysis()
+    fig, ax = plt.subplots()
+    counts_train, bins_train, _ = ax.hist(output_vbf_train, bins=bins, label='Train', weights = vbf_w_tr, histtype=histtype)
+    counts_test, bins_test, _ = ax.hist(output_vbf_test, bins=bins, label='Test', weights = vbf_w_te, histtype=histtype)
+    ratio = counts_train / counts_test
+    ax.plot(ratio, 'o')
+    #ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Train / Test',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
+    plt.savefig(name, dpi = 200)
+    print("Plotting Train and Test Ratio")
+    plt.close()
+    # zoom in
+    if closeup:
+        fig, ax = plt.subplots()
+        ax.plot(ratio, 'o')
+        ax.set_ylabel('Train / Test',ha='right', y=1, size=9)
+        ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
+        ax.set_ylim(0.7, 1.3)
+        name = name + '_closeup'
+        plt.savefig(name, dpi = 200)
+        print("Plotting Train and Test Ratio - Zoomed In")
 
-'''
+def plot_weights_scaled():
+#Weight plots, wrap this in a function
+    train_w_scaled = pd.DataFrame(scaler.fit_transform(train_w_df), columns=train_w_df.columns)
+    train_w_scaled['proc'] = proc_arr_train 
+    train_w_scaled_vbf = train_w_scaled[train_w_scaled['proc']=='VBF']
+    train_w_scaled_ggh = train_w_scaled[train_w_scaled['proc']=='ggH']
+
+    train_w_scaled_vbf = np.array(train_w_scaled_vbf['weight'])
+    train_w_scaled_ggh = np.array(train_w_scaled_ggh['weight'])
+    condition_vbf = np.ones(len(train_w_scaled_vbf))
+    condition_ggh = np.ones(len(train_w_scaled_ggh))
+    train_w_scaled_vbf = np.compress(condition=condition_vbf, a=train_w_scaled_vbf)
+    train_w_scaled_ggh = np.compress(condition=condition_ggh, a=train_w_scaled_ggh)
+
+    fig, ax = plt.subplots()
+    ax.hist(train_w_scaled_vbf, bins=50, label='VBF Weight', density = False, histtype='step')
+    ax.hist(train_w_scaled_ggh, bins=50, label='ggH Weight', density = False, histtype='step')
+    plt.legend()
+    plt.title('Weights')
+    plt.ylabel('Number of Weights')
+    plt.xlabel('Weights')
+    plt.savefig('plotting/NN_plots/Weights_Plot', dpi = 200)
+
+def plot_weights():
+    train_w_vbf = np.array(new_weight_df[new_weight_df['proc']=='VBF']['weight'])
+    train_w_ggh = np.array(new_weight_df[new_weight_df['proc']=='ggH']['weight'])
+
+    fig, ax = plt.subplots()
+    ax.hist(train_w_vbf, bins=50, label='VBF Weight', density = False, histtype='step')
+    ax.hist(train_w_ggh, bins=50, label='ggH Weight', density = False, histtype='step')
+    plt.legend()
+    plt.title('Weights')
+    plt.ylabel('Number of Weights')
+    plt.xlabel('Weights')
+    plt.savefig('plotting/NN_plots/Weights_Plot', dpi = 200)
+
+def plot_weights_equalized():
+    train_w_df = pd.DataFrame()
+    #train_w = 1000 * train_w # to make loss function O(1)
+    train_w_df['weight'] = train_w
+    train_w_df['proc'] = proc_arr_train
+    vbf_sum_w = train_w_df[train_w_df['proc'] == 'VBF']['weight'].sum()
+    ggh_sum_w = train_w_df[train_w_df['proc'] == 'ggH']['weight'].sum()
+    train_w_df[train_w_df['proc'] == 'VBF']['weight'] = train_w_df[train_w_df['proc'] == 'VBF']['weight'] * ggh_sum_w / vbf_sum_w
+    #train_w = np.array(train_w_df['weight'])
+    train_w_vbf = np.array(train_w_df[train_w_df['proc']=='VBF']['weight'])
+    train_w_ggh = np.array(train_w_df[train_w_df['proc']=='ggH']['weight'])
+
+    fig, ax = plt.subplots()
+    ax.hist(train_w_vbf, bins=50, label='VBF Weight', density = False, histtype='step')
+    ax.hist(train_w_ggh, bins=50, label='ggH Weight', density = False, histtype='step')
+    plt.legend()
+    plt.title('Weights')
+    plt.ylabel('Number of Weights')
+    plt.xlabel('Weights')
+    plt.savefig('plotting/NN_plots/Weights_Plot', dpi = 200)
+
 
 #Plotting:
 #Plot output score
-def plot_output_score(signal=output_vbf,bkg=output_ggh,name='plotting/NN_plots/NN_Output_Score',signal_label='VBF',bkg_label='ggH',bins=50,density=True,histtype='step',sig_weight = vbf_w,bkg_weight=ggh_w):
+def plot_output_score(signal=output_vbf,bkg=output_ggh,name='plotting/NN_plots/NN_Output_Score',signal_label='VBF',bkg_label='ggH',bins=50,density=False,histtype='step',sig_weight = vbf_w,bkg_weight=ggh_w):
     print("Plotting Output Score")
     fig, ax = plt.subplots()
     ax.hist(signal, bins=bins, label=signal_label, histtype=histtype, weights=sig_weight) #density = density,
@@ -239,25 +325,25 @@ def plot_output_score(signal=output_vbf,bkg=output_ggh,name='plotting/NN_plots/N
 
 #Plot accuracy
 def plot_accuracy():
-    val_accuracy = history.history['val_acc']
+    #val_accuracy = history.history['val_acc']
     accuracy = history.history['acc']
     fig, ax = plt.subplots(1)
-    plt.plot(epochs,val_accuracy,label='Validation')
+    #plt.plot(epochs,val_accuracy,label='Validation')
     plt.plot(epochs,accuracy,label='Train')
     plt.title('Model Accuracy')
     plt.ylabel('Accuracy')
     plt.xlabel('Epoch')
-    plt.xticks(epochs_int)
+    plt.xticks(epochs)
     plt.legend()
     name = 'plotting/NN_plots/NN_Accuracy'
     fig.savefig(name)
 
 #Plot loss
 def plot_loss():
-    val_loss = history.history['val_loss']
+    #val_loss = history.history['val_loss']
     loss = history.history['loss']
     fig, ax = plt.subplots(1)
-    plt.plot(epochs,val_loss,label='Validation')
+    #plt.plot(epochs,val_loss,label='Validation')
     plt.plot(epochs,loss,label='Train')
     plt.title('Loss function')
     plt.ylabel('Loss')
@@ -292,11 +378,13 @@ def plot_confusion_matrix(cm,classes,normalize=False,title='Confusion matrix',cm
     name = 'plotting/NN_plots/NN_Confusion_Matrix'
     fig.savefig(name)
 
-
-#plot_output_score()
+plot_output_score()
 #plot_accuracy()
 #plot_loss()
 #plot_confusion_matrix(cm,binNames,normalize=False)
+#plot_weights_equalized()
+#train_test_ratio_plot(closeup = True)
+
 
 #save as a pickle file
 #trainTotal.to_pickle('%s/nClassNNTotal.pkl'%frameDir)

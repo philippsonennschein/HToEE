@@ -65,8 +65,8 @@ train_vars.append('weight')
 
 #Load the dataframe
 dataframes = []
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
 df = pd.concat(dataframes, sort=False, axis=0 )
@@ -85,13 +85,22 @@ data = data[data.diphotonMass<180.]
 data = data[data.leadPhotonPtOvM>0.333]
 data = data[data.subleadPhotonPtOvM>0.25]
 
-#Shuffle dataframe
-data = data.sample(frac=1)
-
 #Define the procs as the labels
 #ggh: 0, VBF:1, VH: 2, ttH: 3
 num_categories = data['proc'].nunique()
+y_train_labels_num, y_train_labels_def = pd.factorize(data['proc'])
 
+#Label definition:
+print('Label Definition:')
+label_def = []
+for i in range(num_categories):
+    label_def.append([i,y_train_labels_def[i]])
+    print(i,y_train_labels_def[i])
+
+data['proc_num'] = y_train_labels_num
+
+'''
+num_categories = data['proc'].nunique()
 y_train_labels = np.array(data['proc'])
 #y_train_labels_num = np.where(y_train_labels=='VBF',1,0)
 y_train_labels_num = []
@@ -104,6 +113,13 @@ for i in range(len(y_train_labels)):
         y_train_labels_num.append(2)
     if y_train_labels[i] == 'ttH':
         y_train_labels_num.append(3)
+'''
+
+#Shuffle dataframe
+data = data.sample(frac=1)
+
+y_train_labels = np.array(data['proc'])
+y_train_labels_num = np.array(data['proc_num'])
 y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=num_categories)
 
 weights = np.array(data['weight'])
@@ -111,6 +127,7 @@ weights = np.array(data['weight'])
 #Remove proc after shuffle
 data = data.drop(columns=['proc'])
 data = data.drop(columns=['weight'])
+data = data.drop(columns=['proc_num'])
 
 #Set -999.0 values to -10.0 to decrease effect on scaling 
 data = data.replace(-999.0,-10.0) 
@@ -137,13 +154,33 @@ model.compile(optimizer=Adam(lr=learning_rate),loss='categorical_crossentropy',m
 model.summary()
 
 #Training the model
-history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,sample_weight=train_w,verbose=2)
+history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,verbose=2) #sample_weight=train_w,
 
 # Output Score
 y_pred_test = model.predict_proba(x=x_test)
 x_test['proc'] = proc_arr_test
 x_test['weight'] = test_w
-x_test['output_score_vbf'] = y_pred_test
+x_test['output_score_ggh'] = y_pred_test[:,0]
+x_test['output_score_vbf'] = y_pred_test[:,1]
+x_test['output_score_vh'] = y_pred_test[:,2]
+x_test['output_score_tth'] = y_pred_test[:,3]
+output_score_ggh = np.array(y_pred_test[:,0])
+output_score_vbf = np.array(y_pred_test[:,1])
+output_score_vh = np.array(y_pred_test[:,2])
+output_score_tth = np.array(y_pred_test[:,3])
+
+fig, ax = plt.subplots()
+ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',density=True) 
+ax.hist(output_score_vbf, bins=50, label='VBF', histtype='step',density=True)
+ax.hist(output_score_vh, bins=50, label='VH', histtype='step',density=True) 
+ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',density=True)
+plt.legend()
+plt.title('Output Score')
+plt.ylabel('Fraction of Events')
+plt.xlabel('NN Score')
+plt.savefig('plotting/NN_plots/NN_Multi_Output_Score', dpi = 200)
+
+'''
 x_test['output_score_ggh'] = 1 - y_pred_test
 
 x_test_vbf = x_test[x_test['proc'] == 'VBF']
@@ -156,7 +193,7 @@ ggh_w = x_test_ggh['weight'] / x_test_ggh['weight'].sum()
 output_vbf = np.array(x_test_vbf['output_score'])
 output_ggh = np.array(x_test_ggh['output_score'])
 
-'''
+
 # ----
 # ROC CURVE
 # testing
