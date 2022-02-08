@@ -90,5 +90,5 @@ var_to_xrange:
     'metSumET':                [0,4000,false]
     'metPt':                   [0,400,false]
     'metPhi':                  [-3.,3,false]
-
-#Additional vars: metSumET,metPt,metPhi, jetCentrality, jetQGL
+    'HTXS_stage_0'             [0,100,false]
+    'HTXS_stage1_2_cat_pTjet30GeV'  [0,100,false]

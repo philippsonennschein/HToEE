@@ -28,7 +28,7 @@ from keras.utils import np_utils
 from keras.metrics import categorical_crossentropy, binary_crossentropy
 
 #Define key quantities, use to tune NN
-num_epochs = 4
+num_epochs = 15
 batch_size = 400
 val_split = 0.3
 learning_rate = 0.001
@@ -57,7 +57,8 @@ train_vars = ['diphotonMass', 'diphotonPt', 'diphotonEta',
 'subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
 'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt',
 'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
-'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets']
+'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets',
+'metPt','metPhi','metSumET']
 
 #Add proc and weight to shuffle with data
 train_vars.append('proc')
@@ -99,29 +100,12 @@ for i in range(num_categories):
 
 data['proc_num'] = y_train_labels_num
 
-'''
-num_categories = data['proc'].nunique()
-y_train_labels = np.array(data['proc'])
-#y_train_labels_num = np.where(y_train_labels=='VBF',1,0)
-y_train_labels_num = []
-for i in range(len(y_train_labels)):
-    if y_train_labels[i] == 'ggH':
-        y_train_labels_num.append(0)
-    if y_train_labels[i] == 'VBF':
-        y_train_labels_num.append(1)
-    if y_train_labels[i] == 'VH':
-        y_train_labels_num.append(2)
-    if y_train_labels[i] == 'ttH':
-        y_train_labels_num.append(3)
-'''
-
 #Shuffle dataframe
 data = data.sample(frac=1)
 
 y_train_labels = np.array(data['proc'])
 y_train_labels_num = np.array(data['proc_num'])
 y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=num_categories)
-
 weights = np.array(data['weight'])
 
 #Remove proc after shuffle
@@ -153,8 +137,22 @@ model.compile(optimizer=Adam(lr=learning_rate),loss='categorical_crossentropy',m
 
 model.summary()
 
+#Equalizing weights
+train_w_df = pd.DataFrame()
+train_w = 300 * train_w # to make loss function O(1)
+train_w_df['weight'] = train_w
+train_w_df['proc'] = proc_arr_train
+vbf_sum_w = train_w_df[train_w_df['proc'] == 'VBF']['weight'].sum()
+ggh_sum_w = train_w_df[train_w_df['proc'] == 'ggH']['weight'].sum()
+vh_sum_w = train_w_df[train_w_df['proc'] == 'VH']['weight'].sum()
+tth_sum_w = train_w_df[train_w_df['proc'] == 'ttH']['weight'].sum()
+train_w_df.loc[train_w_df.proc == 'VBF','weight'] = (train_w_df[train_w_df['proc'] == 'VBF']['weight'] * ggh_sum_w / vbf_sum_w)
+train_w_df.loc[train_w_df.proc == 'VH','weight'] = (train_w_df[train_w_df['proc'] == 'VH']['weight'] * ggh_sum_w / vh_sum_w)
+train_w_df.loc[train_w_df.proc == 'ttH','weight'] = (train_w_df[train_w_df['proc'] == 'ttH']['weight'] * ggh_sum_w / tth_sum_w)
+train_w = np.array(train_w_df['weight'])
+
 #Training the model
-history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,verbose=2) #sample_weight=train_w,
+history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,sample_weight=train_w,shuffle=True,verbose=2)
 
 # Output Score
 y_pred_test = model.predict_proba(x=x_test)
@@ -164,72 +162,24 @@ x_test['output_score_ggh'] = y_pred_test[:,0]
 x_test['output_score_vbf'] = y_pred_test[:,1]
 x_test['output_score_vh'] = y_pred_test[:,2]
 x_test['output_score_tth'] = y_pred_test[:,3]
+
 output_score_ggh = np.array(y_pred_test[:,0])
 output_score_vbf = np.array(y_pred_test[:,1])
 output_score_vh = np.array(y_pred_test[:,2])
 output_score_tth = np.array(y_pred_test[:,3])
 
-fig, ax = plt.subplots()
-ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',density=True) 
-ax.hist(output_score_vbf, bins=50, label='VBF', histtype='step',density=True)
-ax.hist(output_score_vh, bins=50, label='VH', histtype='step',density=True) 
-ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',density=True)
-plt.legend()
-plt.title('Output Score')
-plt.ylabel('Fraction of Events')
-plt.xlabel('NN Score')
-plt.savefig('plotting/NN_plots/NN_Multi_Output_Score', dpi = 200)
-
-'''
-x_test['output_score_ggh'] = 1 - y_pred_test
-
-x_test_vbf = x_test[x_test['proc'] == 'VBF']
 x_test_ggh = x_test[x_test['proc'] == 'ggH']
+x_test_vbf = x_test[x_test['proc'] == 'VBF']
+x_test_vh = x_test[x_test['proc'] == 'VH']
+x_test_tth = x_test[x_test['proc'] == 'ttH']
 
-# Weights
-vbf_w = x_test_vbf['weight'] / x_test_vbf['weight'].sum()
 ggh_w = x_test_ggh['weight'] / x_test_ggh['weight'].sum()
-
-output_vbf = np.array(x_test_vbf['output_score'])
-output_ggh = np.array(x_test_ggh['output_score'])
-
-
-# ----
-# ROC CURVE
-# testing
-#mask_vbf = (y_test[:] == 1)
-#mask_ggh = (y_test[:] == 0)
-#y_test = np.concatenate((y_test[mask_vbf], y_test[mask_ggh]), axis = None)
-#y_pred_test = np.concatenate((output_vbf, output_ggh), axis = None)
-#y_pred_test = model.predict_proba(x = x_test_old)
-fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_pred_test)
-auc_keras_test = roc_auc_score(y_test, y_pred_test)
-#np.savetxt('neural_networks/models/nn_roc_fpr.csv', fpr_keras, delimiter=',')
-#np.savetxt('neural_networks/models/nn_roc_tpr.csv', tpr_keras, delimiter=',')
-print("Area under ROC curve for testing: ", auc_keras_test)
-
-# training
-y_pred_train = model.predict_proba(x = x_train)
-fpr_keras_tr, tpr_keras_tr, thresholds_keras = roc_curve(y_train, y_pred_train)
-auc_keras_train = roc_auc_score(y_train, y_pred_train)
-print("Area under ROC curve for training: ", auc_keras_train)
-
-# TRAIN VS TEST ON OUTPUT SCORE
-def train_vs_test_analysis(x_train = x_train, proc_arr_train = proc_arr_train, train_w = train_w):
-     x_train['proc'] = proc_arr_train.tolist()
-     x_train['weight'] = train_w.to_numpy()
-     x_train_vbf = x_train[x_train['proc'] == 'VBF']
-     # now weights
-     vbf_w_tr = x_train_vbf['weight'] / x_train_vbf['weight'].sum()
-
-     x_train_vbf = x_train_vbf.drop(columns=['proc'])
-     x_train_vbf = x_train_vbf.drop(columns=['weight'])
-     output_vbf_train = model.predict_proba(x=x_train_vbf)
-     return output_vbf_train, vbf_w_tr
-
+vbf_w = x_test_vbf['weight'] / x_test_vbf['weight'].sum()
+vh_w = x_test_vh['weight'] / x_test_vh['weight'].sum()
+tth_w = x_test_tth['weight'] / x_test_tth['weight'].sum()
 
 #Accuracy Score
-y_pred = output_score.argmax(axis=1)
+y_pred = y_pred_test.argmax(axis=1)
 y_true = y_test.argmax(axis=1)
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred)
@@ -238,21 +188,105 @@ print(NNaccuracy)
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
 
-#Plotting:
-#Plot output score
-def plot_output_score(signal=vbf_output,bkg=ggh_output,name='plotting/NN_plots/NN_Output_Score',signal_label='VBF',bkg_label='ggH',bins=50,density=True,histtype='step'):
-    print("Plotting Output Score")
-    fig, ax = plt.subplots()
-    ax.hist(signal, bins=bins, label=signal_label, density = density, histtype=histtype)
-    ax.hist(bkg, bins=bins, label=bkg_label, density = density, histtype=histtype) 
-    plt.savefig('plotting/NN_plots/NN_Output_Score', dpi = 200)
+#ROC computations
+y_true_ggh = np.where(y_true == 0, 1, 0)
+y_pred_ggh = np.where(y_pred == 0, 1, 0)
+y_pred_ggh_prob = []
+for i in range(len(y_pred_ggh)):
+    if y_pred_ggh[i] == 0:
+        y_pred_ggh_prob.append(0)
+    elif y_pred_ggh[i] == 1:
+        y_pred_ggh_prob.append(output_score_ggh[i])
+y_true_vbf = np.where(y_true == 1, 1, 0)
+y_pred_vbf = np.where(y_pred == 1, 1, 0)
+y_pred_vbf_prob = []
+for i in range(len(y_pred_vbf)):
+    if y_pred_vbf[i] == 0:
+        y_pred_vbf_prob.append(0)
+    elif y_pred_vbf[i] == 1:
+        y_pred_vbf_prob.append(output_score_vbf[i])
+y_true_vh = np.where(y_true == 2, 1, 0)
+y_pred_vh = np.where(y_pred == 2, 1, 0)
+y_pred_vh_prob = []
+for i in range(len(y_pred_vh)):
+    if y_pred_vh[i] == 0:
+        y_pred_vh_prob.append(0)
+    elif y_pred_vh[i] == 1:
+        y_pred_vh_prob.append(output_score_vh[i])
+y_true_tth = np.where(y_true == 3, 1, 0)
+y_pred_tth = np.where(y_pred == 3, 1, 0)
+y_pred_tth_prob = []
+for i in range(len(y_pred_tth)):
+    if y_pred_tth[i] == 0:
+        y_pred_tth_prob.append(0)
+    elif y_pred_tth[i] == 1:
+        y_pred_tth_prob.append(output_score_tth[i])
 
+def roc_score(y_true = y_true, y_pred = y_pred_test):
+
+    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_true_ggh, y_pred_ggh_prob)
+    auc_keras_test_ggh = roc_auc_score(y_true_ggh, y_pred_ggh_prob)
+    print("Area under ROC curve for ggH (test): ", auc_keras_test_ggh)
+
+    fpr_keras_vbf, tpr_keras_vbf, thresholds_keras_vbf = roc_curve(y_true_vbf, y_pred_vbf_prob)
+    auc_keras_test_vbf = roc_auc_score(y_true_vbf, y_pred_vbf)
+    print("Area under ROC curve for VBF (test): ", auc_keras_test_vbf)
+
+    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob)
+    auc_keras_test_vh = roc_auc_score(y_true_vh, y_pred_vh)
+    print("Area under ROC curve for VH (test): ", auc_keras_test_vh)
+
+    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob)
+    auc_keras_test_tth = roc_auc_score(y_true_tth, y_pred_tth)
+    print("Area under ROC curve for ttH (test): ", auc_keras_test_tth)
+
+    print("Plotting ROC Score")
+    fig, ax = plt.subplots()
+    ax.plot(fpr_keras_ggh, tpr_keras_ggh, label = 'ggH (area = %0.2f)'%auc_keras_test_ggh)
+    ax.plot(fpr_keras_vbf, tpr_keras_vbf, label = 'VBF (area = %0.2f)'%auc_keras_test_vbf)
+    ax.plot(fpr_keras_vh, tpr_keras_vh, label = 'VH (area = %0.2f)'%auc_keras_test_vh)
+    ax.plot(fpr_keras_tth, tpr_keras_tth, label = 'ttH (area = %0.2f)'%auc_keras_test_tth)
+    ax.legend()
+    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
+    name = 'plotting/NN_plots/NN_Multi_ROC_curve'
+    plt.savefig(name, dpi = 200)
+
+roc_score()
+
+#Need to do other 3 plots too and include the MC weights!
+#Change it to be proc = 'VBF' and then do 'output_score_%'.format(proc)
+#Can then loop through the y_train_labels_def and set data = i to plot all possible production modes
+
+# VBF
+def plot_output_score_vbf(data='output_score_vbf', density=False,):
+    #Can then change it to plotting proc
+    print('Plotting',data)
+    output_score_ggh = np.array(x_test_ggh[data])
+    output_score_vbf = np.array(x_test_vbf[data])
+    output_score_vh = np.array(x_test_vh[data])
+    output_score_tth = np.array(x_test_tth[data])
+
+    fig, ax = plt.subplots()
+    ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
+    ax.hist(output_score_vbf, bins=50, label='VBF', histtype='step',weights=vbf_w) #density=True)
+    ax.hist(output_score_vh, bins=50, label='VH', histtype='step',weights=vh_w) #density=True) 
+    ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w) #density=True)
+    plt.legend()
+    plt.title('Output Score')
+    plt.ylabel('Fraction of Events')
+    plt.xlabel('NN Score')
+    name = 'plotting/NN_plots/NN_Multi_'+data
+    plt.savefig(name, dpi = 200)
+
+#Plotting:
 #Plot accuracy
 def plot_accuracy():
-    val_accuracy = history.history['val_acc']
+    #val_accuracy = history.history['val_acc']
     accuracy = history.history['acc']
     fig, ax = plt.subplots(1)
-    plt.plot(epochs,val_accuracy,label='Validation')
+    #plt.plot(epochs,val_accuracy,label='Validation')
     plt.plot(epochs,accuracy,label='Train')
     plt.title('Model Accuracy')
     plt.ylabel('Accuracy')
@@ -264,10 +298,10 @@ def plot_accuracy():
 
 #Plot loss
 def plot_loss():
-    val_loss = history.history['val_loss']
+    #val_loss = history.history['val_loss']
     loss = history.history['loss']
     fig, ax = plt.subplots(1)
-    plt.plot(epochs,val_loss,label='Validation')
+    #plt.plot(epochs,val_loss,label='Validation')
     plt.plot(epochs,loss,label='Train')
     plt.title('Loss function')
     plt.ylabel('Loss')
@@ -279,70 +313,38 @@ def plot_loss():
 
 
 #Confusion Matrix
-def plot_confusion_matrix(cm,classes,normalize=False,title='Confusion matrix',cmap=plt.cm.Blues):
+def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
     fig, ax = plt.subplots(1)
-    plt.imshow(cm,interpolation='nearest',cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
+    #plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks,classes,rotation=45)
     plt.yticks(tick_marks,classes)
     if normalize:
         cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+        for i in range(len(cm[0])):
+            for j in range(len(cm[1])):
+                cm[i][j] = float("{:.2f}".format(cm[i][j]))
     thresh = cm.max()/2.
     print(cm)
+    plt.imshow(cm,interpolation='nearest',cmap=cmap)
+    plt.title(title)
     for i, j in product(range(cm.shape[0]),range(cm.shape[1])):
         plt.text(j,i,cm[i,j],horizontalalignment='center',color='white' if cm[i,j]>thresh else 'black')
-        plt.tight_layout()
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_Confusion_Matrix'
+    plt.tight_layout()
+    plt.colorbar()
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted label')
+    name = 'plotting/NN_plots/NN_Multi_Confusion_Matrix'
     fig.savefig(name)
 
+plot_output_score_vbf(data='output_score_vbf')
+plot_output_score_vbf(data='output_score_ggh')
+plot_output_score_vbf(data='output_score_vh')
+plot_output_score_vbf(data='output_score_tth')
 
-#plot_output_score()
 #plot_accuracy()
 #plot_loss()
-#plot_confusion_matrix(cm,binNames,normalize=True)
-
-
-#To-do List:
-#Fix normalized Confusion Matrix
-#Look at ROC Code
-
-#ROC Code
-#y_pred_test = model.predict(x_test).ravel()
-y_test_vbf = y_test[:,1]
-y_test_ggh = y_test[:,0]
-y_test = np.concatenate((y_test_vbf, y_test_ggh), axis = None)
-y_pred_test = np.concatenate((vbf_output, ggh_output), axis = None)
-fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_pred_test)
-auc_keras_test = auc(fpr_keras, tpr_keras)
-print("Area under ROC curve for testing: ", auc_keras_test)
-
-# now i also want for training
-vbf_output_train = model.predict_proba(x=x_train)[:,1] #,batch_size=400,verbose=0)
-#print("check vbf: ", vbf_output)
-ggh_output_train = model.predict_proba(x=x_train)[:,0]
-#print("check ggh: ", ggh_output)
-y_train_vbf = y_train[:,1]
-y_train_ggh = y_train[:,0]
-y_train = np.concatenate((y_train_vbf, y_train_ggh), axis = None)
-y_pred_train = np.concatenate((vbf_output_train, ggh_output_train), axis = None)
-fpr_keras_tr, tpr_keras_tr, thresholds_keras = roc_curve(y_train, y_pred_train)
-auc_keras_train = auc(fpr_keras_tr, tpr_keras_tr)
-print("Area under ROC curve for training: ", auc_keras_train)
-
-# Now let's plot the ROC curves
-fig, ax = plt.subplots()
-ax.plot(fpr_keras_tr, tpr_keras_tr, label = 'Train')
-ax.plot(fpr_keras, tpr_keras, label = 'Test')
-ax.legend()
-ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
-ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
-ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
-plt.savefig('neural_networks/models/plots/roc_trial', dpi = 200)
-plt.close()
+plot_confusion_matrix(cm,binNames,normalize=True)
 
 
 #save as a pickle file
@@ -351,4 +353,3 @@ plt.close()
 #Read in pickle file
 #trainTotal = pd.read_pickle(opts.dataFrame)
 #print 'Successfully loaded the dataframe'
-'''

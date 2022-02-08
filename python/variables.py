@@ -8,7 +8,7 @@ nominal_vars = ['diphotonMass','diphotonPt','diphotonEta','diphotonPhi','diphoto
                 'subleadJetPUJID','subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi','subleadJetMass','subleadJetBTagScore','subleadJetDiphoDPhi','subleadJetDiphoDEta',
                 'subsubleadJetPUJID','subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi','subsubleadJetMass','subsubleadJetBTagScore',#'subsubleadJetDiphoDPhi','subsubleadJetDiphoDEta',
                 'weight', 'centralObjectWeight',
-                'nSoftJets'
+                'nSoftJets','metPt','metPhi','metSumET'
 
                 #'diphotonPt', 'diphotonMass', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'weight', 'centralObjectWeight',
                 #'leadPhotonPtOvM','subleadPhotonPtOvM','leadPhotonEta','subleadPhotonEta','leadPhotonIDMVA','subleadPhotonIDMVA'
@@ -26,10 +26,10 @@ nominal_vars = ['diphotonMass','diphotonPt','diphotonEta','diphotonPhi','diphoto
                ]
 
 #for MVA training, hence not including masses
-gev_vars     = ['leadJetEn', 'leadJetP', 'subleadJetEn', 'subleadJetPt', 'subsubleadJetEn', 'subsubleadJetPt', 
+gev_vars     = ['leadJetEn', 'subleadJetEn', 'subleadJetPt', 'subsubleadJetEn', 'subsubleadJetPt', 
                 'leadElectronEn', 'leadElectronPt', 'subleadElectronEn', 'subleadElectronPt',
                 'leadElectronPToM', 'subleadElectronPToM', 'dijetMass', 'dielectronPt'
                ]
 
-gen_vars     = ['genWeight'] 
+gen_vars     = ['genWeight','HTXS_stage_0','HTXS_stage1_2_cat_pTjet30GeV'] 
 

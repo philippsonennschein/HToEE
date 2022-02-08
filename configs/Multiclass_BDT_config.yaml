@@ -1,0 +1,69 @@
+# custom tag that will be added to all saved df's and models.
+output_tag:
+    'Multi_BDT'
+
+#.root MC files for all years (sig and bkg) should be kept in this dir:
+#Put files in own directory and change location
+mc_file_dir:
+    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017/MC/'
+
+#.root Data files for all years should be kept in this dir:
+data_file_dir:
+    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017/Data/'
+
+mc_file_names:
+    sig:
+        VBF:
+            '2017': 'VBF_M125.root'
+    bkg:
+        ggH:
+            '2017': 'ggH_M125.root'
+        
+        VH:
+            '2017': 'VH_M125.root'
+        
+        ttH:
+            '2017': 'ttH_M125.root'
+
+data_file_names:
+        Data:
+            '2017': 'Data.root'
+
+
+#.root files for all years should have these tree paths. Keys should match keys above
+proc_to_tree_name:
+    VBF: 'Events'
+    ggH: 'Events'
+    VH: 'Events'
+    ttH: 'Events'
+    Data: 'Events'
+
+#X variables to train with. Must be in nominal_vars (unless created from existing features)
+#Interesting variables are: diphotonPt, leadPhotonEta, subleadPhotonEta
+train_vars:
+    ['diphotonMass', 'diphotonPt', 'diphotonEta',
+'diphotonPhi', 'diphotonCosPhi', 'diphotonSigmaMoM',
+'leadPhotonIDMVA', 'leadPhotonPtOvM', 'leadPhotonEta',
+'leadPhotonEn', 'leadPhotonMass', 'leadPhotonPt', 'leadPhotonPhi',
+'subleadPhotonIDMVA', 'subleadPhotonPtOvM', 'subleadPhotonEta',
+'subleadPhotonEn', 'subleadPhotonMass', 'subleadPhotonPt',
+'subleadPhotonPhi', 'dijetMass', 'dijetPt', 'dijetEta', 'dijetPhi',
+'dijetDPhi', 'dijetAbsDEta', 'dijetCentrality', 'dijetMinDRJetPho',
+'dijetDiphoAbsDEta', 'leadJetPUJID', 'leadJetPt', 'leadJetEn',
+'leadJetEta', 'leadJetPhi', 'leadJetMass', 'leadJetBTagScore',
+'leadJetDiphoDEta', 'leadJetDiphoDPhi', 'subleadJetPUJID',
+'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi',
+'subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
+'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt',
+'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
+'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets']
+
+vars_to_add:
+    #'subsubleadJetCentrality':
+
+#preselection that will be applied to all samples
+preselection:    
+    'diphotonMass > 100 and diphotonMass < 180 and leadPhotonPtOvM > 0.333 and subleadPhotonPtOvM > 0.25' 
+
+# For purely VBF production mode, can include these following preselection parameters:
+#dijetMass>250 and leadJetPt>40 and subleadJetPt>25

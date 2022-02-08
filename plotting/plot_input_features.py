@@ -55,7 +55,16 @@ def main(options):
         #for var in train_vars+['dielectronMass','dielectronPt']:
         #for var in ['diphotonMass']:
         #    plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
-        for var in ['diphotonMass']:
+        #for var in ['diphotonMass']:
+        for var in ['diphotonMass', 'diphotonPt', 'diphotonEta','diphotonPhi', 'diphotonCosPhi', 'diphotonSigmaMoM','leadPhotonIDMVA', 'leadPhotonPtOvM', 'leadPhotonEta',
+                    'leadPhotonEn', 'leadPhotonMass', 'leadPhotonPt', 'leadPhotonPhi','subleadPhotonIDMVA', 'subleadPhotonPtOvM', 'subleadPhotonEta',
+                    'subleadPhotonEn', 'subleadPhotonMass', 'subleadPhotonPt','subleadPhotonPhi', 'dijetMass', 'dijetPt', 'dijetEta', 'dijetPhi',
+                    'dijetDPhi', 'dijetAbsDEta', 'dijetCentrality', 'dijetMinDRJetPho','dijetDiphoAbsDEta', 'leadJetPUJID', 'leadJetPt', 'leadJetEn',
+                    'leadJetEta', 'leadJetPhi', 'leadJetMass', 'leadJetBTagScore','leadJetDiphoDEta', 'leadJetDiphoDPhi', 'subleadJetPUJID',
+                    'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi','subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
+                    'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt','subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
+                    'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets','metPt','metPhi','metSumET']:
+                    #,'HTXS_stage_0', 'HTXS_stage1_2_cat_pTjet30GeV']:
             plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
 if __name__ == "__main__":
 

@@ -92,11 +92,6 @@ y_train_labels_num = np.where(y_train_labels=='VBF',1,0)
 #y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=2)
 weights = np.array(data['weight'])
 
-#Temporary for weight adjustments
-new_weight_df = pd. DataFrame()
-new_weight_df['weight'] = data['weight']
-new_weight_df['proc'] = data['proc']
-
 #Remove proc after shuffle
 data = data.drop(columns=['proc'])
 data = data.drop(columns=['weight'])
@@ -107,7 +102,6 @@ data = data.replace(-999.0,-10.0)
 #Scaling the variables to a range from 0-1
 scaler = MinMaxScaler()
 data_scaled = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
-#weights_scaled = pd.DataFrame(scaler.fit_transform(weights_df), columns=weights_df.columns)
 
 #Input shape for the first hidden layer
 num_inputs  = data_scaled.shape[1]
@@ -126,20 +120,6 @@ model.compile(optimizer=Adam(lr=learning_rate),loss='binary_crossentropy',metric
 
 model.summary()
 
-# Normalizing training weights 
-train_w_df = pd.DataFrame()
-train_w_df['weight'] = train_w 
-train_w_norm = train_w_df['weight'] / train_w_df['weight'].sum()
-
-#Scaled training weights (0-1)
-train_w_scaled = pd.DataFrame(scaler.fit_transform(train_w_df), columns=train_w_df.columns)
-train_w_scaled = np.array(train_w_scaled)
-condition = np.ones(len(train_w_scaled))
-train_w_scaled = np.compress(condition=condition, a=np.array(train_w_scaled))
-
-# Adjusting weights for loss function O(1)
-#train_w = 4000*train_w
-
 #Equalizing weights
 train_w_df = pd.DataFrame()
 train_w = 1000 * train_w # to make loss function O(1)
@@ -151,11 +131,9 @@ train_w_df.loc[train_w_df.proc == 'VBF','weight'] = (train_w_df[train_w_df['proc
 #train_w_df[train_w_df['proc'] == 'VBF']['weight'] = train_w_df[train_w_df['proc'] == 'VBF']['weight'] * ggh_sum_w / vbf_sum_w
 train_w = np.array(train_w_df['weight'])
 
-
 #Training the model
 history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,shuffle=True,sample_weight=train_w,verbose=2)
 
-# Output Score
 # Output Score
 y_pred_test = model.predict_proba(x=x_test)
 x_test['proc'] = proc_arr_test #.tolist()
@@ -194,12 +172,12 @@ print(NNaccuracy)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
 print(cm)
 
-# ROC CURVE
+# ROC CURVE testing
 fpr_keras, tpr_keras, thresholds_keras = roc_curve(y_test, y_pred_test)
 auc_keras_test = roc_auc_score(y_test, y_pred_test)
 print("Area under ROC curve for testing: ", auc_keras_test)
 
-# training
+# ROC curve training
 y_pred_train = model.predict_proba(x = x_train)
 fpr_keras_tr, tpr_keras_tr, thresholds_keras = roc_curve(y_train, y_pred_train)
 auc_keras_train = roc_auc_score(y_train, y_pred_train)
@@ -355,11 +333,9 @@ def plot_loss():
 
 
 #Confusion Matrix
-def plot_confusion_matrix(cm,classes,normalize=False,title='Confusion matrix',cmap=plt.cm.Blues):
+def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
     fig, ax = plt.subplots(1)
-    plt.imshow(cm,interpolation='nearest',cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
+    
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks,classes,rotation=45)
     plt.yticks(tick_marks,classes)
@@ -370,11 +346,14 @@ def plot_confusion_matrix(cm,classes,normalize=False,title='Confusion matrix',cm
                 cm[i][j] = float("{:.2f}".format(cm[i][j]))
     thresh = cm.max()/2.
     print(cm)
+    plt.imshow(cm,interpolation='nearest',cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
     for i, j in product(range(cm.shape[0]),range(cm.shape[1])):
         plt.text(j,i,cm[i,j],horizontalalignment='center',color='white' if cm[i,j]>thresh else 'black')
-        plt.tight_layout()
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted label')
     name = 'plotting/NN_plots/NN_Confusion_Matrix'
     fig.savefig(name)
 

@@ -15,12 +15,12 @@ mc_file_names:
     sig:
         VBF:
             '2017': 'VBF_M125.root'
-        #VH:
-        #    '2017': 'VH_M125.root'
+        VH:
+            '2017': 'VH_M125.root'
         ggH:
             '2017': 'ggH_M125.root'
-        #ttH:
-        #    '2017': 'ttH_M125.root'
+        ttH:
+            '2017': 'ttH_M125.root'
     bkg:
         Diphoton40to80:
             '2017': 'DiPhotonJetsBox_M40_80-sherpa.root'
@@ -48,9 +48,9 @@ data_file_names:
 #.root files for all years should have these tree paths. Keys should match keys above
 proc_to_tree_name:
     VBF: 'Events'
-    #VH: 'Events'
+    VH: 'Events'
     ggH: 'Events'
-    #ttH: 'Events'
+    ttH: 'Events'
     Diphoton40to80: 'Events'
     Diphoton80toinf: 'Events'
     GJet20toinf: 'Events'
@@ -64,16 +64,25 @@ proc_to_tree_name:
 #X variables to train with. Must be in nominal_vars (unless created from existing features)
 #Interesting variables are: diphotonPt, leadPhotonEta, subleadPhotonEta
 train_vars:
-    ['leadPhotonIDMVA','subleadPhotonIDMVA',
-    'diphotonMass','diphotonPt',
-    'leadPhotonPtOvM','subleadPhotonPtOvM',
-    'leadPhotonEta','subleadPhotonEta',
-    'dijetMass','dijetAbsDEta','dijetDPhi','diphotonCosPhi',
-    'leadJetPUJID','subleadJetPUJID','subsubleadJetPUJID',
-    'leadJetPt','leadJetEn','leadJetEta','leadJetPhi',
-    'subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi',
-    'subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi'
-    ] 
+    ['diphotonMass', 'diphotonPt', 'diphotonEta',
+    'diphotonPhi', 'diphotonCosPhi', 'diphotonSigmaMoM',
+    'leadPhotonIDMVA', 'leadPhotonPtOvM', 'leadPhotonEta',
+    'leadPhotonEn', 'leadPhotonMass', 'leadPhotonPt', 'leadPhotonPhi',
+    'subleadPhotonIDMVA', 'subleadPhotonPtOvM', 'subleadPhotonEta',
+    'subleadPhotonEn', 'subleadPhotonMass', 'subleadPhotonPt',
+    'subleadPhotonPhi', 'dijetMass', 'dijetPt', 'dijetEta', 'dijetPhi',
+    'dijetDPhi', 'dijetAbsDEta', 'dijetCentrality', 'dijetMinDRJetPho',
+    'dijetDiphoAbsDEta', 'leadJetPUJID', 'leadJetPt', 'leadJetEn',
+    'leadJetEta', 'leadJetPhi', 'leadJetMass', 'leadJetBTagScore',
+    'leadJetDiphoDEta', 'leadJetDiphoDPhi', 'subleadJetPUJID',
+    'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi',
+    'subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
+    'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt',
+    'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
+    'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets',
+    'metPt','metPhi','metSumET']
+    #,'HTXS_stage_0', 'HTXS_stage1_2_cat_pTjet30GeV']
+
 
 vars_to_add:
     #'subsubleadJetCentrality':
