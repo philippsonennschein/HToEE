@@ -21,14 +21,13 @@ class Plotter(object):
     #def __init__(self, data_obj, input_vars, sig_col='forestgreen', normalise=False, log=False, norm_to_data=False):
     def __init__(self, data_obj, input_vars, sig_col='red', normalise=False, norm_to_data=False):
         self.sig_df       = data_obj.mc_df_sig
-        self.bkg_df       = data_obj.mc_df_bkg
-        self.data_df      = data_obj.data_df
+#Change: Commented out the bkg and data contribution
+        #self.bkg_df       = data_obj.mc_df_bkg
+        #self.data_df      = data_obj.data_df
         del data_obj
         self.sig_labels   = np.unique(self.sig_df['proc'].values).tolist()
-        self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
-        #self.bkg_labels   = ['EWKZ', 'DYMC', 'TT2L2Nu', 'TTSemiL'] #FIXME: temp re-ordering of procs for VBF
-        #self.bkg_colours  = ['firebrick','mediumblue', 'lime','olive','red','blue','green','orange','yellow','violet','white'] #better for ggH
-        self.bkg_colours  = ['silver','indianred','yellowgreen','lightgreen','green','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
+        #self.bkg_labels   = np.unique(self.bkg_df['proc'].values).tolist()
+        #self.bkg_colours  = ['silver','indianred','yellowgreen','lightgreen','green','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
         self.sig_colour   = sig_col
         self.normalise    = normalise
 

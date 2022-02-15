@@ -15,7 +15,7 @@ from root_numpy import tree2array, fill_hist
 from math import pi
 import h5py
 from itertools import product
-from sklearn.metrics import accuracy_score, log_loss, confusion_matrix, roc_curve, auc, roc_auc_score, auc
+from sklearn.metrics import accuracy_score, log_loss, confusion_matrix, roc_curve, auc, roc_auc_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential 
@@ -23,29 +23,18 @@ from keras.initializers import RandomNormal
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import Nadam, adam, Adam
 from keras.regularizers import l2 
-from keras.callbacks import EarlyStopping, LearningRateScheduler
+from keras.callbacks import EarlyStopping 
 from keras.utils import np_utils 
 from keras.metrics import categorical_crossentropy, binary_crossentropy
 
-def scheduler(epoch, lr):
-    print("epoch: ", epoch)
-    if epoch < 10:
-        print("lr: ", lr)
-        return lr
-    else:
-        lr *= math.exp(-0.1)
-        print("lr: ", lr)
-        return lr
-
 #Define key quantities, use to tune NN
 num_epochs = 2
-batch_size = 60
-test_split = 0.15
-val_split = 0.15
+batch_size = 400
+val_split = 0.3
 learning_rate = 0.001
 
 epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
-binNames = ['ggH','qqH','VH','ttH'] 
+binNames = ['ggH','qqH','ZH','WH','ttH','tH'] 
 bins = 50
 
 #Directories
@@ -69,13 +58,17 @@ train_vars = ['diphotonMass', 'diphotonPt', 'diphotonEta',
 'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt',
 'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
 'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets',
-'metPt','metPhi','metSumET']
+'metPt','metPhi','metSumET',
+'leadElectronEn','leadElectronMass','leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
+'leadMuonEn','leadMuonMass','leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
+'subleadElectronEn','subleadElectronMass','subleadElectronPt','subleadElectronEta','subleadElectronPhi','subleadElectronCharge',
+'subleadMuonEn','subleadMuonMass','subleadMuonPt','subleadMuonEta','subleadMuonPhi','subleadMuonCharge']
 
 #Add proc and weight to shuffle with data
 train_vars.append('proc')
 train_vars.append('weight')
 train_vars.append('HTXS_stage_0')
-#train_vars.append('HTXS_stage1_2_cat_pTjet30GeV')
+train_vars.append('HTXS_stage1_2_cat_pTjet30GeV')
 
 #Load the dataframe
 dataframes = []
@@ -83,6 +76,8 @@ dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv'))
 df = pd.concat(dataframes, sort=False, axis=0 )
 
 #Data dataframe
@@ -106,13 +101,16 @@ for i in proc_temp:
         proc_new.append('ggH')
     elif i == 20 or i == 21 or i == 22 or i == 23:
         proc_new.append('qqH')
-    elif i == 30 or i == 31 or i == 40 or i == 41:
-        proc_new.append('VH')
+    elif i == 30 or i == 31:
+        proc_new.append('WH')
+    elif i == 40 or i == 41:
+        proc_new.append('ZH')
     elif i == 60 or i == 61:
         proc_new.append('ttH')
+    elif i == 80 or i == 81:
+        proc_new.append('tH')
     else:
         proc_new.append(i)
-        print(i)
 data['proc_new'] = proc_new
 
 #Define the procs as the labels
@@ -124,7 +122,7 @@ y_train_labels_num, y_train_labels_def = pd.factorize(data['proc_new'])
 print('Label Definition:')
 label_def = []
 for i in range(num_categories):
-    label_def.append([y_train_labels_def[i]])
+    label_def.append([i,y_train_labels_def[i]])
     print(i,y_train_labels_def[i])
 
 data['proc_num'] = y_train_labels_num
@@ -142,6 +140,7 @@ data = data.drop(columns=['proc'])
 data = data.drop(columns=['weight'])
 data = data.drop(columns=['proc_num'])
 data = data.drop(columns=['HTXS_stage_0'])
+data = data.drop(columns=['HTXS_stage1_2_cat_pTjet30GeV'])
 data = data.drop(columns=['proc_new'])
 
 #Set -999.0 values to -10.0 to decrease effect on scaling 
@@ -155,7 +154,7 @@ data_scaled = pd.DataFrame(scaler.fit_transform(data), columns=data.columns)
 num_inputs  = data_scaled.shape[1]
 
 #Splitting the dataframe into training and test
-x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data_scaled, y_train_labels_hot, weights, y_train_labels, test_size = test_split, shuffle = True)
+x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data_scaled, y_train_labels_hot, weights, y_train_labels, test_size = val_split, shuffle = True)
 
 #Initialize the model
 model=Sequential([Dense(units=100,input_shape=(num_inputs,),activation='relu'),
@@ -175,114 +174,19 @@ train_w_df['weight'] = train_w
 train_w_df['proc'] = proc_arr_train
 qqh_sum_w = train_w_df[train_w_df['proc'] == 'qqH']['weight'].sum()
 ggh_sum_w = train_w_df[train_w_df['proc'] == 'ggH']['weight'].sum()
-vh_sum_w = train_w_df[train_w_df['proc'] == 'VH']['weight'].sum()
+wh_sum_w = train_w_df[train_w_df['proc'] == 'WH']['weight'].sum()
+zh_sum_w = train_w_df[train_w_df['proc'] == 'ZH']['weight'].sum()
 tth_sum_w = train_w_df[train_w_df['proc'] == 'ttH']['weight'].sum()
+th_sum_w = train_w_df[train_w_df['proc'] == 'tH']['weight'].sum()
 train_w_df.loc[train_w_df.proc == 'qqH','weight'] = (train_w_df[train_w_df['proc'] == 'qqH']['weight'] * ggh_sum_w / qqh_sum_w)
-train_w_df.loc[train_w_df.proc == 'VH','weight'] = (train_w_df[train_w_df['proc'] == 'VH']['weight'] * ggh_sum_w / vh_sum_w)
+train_w_df.loc[train_w_df.proc == 'WH','weight'] = (train_w_df[train_w_df['proc'] == 'WH']['weight'] * ggh_sum_w / wh_sum_w)
+train_w_df.loc[train_w_df.proc == 'ZH','weight'] = (train_w_df[train_w_df['proc'] == 'ZH']['weight'] * ggh_sum_w / zh_sum_w)
 train_w_df.loc[train_w_df.proc == 'ttH','weight'] = (train_w_df[train_w_df['proc'] == 'ttH']['weight'] * ggh_sum_w / tth_sum_w)
+train_w_df.loc[train_w_df.proc == 'tH','weight'] = (train_w_df[train_w_df['proc'] == 'tH']['weight'] * ggh_sum_w / th_sum_w)
 train_w = np.array(train_w_df['weight'])
 
-# Callbacks
-callback_lr = LearningRateScheduler(scheduler)
-callback_earlystop = EarlyStopping(monitor='val_loss', min_delta = 0.001, patience=10)
-
 #Training the model
-history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,sample_weight=train_w,validation_split = val_split,shuffle=True,verbose=2,callbacks=[callback_lr,callback_earlystop])
-
-'''
-# New code to test batch sizes
-#paramaters that control batch size
-best_auc           = 0.5
-current_batch_size = 64
-max_batch_size     = 50000
-
-#keep track of epochs for plotting loss vs epoch, and for getting best model
-epoch_counter      = 0 
-best_epoch         = 1 
-
-keep_training = True
-
-while keep_training:
-    epoch_counter += 1
-    print('beginning training iteration for epoch {}'.format(epoch_counter))
-    self.train_network(epochs=1, batch_size=current_batch_size)
-
-    self.save_model(epoch_counter, out_tag)
-    val_roc = self.compute_roc(batch_size=current_batch_size, valid_set=True)  #FIXME: what is the best BS here? final BS from batch boost... initial BS? current BS??
-
-    #get average of validation rocs and clear list entries 
-    improvement  = ((1-best_auc) - (1-val_roc)) / (1-best_auc)
-
-    #FIXME: if the validation roc does not improve after n bad "epochs", then update the batch size accordingly. Rest bad epochs to zero each time the batch size increases, if it does
-
-    #do checks to see if batch size needs to change etc
-    if improvement > auc_threshold:
-        print('Improvement in (1-AUC) of {:.4f} percent. Keeping batch size at {}'.format(improvement*100, current_batch_size))
-        best_auc = val_roc
-        best_epoch = epoch_counter
-    elif current_batch_size*4 < max_batch_size:
-        print('Improvement in (1-AUC) of only {:.4f} percent. Increasing batch size to {}'.format(improvement*100, current_batch_size*4))
-        current_batch_size *= 4
-        if val_roc > best_auc: 
-            best_auc = val_roc
-            best_epoch = epoch_counter
-    elif current_batch_size < max_batch_size: 
-        print('Improvement in (1-AUC) of only {:.4f} percent. Increasing to max batch size of {}'.format(improvement*100, max_batch_size))
-        current_batch_size = max_batch_size
-        if val_roc > best_auc: 
-            best_auc = val_roc
-            best_epoch = epoch_counter
-    elif improvement > 0:
-        print('Improvement in (1-AUC) of only {:.4f} percent. Cannot increase batch further'.format(improvement*100))
-        best_auc = val_roc
-        best_epoch = epoch_counter
-    else: 
-        print('AUC did not improve and batch size cannot be increased further. Stopping training...')
-        keep_training = False
-
-    if epoch_counter > self.max_epochs:
-        print('At the maximum number of training epochs ({}). Stopping training...'.format(self.max_epochs))
-        keep_training = False
-        best_epoch = self.max_epochs
-            
-print 'best epoch was: {}'.format(best_epoch)
-print 'best validation auc was: {}'.format(best_auc)
-self.val_roc = best_auc
-
-# Can make the following changes:
-# Jow saves the roc and accuracy for the best epoch
-# He then calculates the roc of the current epoch
-# val_roc = self.compute_roc(batch_size=current_batch_size, valid_set=True)  #FIXME: what is the best BS here? final BS from batch boost... initial BS? current BS??
-# Then defines his own metric improvement defined as ((1-best_auc) - (1-val_roc)) / (1-best_auc)'
-accuracy = [0]
-loss = [1]
-thresh = 0.01
-training = True
-batch_size = 64
-max_batch_size = 300
-epoch_count = 0
-
-for i in range(num_epochs):
-    while training:
-    #if i<= num_epochs:
-        epoch_count += 1
-        print('Progress:',epoch_count,'/',num_epochs)
-        history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=1,sample_weight=train_w,shuffle=True,verbose=2)
-        accuracy.append(history.history['acc'][0])
-        loss.append(history.history['loss'][0])
-        diff_loss = loss[-2] - loss[-1]
-        if diff_loss < thresh:
-            batch_size *= 4
-            thresh /= 2
-            print('Adjusting parameters:')
-            print('Batch size:',batch_size)
-            print('threshold:',thresh)
-            if batch_size > max_batch_size:
-                training = False
-accuracy = accuracy[1:]
-loss = loss[1:]
-print('Done training!')
-'''
+history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,sample_weight=train_w,shuffle=True,verbose=2)
 
 # Output Score
 y_pred_test = model.predict_proba(x=x_test)
@@ -290,23 +194,31 @@ x_test['proc'] = proc_arr_test
 x_test['weight'] = test_w
 x_test['output_score_ggh'] = y_pred_test[:,0]
 x_test['output_score_qqh'] = y_pred_test[:,1]
-x_test['output_score_vh'] = y_pred_test[:,2]
-x_test['output_score_tth'] = y_pred_test[:,3]
+x_test['output_score_wh'] = y_pred_test[:,2]
+x_test['output_score_zh'] = y_pred_test[:,3]
+x_test['output_score_tth'] = y_pred_test[:,4]
+x_test['output_score_th'] = y_pred_test[:,5]
 
 output_score_ggh = np.array(y_pred_test[:,0])
 output_score_qqh = np.array(y_pred_test[:,1])
-output_score_vh = np.array(y_pred_test[:,2])
-output_score_tth = np.array(y_pred_test[:,3])
+output_score_wh = np.array(y_pred_test[:,2])
+output_score_zh = np.array(y_pred_test[:,3])
+output_score_tth = np.array(y_pred_test[:,4])
+output_score_th = np.array(y_pred_test[:,5])
 
 x_test_ggh = x_test[x_test['proc'] == 'ggH']
 x_test_qqh = x_test[x_test['proc'] == 'qqH']
-x_test_vh = x_test[x_test['proc'] == 'VH']
+x_test_wh = x_test[x_test['proc'] == 'WH']
+x_test_zh = x_test[x_test['proc'] == 'ZH']
 x_test_tth = x_test[x_test['proc'] == 'ttH']
+x_test_th = x_test[x_test['proc'] == 'tH']
 
 ggh_w = x_test_ggh['weight'] / x_test_ggh['weight'].sum()
 qqh_w = x_test_qqh['weight'] / x_test_qqh['weight'].sum()
-vh_w = x_test_vh['weight'] / x_test_vh['weight'].sum()
+wh_w = x_test_wh['weight'] / x_test_wh['weight'].sum()
+zh_w = x_test_zh['weight'] / x_test_zh['weight'].sum()
 tth_w = x_test_tth['weight'] / x_test_tth['weight'].sum()
+th_w = x_test_th['weight'] / x_test_th['weight'].sum()
 
 #Accuracy Score
 y_pred = y_pred_test.argmax(axis=1)
@@ -335,22 +247,38 @@ for i in range(len(y_pred_qqh)):
         y_pred_qqh_prob.append(0)
     elif y_pred_qqh[i] == 1:
         y_pred_qqh_prob.append(output_score_qqh[i])
-y_true_vh = np.where(y_true == 2, 1, 0)
-y_pred_vh = np.where(y_pred == 2, 1, 0)
-y_pred_vh_prob = []
-for i in range(len(y_pred_vh)):
-    if y_pred_vh[i] == 0:
-        y_pred_vh_prob.append(0)
-    elif y_pred_vh[i] == 1:
-        y_pred_vh_prob.append(output_score_vh[i])
-y_true_tth = np.where(y_true == 3, 1, 0)
-y_pred_tth = np.where(y_pred == 3, 1, 0)
+y_true_wh = np.where(y_true == 2, 1, 0)
+y_pred_wh = np.where(y_pred == 2, 1, 0)
+y_pred_wh_prob = []
+for i in range(len(y_pred_wh)):
+    if y_pred_wh[i] == 0:
+        y_pred_wh_prob.append(0)
+    elif y_pred_wh[i] == 1:
+        y_pred_wh_prob.append(output_score_wh[i])
+y_true_zh = np.where(y_true == 3, 1, 0)
+y_pred_zh = np.where(y_pred == 3, 1, 0)
+y_pred_zh_prob = []
+for i in range(len(y_pred_zh)):
+    if y_pred_zh[i] == 0:
+        y_pred_zh_prob.append(0)
+    elif y_pred_zh[i] == 1:
+        y_pred_zh_prob.append(output_score_zh[i])
+y_true_tth = np.where(y_true == 4, 1, 0)
+y_pred_tth = np.where(y_pred == 4, 1, 0)
 y_pred_tth_prob = []
 for i in range(len(y_pred_tth)):
     if y_pred_tth[i] == 0:
         y_pred_tth_prob.append(0)
     elif y_pred_tth[i] == 1:
         y_pred_tth_prob.append(output_score_tth[i])
+y_true_th = np.where(y_true == 5, 1, 0)
+y_pred_th = np.where(y_pred == 5, 1, 0)
+y_pred_th_prob = []
+for i in range(len(y_pred_th)):
+    if y_pred_th[i] == 0:
+        y_pred_th_prob.append(0)
+    elif y_pred_th[i] == 1:
+        y_pred_th_prob.append(output_score_th[i])
 
 def roc_score(y_true = y_true, y_pred = y_pred_test):
 
@@ -366,11 +294,17 @@ def roc_score(y_true = y_true, y_pred = y_pred_test):
     auc_keras_test_qqh = auc(fpr_keras_qqh,tpr_keras_qqh)
     print("Area under ROC curve for qqH (test): ", auc_keras_test_qqh)
 
-    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob,sample_weight=vh_w)
-    fpr_keras_vh.sort()
-    tpr_keras_vh.sort()
-    auc_keras_test_vh = auc(fpr_keras_vh,tpr_keras_vh)
-    print("Area under ROC curve for VH (test): ", auc_keras_test_vh)
+    fpr_keras_wh, tpr_keras_wh, thresholds_keras_wh = roc_curve(y_true_wh, y_pred_wh_prob,sample_weight=wh_w)
+    fpr_keras_wh.sort()
+    tpr_keras_wh.sort()
+    auc_keras_test_wh = auc(fpr_keras_wh,tpr_keras_wh)
+    print("Area under ROC curve for WH (test): ", auc_keras_test_wh)
+
+    fpr_keras_zh, tpr_keras_zh, thresholds_keras_zh = roc_curve(y_true_zh, y_pred_zh_prob,sample_weight=zh_w)
+    fpr_keras_zh.sort()
+    tpr_keras_zh.sort()
+    auc_keras_test_zh = auc(fpr_keras_zh,tpr_keras_zh)
+    print("Area under ROC curve for ZH (test): ", auc_keras_test_zh)
 
     fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=tth_w)
     fpr_keras_tth.sort()
@@ -378,12 +312,20 @@ def roc_score(y_true = y_true, y_pred = y_pred_test):
     auc_keras_test_tth = auc(fpr_keras_tth,tpr_keras_tth)
     print("Area under ROC curve for ttH (test): ", auc_keras_test_tth)
 
+    fpr_keras_th, tpr_keras_th, thresholds_keras_th = roc_curve(y_true_th, y_pred_th_prob,sample_weight=th_w)
+    fpr_keras_th.sort()
+    tpr_keras_th.sort()
+    auc_keras_test_th = auc(fpr_keras_th,tpr_keras_th)
+    print("Area under ROC curve for tH (test): ", auc_keras_test_th)
+
     print("Plotting ROC Score")
     fig, ax = plt.subplots()
     ax.plot(fpr_keras_ggh, tpr_keras_ggh, label = 'ggH (area = %0.2f)'%auc_keras_test_ggh)
     ax.plot(fpr_keras_qqh, tpr_keras_qqh, label = 'qqH (area = %0.2f)'%auc_keras_test_qqh)
-    ax.plot(fpr_keras_vh, tpr_keras_vh, label = 'VH (area = %0.2f)'%auc_keras_test_vh)
+    ax.plot(fpr_keras_wh, tpr_keras_wh, label = 'WH (area = %0.2f)'%auc_keras_test_wh)
+    ax.plot(fpr_keras_zh, tpr_keras_zh, label = 'ZH (area = %0.2f)'%auc_keras_test_zh)
     ax.plot(fpr_keras_tth, tpr_keras_tth, label = 'ttH (area = %0.2f)'%auc_keras_test_tth)
+    ax.plot(fpr_keras_th, tpr_keras_th, label = 'tH (area = %0.2f)'%auc_keras_test_th)
     ax.legend()
     ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
     ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
@@ -401,37 +343,23 @@ def plot_output_score(data='output_score_qqh', density=False,):
     print('Plotting',data)
     output_score_ggh = np.array(x_test_ggh[data])
     output_score_qqh = np.array(x_test_qqh[data])
-    output_score_vh = np.array(x_test_vh[data])
+    output_score_wh = np.array(x_test_wh[data])
+    output_score_zh = np.array(x_test_zh[data])
     output_score_tth = np.array(x_test_tth[data])
+    output_score_th = np.array(x_test_th[data])
 
     fig, ax = plt.subplots()
-    #fig  = plt.figure(1)
-    #ax = fig.gca()
-    ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w,color='#11a1ba')
-    ax.hist(output_score_qqh, bins=50, label='qqH', histtype='step',weights=qqh_w,color='#d9712e')
-    ax.hist(output_score_vh, bins=50, label='VH', histtype='step',weights=vh_w,color='#1fad38')
-    ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w,color='#a421ad')
-    #plt.rcParams.update({'font.size': 13})
-    plt.rcParams.update({
-    "font.family": "serif",
-    "font.serif": [],
-    'font.size': 13})
+    ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
+    ax.hist(output_score_qqh, bins=50, label='qqH', histtype='step',weights=qqh_w) #density=True)
+    ax.hist(output_score_wh, bins=50, label='WH', histtype='step',weights=wh_w) #density=True) 
+    ax.hist(output_score_zh, bins=50, label='ZH', histtype='step',weights=zh_w) #density=True) 
+    ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w) #density=True)
+    ax.hist(output_score_th, bins=50, label='tH', histtype='step',weights=th_w) #density=True)
     plt.legend()
-    #plt.title('Output Score')
-    ax.set_xlabel('NN Score', ha='right',x=0.5) #, x=1, size=13)
-    ax.set_ylabel('Fraction of Events', ha='right',y=0.5) #, y=1, size=13)
-    x_ticks = [0.0,0.2,0.4,0.6,0.8,1.0]
-    #y_ticks = np.linspace(0, current_top, num=6, endpoint=True)
-    ax.set_xticks(ticks=x_ticks,minor=True)#, size=13)
-    #ax.set_yticks(minor=True)#, size=13)
-    #ax.yaxis.set_label_coords(-0.1, 0.9)
-    #ax.xaxis.set_label_coords(0.9, -0.1)
-    #plt.ylabel('Fraction of Events')
-    #plt.xlabel('BDT Score')
-    current_bottom, current_top = ax.get_ylim()
-    ax.set_ylim(bottom=0, top=current_top*1.1)
-    plt.tight_layout(0.5)
-    name = 'plotting/NN_plots/NN_Multi_'+data
+    plt.title('Output Score')
+    plt.ylabel('Fraction of Events')
+    plt.xlabel('NN Score')
+    name = 'plotting/NN_plots/NN_Sixclass_'+data
     plt.savefig(name, dpi = 1200)
 
 #Plotting:
@@ -488,19 +416,21 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_Multi_Confusion_Matrix'
+    name = 'plotting/NN_plots/NN_Fiveclass_Confusion_Matrix'
     fig.savefig(name)
 
 plot_output_score(data='output_score_qqh')
 plot_output_score(data='output_score_ggh')
-plot_output_score(data='output_score_vh')
+plot_output_score(data='output_score_wh')
+plot_output_score(data='output_score_zh')
 plot_output_score(data='output_score_tth')
-
-#roc_score()
+plot_output_score(data='output_score_th')
 
 #plot_accuracy()
 #plot_loss()
-#plot_confusion_matrix(cm,binNames,normalize=True)
+plot_confusion_matrix(cm,binNames,normalize=True)
+
+roc_score()
 
 
 #save as a pickle file

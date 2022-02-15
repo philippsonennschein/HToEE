@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import matplotlib
+#import matplotlib as mpl
 import xgboost as xgb
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -110,9 +111,11 @@ x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test
 
 #Before n_estimators = 100, maxdepth=4, gamma = 1
 #Improved n_estimators = 300, maxdepth = 7, gamme = 4
-clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=100, 
-                            eta=0.1, maxDepth=4, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=1,
+# Current best compbination of HP values:, 300, 0.01, 6)
+
+clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=300, 
+                            eta=0.01, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=4)
 
 #Equalizing weights
@@ -218,19 +221,19 @@ def roc_score(y_true = y_true, y_pred = y_pred_test):
     auc_keras_test_ggh = auc(fpr_keras_ggh,tpr_keras_ggh)
     print("Area under ROC curve for ggH (test): ", auc_keras_test_ggh)
 
-    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,,sample_weight=qqh_w)
+    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=qqh_w)
     fpr_keras_qqh.sort()
     tpr_keras_qqh.sort()
     auc_keras_test_qqh = auc(fpr_keras_qqh,tpr_keras_qqh)
     print("Area under ROC curve for qqH (test): ", auc_keras_test_qqh)
 
-    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob,,sample_weight=vh_w)
+    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob,sample_weight=vh_w)
     fpr_keras_vh.sort()
     tpr_keras_vh.sort()
     auc_keras_test_vh = auc(fpr_keras_vh,tpr_keras_vh)
     print("Area under ROC curve for VH (test): ", auc_keras_test_vh)
 
-    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,,sample_weight=tth_w)
+    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=tth_w)
     fpr_keras_tth.sort()
     tpr_keras_tth.sort()
     auc_keras_test_tth = auc(fpr_keras_tth,tpr_keras_tth)
@@ -284,16 +287,34 @@ def plot_output_score(data='output_score_qqh', density=False,):
     output_score_tth = np.array(x_test_tth[data])
 
     fig, ax = plt.subplots()
-    ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
-    ax.hist(output_score_qqh, bins=50, label='qqH', histtype='step',weights=qqh_w) #density=True)
-    ax.hist(output_score_vh, bins=50, label='VH', histtype='step',weights=vh_w) #density=True) 
-    ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w) #density=True)
+    #fig  = plt.figure(1)
+    #ax = fig.gca()
+    ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w,color='#11a1ba')
+    ax.hist(output_score_qqh, bins=50, label='qqH', histtype='step',weights=qqh_w,color='#d9712e')
+    ax.hist(output_score_vh, bins=50, label='VH', histtype='step',weights=vh_w,color='#1fad38')
+    ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w,color='#a421ad')
+    #plt.rcParams.update({'font.size': 13})
+    plt.rcParams.update({
+    "font.family": "serif",
+    "font.serif": [],
+    'font.size': 13})
     plt.legend()
-    plt.title('Output Score')
-    plt.ylabel('Fraction of Events')
-    plt.xlabel('BDT Score')
+    #plt.title('Output Score')
+    ax.set_xlabel('NN Score', ha='right',x=0.5) #, x=1, size=13)
+    ax.set_ylabel('Fraction of Events', ha='right',y=0.5) #, y=1, size=13)
+    x_ticks = [0.0,0.2,0.4,0.6,0.8,1.0]
+    #y_ticks = np.linspace(0, current_top, num=6, endpoint=True)
+    ax.set_xticks(ticks=x_ticks,minor=True)#, size=13)
+    #ax.set_yticks(minor=True)#, size=13)
+    #ax.yaxis.set_label_coords(-0.1, 0.9)
+    #ax.xaxis.set_label_coords(0.9, -0.1)
+    #plt.ylabel('Fraction of Events')
+    #plt.xlabel('BDT Score')
+    current_bottom, current_top = ax.get_ylim()
+    ax.set_ylim(bottom=0, top=current_top*1.1)
+    plt.tight_layout(0.5)
     name = 'plotting/BDT_plots/BDT_Multi_'+data
-    plt.savefig(name, dpi = 200)
+    plt.savefig(name, dpi = 1200)
 
 plot_output_score(data='output_score_qqh')
 plot_output_score(data='output_score_ggh')
@@ -303,3 +324,6 @@ plot_output_score(data='output_score_tth')
 roc_score()
 
 plot_confusion_matrix(cm,binNames,normalize=True)
+
+# Can convert the pdg to pngs using the following command in the terminal
+# pdftoppm -png -r 300 filename.pdf filename

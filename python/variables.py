@@ -8,7 +8,11 @@ nominal_vars = ['diphotonMass','diphotonPt','diphotonEta','diphotonPhi','diphoto
                 'subleadJetPUJID','subleadJetPt','subleadJetEn','subleadJetEta','subleadJetPhi','subleadJetMass','subleadJetBTagScore','subleadJetDiphoDPhi','subleadJetDiphoDEta',
                 'subsubleadJetPUJID','subsubleadJetPt','subsubleadJetEn','subsubleadJetEta','subsubleadJetPhi','subsubleadJetMass','subsubleadJetBTagScore',#'subsubleadJetDiphoDPhi','subsubleadJetDiphoDEta',
                 'weight', 'centralObjectWeight',
-                'nSoftJets','metPt','metPhi','metSumET'
+                'nSoftJets','metPt','metPhi','metSumET',
+                'leadElectronEn','leadElectronMass','leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
+                'leadMuonEn','leadMuonMass','leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
+                'subleadElectronEn','subleadElectronMass','subleadElectronPt','subleadElectronEta','subleadElectronPhi','subleadElectronCharge',
+                'subleadMuonEn','subleadMuonMass','subleadMuonPt','subleadMuonEta','subleadMuonPhi','subleadMuonCharge'
 
                 #'diphotonPt', 'diphotonMass', 'dijetMass', 'leadJetPt', 'subleadJetPt', 'weight', 'centralObjectWeight',
                 #'leadPhotonPtOvM','subleadPhotonPtOvM','leadPhotonEta','subleadPhotonEta','leadPhotonIDMVA','subleadPhotonIDMVA'

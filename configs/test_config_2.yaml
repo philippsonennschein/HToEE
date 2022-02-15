@@ -9,7 +9,7 @@ mc_file_dir:
 
 #.root Data files for all years should be kept in this dir:
 data_file_dir:
-    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017/Data/'
+    '/vols/cms/pas3618/Msci_project/try1/CMSSW_10_6_8/src/HToEE/2017_old/Data/'
 
 mc_file_names:
     sig:
@@ -21,23 +21,27 @@ mc_file_names:
             '2017': 'ggH_M125.root'
         ttH:
             '2017': 'ttH_M125.root'
+        tHq:
+            '2017': 'tHq_M125.root'
+        tHW: 
+            '2017': 'tHW_M125.root'
     bkg:
-        Diphoton40to80:
-            '2017': 'DiPhotonJetsBox_M40_80-sherpa.root'
-        Diphoton80toinf:
-            '2017': 'DiPhotonJetsBox_MGG-80toInf_13TeV-sherpa.root'
-        GJet20to40:
-            '2017': 'GJet_Pt-20to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        GJet20toinf:
-            '2017': 'GJet_Pt-20toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
-        GJet40toinf:
-            '2017': 'GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        QCD30to40:
-            '2017': 'QCD_Pt-30to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
-        QCD30toinf:
-            '2017': 'QCD_Pt-30toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
-        QCD40toinf:
-            '2017': 'QCD_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        #Diphoton40to80:
+        #    '2017': 'DiPhotonJetsBox_M40_80-sherpa.root'
+        #Diphoton80toinf:
+        #    '2017': 'DiPhotonJetsBox_MGG-80toInf_13TeV-sherpa.root'
+        #GJet20to40:
+        #    '2017': 'GJet_Pt-20to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        #GJet20toinf:
+        #    '2017': 'GJet_Pt-20toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
+        #GJet40toinf:
+        #    '2017': 'GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        #QCD30to40:
+        #    '2017': 'QCD_Pt-30to40_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
+        #QCD30toinf:
+        #    '2017': 'QCD_Pt-30toInf_DoubleEMEnriched_MGG-40to80_TuneCP5_13TeV_Pythia8.root'
+        #QCD40toinf:
+        #    '2017': 'QCD_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCP5_13TeV_Pythia8.root'
 
 
 data_file_names:
@@ -51,6 +55,8 @@ proc_to_tree_name:
     VH: 'Events'
     ggH: 'Events'
     ttH: 'Events'
+    tHq: 'Events'
+    tHW: 'Events'
     Diphoton40to80: 'Events'
     Diphoton80toinf: 'Events'
     GJet20toinf: 'Events'
@@ -80,7 +86,12 @@ train_vars:
     'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt',
     'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
     'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets',
-    'metPt','metPhi','metSumET']
+    'metPt','metPhi','metSumET',
+    'leadElectronEn','leadElectronMass','leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
+    'leadMuonEn','leadMuonMass','leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
+    'subleadElectronEn','subleadElectronMass','subleadElectronPt','subleadElectronEta','subleadElectronPhi','subleadElectronCharge',
+    'subleadMuonEn','subleadMuonMass','subleadMuonPt','subleadMuonEta','subleadMuonPhi','subleadMuonCharge'
+    ]
     #,'HTXS_stage_0', 'HTXS_stage1_2_cat_pTjet30GeV']
 
 

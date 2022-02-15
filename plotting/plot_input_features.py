@@ -36,13 +36,13 @@ def main(options):
             output_tag += '_pt_reweighted'
             root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, cr_selection)
         else: root_obj = ROOTHelpers(output_tag, mc_dir, mc_fnames, data_dir, data_fnames, proc_to_tree_name, train_vars, vars_to_add, presel)
-
-        for bkg_obj in root_obj.bkg_objects:
-            root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
+#Change:
+        #for bkg_obj in root_obj.bkg_objects:
+        #    root_obj.load_mc(bkg_obj, bkg=True, reload_samples=options.reload_samples)
         for sig_obj in root_obj.sig_objects:
             root_obj.load_mc(sig_obj, reload_samples=options.reload_samples)
-        for data_obj in root_obj.data_objects:
-            root_obj.load_data(data_obj, reload_samples=options.reload_samples)
+        #for data_obj in root_obj.data_objects:
+        #    root_obj.load_data(data_obj, reload_samples=options.reload_samples)
         root_obj.concat()
 
         if options.pt_reweight and options.reload_samples: 
@@ -63,7 +63,11 @@ def main(options):
                     'leadJetEta', 'leadJetPhi', 'leadJetMass', 'leadJetBTagScore','leadJetDiphoDEta', 'leadJetDiphoDPhi', 'subleadJetPUJID',
                     'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi','subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
                     'subleadJetDiphoDEta', 'subsubleadJetPUJID', 'subsubleadJetPt','subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
-                    'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets','metPt','metPhi','metSumET']:
+                    'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets','metPt','metPhi','metSumET',
+                    'leadElectronEn','leadElectronMass','leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
+                    'leadMuonEn','leadMuonMass','leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
+                    'subleadElectronEn','subleadElectronMass','subleadElectronPt','subleadElectronEta','subleadElectronPhi','subleadElectronCharge',
+                    'subleadMuonEn','subleadMuonMass','subleadMuonPt','subleadMuonEta','subleadMuonPhi','subleadMuonCharge']:
                     #,'HTXS_stage_0', 'HTXS_stage1_2_cat_pTjet30GeV']:
             plotter.plot_input(var, options.n_bins, output_tag, options.ratio_plot, norm_to_data=True)
 if __name__ == "__main__":
