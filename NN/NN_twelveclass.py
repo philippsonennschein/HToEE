@@ -30,16 +30,47 @@ from keras.metrics import categorical_crossentropy, binary_crossentropy
 #Define key quantities
 
 #HPs
-num_epochs = 2
-batch_size = 400
+#Original
+#num_epochs = 2
+#batch_size = 400
+#val_split = 0.3
+#learning_rate = 0.001
+
+#Optimized according to 4class
+num_epochs = 30
+batch_size = 64
 val_split = 0.3
-learning_rate = 0.001
+learning_rate = 0.0001
+
 
 #STXS mapping
-map_def = [['ggH',10,11],['qqH',20,21,22,23],['WH',30,31],['ZH',40,41],['ttH',60,61],['tH',80,81]]
+map_def_0 = [['ggH',10,11],['qqH',20,21,22,23],['WH',30,31],['ZH',40,41],['ttH',60,61],['tH',80,81]]
+map_def_1 = [
+['ggH',100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116],
+['QQ2HQQ_FWDH',200],
+['QQ2HQQ_0J',201],
+['QQ2HQQ_1J',202],
+['QQ2HQQ_GE2J_MJJ_0_60',203],
+['QQ2HQQ_GE2J_MJJ_60_120',204],
+['QQ2HQQ_GE2J_MJJ_120_350',205],
+['QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200',206],
+['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',207],
+['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',208],
+['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',209],
+['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',210],
+['WH',300,301,302,303,304,305],
+['ZH',400,401,402,403,404,405],
+['ttH',600,601,602,603,604,605],
+['tH',800,801]
+]
 
 epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
-binNames = ['ggH','qqH','ZH','WH','ttH','tH'] 
+#binNames = ['ggH','qqH','ZH','WH','ttH','tH'] 
+#binNames = ['ggH','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25','QQ2HQQ_GE2J_MJJ_120_350',
+#'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','QQ2HQQ_1J','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
+#'QQ2HQQ_0J','QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
+#'QQ2HQQ_GE2J_MJJ_0_60','QQ2HQQ_GE2J_MJJ_60_120','QQ2HQQ_FWDH','ZH','WH','ttH','tH'] 
+binNames = ['ggH','qqH1','qqH2','qqH3','qqH4','qqH5','qqH6','qqH7','qqH8','qqH9','qqH10','qqH0','ZH','WH','ttH','tH'] 
 bins = 50
 
 #Directories
@@ -111,7 +142,8 @@ def mapping(map_list,stage):
                 proc.append(proc_list[j])
     return proc
 
-data['proc_new'] = mapping(map_list=map_def,stage=data['HTXS_stage_0'])
+#data['proc_new'] = mapping(map_list=map_def,stage=data['HTXS_stage_0'])
+data['proc_new'] = mapping(map_list=map_def_1,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
 
 #Define the procs as the labels
 #ggh: 0, VBF:1, VH: 2, ttH: 3
@@ -122,8 +154,10 @@ y_train_labels_num, y_train_labels_def = pd.factorize(data['proc_new'])
 #Label definition:
 print('Label Definition:')
 label_def = []
+binNames_auto = []
 for i in range(num_categories):
     label_def.append([i,y_train_labels_def[i]])
+    binNames_auto.append(y_train_labels_def[i])
     print(i,y_train_labels_def[i])
 
 data['proc_num'] = y_train_labels_num
@@ -153,8 +187,8 @@ num_inputs  = data_scaled.shape[1]
 x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data_scaled, y_train_labels_hot, weights, y_train_labels, test_size = val_split, shuffle = True)
 
 #Initialize the model
-model=Sequential([Dense(units=100,input_shape=(num_inputs,),activation='relu'),
-                Dense(units=100,activation='relu'),
+model=Sequential([Dense(units=400,input_shape=(num_inputs,),activation='relu'),
+                Dense(units=400,activation='relu'),
                 #Dense(units=100,activation='relu'),
                 Dense(units=num_categories,activation='softmax')]) #For multiclass NN use softmax
 
@@ -168,17 +202,38 @@ train_w_df = pd.DataFrame()
 train_w = 300 * train_w # to make loss function O(1)
 train_w_df['weight'] = train_w
 train_w_df['proc'] = proc_arr_train
-qqh_sum_w = train_w_df[train_w_df['proc'] == 'qqH']['weight'].sum()
 ggh_sum_w = train_w_df[train_w_df['proc'] == 'ggH']['weight'].sum()
 wh_sum_w = train_w_df[train_w_df['proc'] == 'WH']['weight'].sum()
 zh_sum_w = train_w_df[train_w_df['proc'] == 'ZH']['weight'].sum()
 tth_sum_w = train_w_df[train_w_df['proc'] == 'ttH']['weight'].sum()
 th_sum_w = train_w_df[train_w_df['proc'] == 'tH']['weight'].sum()
-train_w_df.loc[train_w_df.proc == 'qqH','weight'] = (train_w_df[train_w_df['proc'] == 'qqH']['weight'] * ggh_sum_w / qqh_sum_w)
+qqh0_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_FWDH']['weight'].sum()
+qqh1_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_0J']['weight'].sum()
+qqh2_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_1J']['weight'].sum()
+qqh3_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_0_60']['weight'].sum()
+qqh4_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']['weight'].sum()
+qqh5_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_120_350']['weight'].sum()
+qqh6_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']['weight'].sum()
+qqh7_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']['weight'].sum()
+qqh8_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']['weight'].sum()
+qqh9_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']['weight'].sum()
+qqh10_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']['weight'].sum()
+
 train_w_df.loc[train_w_df.proc == 'WH','weight'] = (train_w_df[train_w_df['proc'] == 'WH']['weight'] * ggh_sum_w / wh_sum_w)
 train_w_df.loc[train_w_df.proc == 'ZH','weight'] = (train_w_df[train_w_df['proc'] == 'ZH']['weight'] * ggh_sum_w / zh_sum_w)
 train_w_df.loc[train_w_df.proc == 'ttH','weight'] = (train_w_df[train_w_df['proc'] == 'ttH']['weight'] * ggh_sum_w / tth_sum_w)
 train_w_df.loc[train_w_df.proc == 'tH','weight'] = (train_w_df[train_w_df['proc'] == 'tH']['weight'] * ggh_sum_w / th_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_FWDH','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_FWDH']['weight'] * ggh_sum_w / qqh0_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_0J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_0J']['weight'] * ggh_sum_w / qqh1_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_1J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_1J']['weight'] * ggh_sum_w / qqh2_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_0_60','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_0_60']['weight'] * ggh_sum_w / qqh3_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_60_120','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']['weight'] * ggh_sum_w / qqh4_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_120_350','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_120_350']['weight'] * ggh_sum_w / qqh5_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']['weight'] * ggh_sum_w / qqh6_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']['weight'] * ggh_sum_w / qqh7_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']['weight'] * ggh_sum_w / qqh8_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']['weight'] * ggh_sum_w / qqh9_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']['weight'] * ggh_sum_w / qqh10_sum_w)
 train_w = np.array(train_w_df['weight'])
 
 #Training the model
@@ -189,28 +244,69 @@ y_pred_test = model.predict_proba(x=x_test)
 x_test['proc'] = proc_arr_test
 x_test['weight'] = test_w
 x_test['output_score_ggh'] = y_pred_test[:,0]
-x_test['output_score_qqh'] = y_pred_test[:,1]
-x_test['output_score_wh'] = y_pred_test[:,2]
-x_test['output_score_zh'] = y_pred_test[:,3]
-x_test['output_score_tth'] = y_pred_test[:,4]
-x_test['output_score_th'] = y_pred_test[:,5]
+
+x_test['output_score_qqh0'] = y_pred_test[:,1]
+x_test['output_score_qqh1'] = y_pred_test[:,2]
+x_test['output_score_qqh2'] = y_pred_test[:,3]
+x_test['output_score_qqh3'] = y_pred_test[:,4]
+x_test['output_score_qqh4'] = y_pred_test[:,5]
+x_test['output_score_qqh5'] = y_pred_test[:,6]
+x_test['output_score_qqh6'] = y_pred_test[:,7]
+x_test['output_score_qqh7'] = y_pred_test[:,8]
+x_test['output_score_qqh8'] = y_pred_test[:,9]
+x_test['output_score_qqh9'] = y_pred_test[:,10]
+x_test['output_score_qqh10'] = y_pred_test[:,11]
+x_test['output_score_wh'] = y_pred_test[:,12]
+x_test['output_score_zh'] = y_pred_test[:,13]
+x_test['output_score_tth'] = y_pred_test[:,14]
+x_test['output_score_th'] = y_pred_test[:,15]
 
 output_score_ggh = np.array(y_pred_test[:,0])
-output_score_qqh = np.array(y_pred_test[:,1])
-output_score_wh = np.array(y_pred_test[:,2])
-output_score_zh = np.array(y_pred_test[:,3])
-output_score_tth = np.array(y_pred_test[:,4])
-output_score_th = np.array(y_pred_test[:,5])
+output_score_qqh0 = np.array(y_pred_test[:,1])
+output_score_qqh1 = np.array(y_pred_test[:,2])
+output_score_qqh2 = np.array(y_pred_test[:,3])
+output_score_qqh3 = np.array(y_pred_test[:,4])
+output_score_qqh4 = np.array(y_pred_test[:,5])
+output_score_qqh5 = np.array(y_pred_test[:,6])
+output_score_qqh6 = np.array(y_pred_test[:,7])
+output_score_qqh7 = np.array(y_pred_test[:,8])
+output_score_qqh8 = np.array(y_pred_test[:,9])
+output_score_qqh9 = np.array(y_pred_test[:,10])
+output_score_qqh10 = np.array(y_pred_test[:,11])
+output_score_wh = np.array(y_pred_test[:,12])
+output_score_zh = np.array(y_pred_test[:,13])
+output_score_tth = np.array(y_pred_test[:,14])
+output_score_th = np.array(y_pred_test[:,15])
 
 x_test_ggh = x_test[x_test['proc'] == 'ggH']
-x_test_qqh = x_test[x_test['proc'] == 'qqH']
+x_test_qqh0 = x_test[x_test['proc'] == 'QQ2HQQ_FWDH']
+x_test_qqh1 = x_test[x_test['proc'] == 'QQ2HQQ_0J']
+x_test_qqh2 = x_test[x_test['proc'] == 'QQ2HQQ_1J']
+x_test_qqh3 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_0_60']
+x_test_qqh4 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']
+x_test_qqh5 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_120_350']
+x_test_qqh6 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
+x_test_qqh7 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']
+x_test_qqh8 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']
+x_test_qqh9 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']
+x_test_qqh10 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']
 x_test_wh = x_test[x_test['proc'] == 'WH']
 x_test_zh = x_test[x_test['proc'] == 'ZH']
 x_test_tth = x_test[x_test['proc'] == 'ttH']
 x_test_th = x_test[x_test['proc'] == 'tH']
 
 ggh_w = x_test_ggh['weight'] / x_test_ggh['weight'].sum()
-qqh_w = x_test_qqh['weight'] / x_test_qqh['weight'].sum()
+qqh0_w = x_test_qqh0['weight'] / x_test_qqh0['weight'].sum()
+qqh1_w = x_test_qqh1['weight'] / x_test_qqh1['weight'].sum()
+qqh2_w = x_test_qqh2['weight'] / x_test_qqh2['weight'].sum()
+qqh3_w = x_test_qqh3['weight'] / x_test_qqh3['weight'].sum()
+qqh4_w = x_test_qqh4['weight'] / x_test_qqh4['weight'].sum()
+qqh5_w = x_test_qqh5['weight'] / x_test_qqh5['weight'].sum()
+qqh6_w = x_test_qqh6['weight'] / x_test_qqh6['weight'].sum()
+qqh7_w = x_test_qqh7['weight'] / x_test_qqh7['weight'].sum()
+qqh8_w = x_test_qqh8['weight'] / x_test_qqh8['weight'].sum()
+qqh9_w = x_test_qqh9['weight'] / x_test_qqh9['weight'].sum()
+qqh10_w = x_test_qqh10['weight'] / x_test_qqh10['weight'].sum()
 wh_w = x_test_wh['weight'] / x_test_wh['weight'].sum()
 zh_w = x_test_zh['weight'] / x_test_zh['weight'].sum()
 tth_w = x_test_tth['weight'] / x_test_tth['weight'].sum()
@@ -228,87 +324,21 @@ print(NNaccuracy)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
 
 
-def y_pred_prob(ytrue=y_true,ypred=y_pred,labeldef=label_def,proc='ggH',output=output_score_ggh):
-    for i in range(len(labeldef)):
-        if proc in labeldef[i]:
-            index=i
-    y_true_proc = np.where(y_true == index, 1, 0)
-    y_pred_proc = np.where(y_pred == index, 1, 0)
-    #y_pred_proc_prob = roc_comp_step1(ypred=y_pred_proc,output=output)
-    y_pred_prob = []
-    for i in range(len(ypred)):
-        if ypred[i] == 0:
-            y_pred_prob.append(0)
-        elif ypred[i] == 1:
-            y_pred_prob.append(output[i])
-    return y_true_proc, y_pred_proc_prob
-
-y_true_ggh, y_pred_ggh_prob = y_pred_prob(proc='ggH',output=output_score_ggh)
-
-
-def roc_score(y_true = y_true, y_pred = y_pred_test):
-
-    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_pred_prob(proc='ggH',output=output_score_ggh)[0], y_pred_prob(proc='ggH',output=output_score_ggh)[1],sample_weight=total_w)
-    fpr_keras_ggh.sort()
-    tpr_keras_ggh.sort()
-    auc_keras_test_ggh = auc(fpr_keras_ggh,tpr_keras_ggh)
-    print("Area under ROC curve for ggH (test): ", auc_keras_test_ggh)
-
-    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=total_w)
-    fpr_keras_qqh.sort()
-    tpr_keras_qqh.sort()
-    auc_keras_test_qqh = auc(fpr_keras_qqh,tpr_keras_qqh)
-    print("Area under ROC curve for qqH (test): ", auc_keras_test_qqh)
-
-    fpr_keras_wh, tpr_keras_wh, thresholds_keras_wh = roc_curve(y_true_wh, y_pred_wh_prob,sample_weight=total_w)
-    fpr_keras_wh.sort()
-    tpr_keras_wh.sort()
-    auc_keras_test_wh = auc(fpr_keras_wh,tpr_keras_wh)
-    print("Area under ROC curve for WH (test): ", auc_keras_test_wh)
-
-    fpr_keras_zh, tpr_keras_zh, thresholds_keras_zh = roc_curve(y_true_zh, y_pred_zh_prob,sample_weight=total_w)
-    fpr_keras_zh.sort()
-    tpr_keras_zh.sort()
-    auc_keras_test_zh = auc(fpr_keras_zh,tpr_keras_zh)
-    print("Area under ROC curve for ZH (test): ", auc_keras_test_zh)
-
-    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=total_w)
-    fpr_keras_tth.sort()
-    tpr_keras_tth.sort()
-    auc_keras_test_tth = auc(fpr_keras_tth,tpr_keras_tth)
-    print("Area under ROC curve for ttH (test): ", auc_keras_test_tth)
-
-    fpr_keras_th, tpr_keras_th, thresholds_keras_th = roc_curve(y_true_th, y_pred_th_prob,sample_weight=total_w)
-    fpr_keras_th.sort()
-    tpr_keras_th.sort()
-    auc_keras_test_th = auc(fpr_keras_th,tpr_keras_th)
-    print("Area under ROC curve for tH (test): ", auc_keras_test_th)
-
-    print("Plotting ROC Score")
-    fig, ax = plt.subplots()
-    ax.plot(fpr_keras_ggh, tpr_keras_ggh, label = 'ggH (area = %0.2f)'%auc_keras_test_ggh)
-    ax.plot(fpr_keras_qqh, tpr_keras_qqh, label = 'qqH (area = %0.2f)'%auc_keras_test_qqh)
-    ax.plot(fpr_keras_wh, tpr_keras_wh, label = 'WH (area = %0.2f)'%auc_keras_test_wh)
-    ax.plot(fpr_keras_zh, tpr_keras_zh, label = 'ZH (area = %0.2f)'%auc_keras_test_zh)
-    ax.plot(fpr_keras_tth, tpr_keras_tth, label = 'ttH (area = %0.2f)'%auc_keras_test_tth)
-    ax.plot(fpr_keras_th, tpr_keras_th, label = 'tH (area = %0.2f)'%auc_keras_test_th)
-    ax.legend()
-    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
-    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
-    ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
-    name = 'plotting/NN_plots/NN_Multi_ROC_curve'
-    plt.savefig(name, dpi = 200)
-
-#Need to do other 3 plots too and include the MC weights!
-#Change it to be proc = 'VBF' and then do 'output_score_%'.format(proc)
-#Can then loop through the y_train_labels_def and set data = i to plot all possible production modes
-
-# VBF
 def plot_output_score(data='output_score_qqh', density=False,):
     #Can then change it to plotting proc
     print('Plotting',data)
     output_score_ggh = np.array(x_test_ggh[data])
-    output_score_qqh = np.array(x_test_qqh[data])
+    output_score_qqh0 = np.array(x_test_qqh0[data])
+    output_score_qqh1 = np.array(x_test_qqh1[data])
+    output_score_qqh2 = np.array(x_test_qqh2[data])
+    output_score_qqh3 = np.array(x_test_qqh3[data])
+    output_score_qqh4 = np.array(x_test_qqh4[data])
+    output_score_qqh5 = np.array(x_test_qqh5[data])
+    output_score_qqh6 = np.array(x_test_qqh6[data])
+    output_score_qqh7 = np.array(x_test_qqh7[data])
+    output_score_qqh8 = np.array(x_test_qqh8[data])
+    output_score_qqh9 = np.array(x_test_qqh9[data])
+    output_score_qqh10 = np.array(x_test_qqh10[data])
     output_score_wh = np.array(x_test_wh[data])
     output_score_zh = np.array(x_test_zh[data])
     output_score_tth = np.array(x_test_tth[data])
@@ -316,7 +346,17 @@ def plot_output_score(data='output_score_qqh', density=False,):
 
     fig, ax = plt.subplots()
     ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
-    ax.hist(output_score_qqh, bins=50, label='qqH', histtype='step',weights=qqh_w) #density=True)
+    #ax.hist(output_score_qqh0, bins=50, label='FWDH', histtype='step',weights=qqh0_w)
+    ax.hist(output_score_qqh1, bins=50, label='0J', histtype='step',weights=qqh1_w)
+    ax.hist(output_score_qqh2, bins=50, label='1J', histtype='step',weights=qqh2_w)
+    ax.hist(output_score_qqh3, bins=50, label='MJJ_0_60', histtype='step',weights=qqh3_w)
+    ax.hist(output_score_qqh4, bins=50, label='MJJ_60_120', histtype='step',weights=qqh4_w)
+    ax.hist(output_score_qqh5, bins=50, label='MJJ_120_350', histtype='step',weights=qqh5_w)
+    ax.hist(output_score_qqh6, bins=50, label='MJJ_GT350_PTH_GT200', histtype='step',weights=qqh6_w)
+    ax.hist(output_score_qqh7, bins=50, label='MJJ_350_700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh7_w)
+    ax.hist(output_score_qqh8, bins=50, label='MJJ_350_700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh8_w)
+    ax.hist(output_score_qqh9, bins=50, label='MJJ_GT700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh9_w)
+    ax.hist(output_score_qqh10, bins=50, label='MJJ_GT700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh10_w)
     ax.hist(output_score_wh, bins=50, label='WH', histtype='step',weights=wh_w) #density=True) 
     ax.hist(output_score_zh, bins=50, label='ZH', histtype='step',weights=zh_w) #density=True) 
     ax.hist(output_score_tth, bins=50, label='ttH', histtype='step',weights=tth_w) #density=True)
@@ -325,39 +365,8 @@ def plot_output_score(data='output_score_qqh', density=False,):
     plt.title('Output Score')
     plt.ylabel('Fraction of Events')
     plt.xlabel('NN Score')
-    name = 'plotting/NN_plots/NN_Sixclass_'+data
+    name = 'plotting/NN_plots/NN_Fifteenclass_'+data
     plt.savefig(name, dpi = 1200)
-
-#Plotting:
-#Plot accuracy
-def plot_accuracy():
-    #val_accuracy = history.history['val_acc']
-    accuracy = history.history['acc']
-    fig, ax = plt.subplots(1)
-    #plt.plot(epochs,val_accuracy,label='Validation')
-    plt.plot(epochs,accuracy,label='Train')
-    plt.title('Model Accuracy')
-    plt.ylabel('Accuracy')
-    plt.xlabel('Epoch')
-    plt.xticks(epochs_int)
-    plt.legend()
-    name = 'plotting/NN_plots/NN_Accuracy'
-    fig.savefig(name)
-
-#Plot loss
-def plot_loss():
-    #val_loss = history.history['val_loss']
-    loss = history.history['loss']
-    fig, ax = plt.subplots(1)
-    #plt.plot(epochs,val_loss,label='Validation')
-    plt.plot(epochs,loss,label='Train')
-    plt.title('Loss function')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.xticks(epochs)
-    plt.legend()
-    name = 'plotting/NN_plots/NN_Loss'
-    fig.savefig(name)
 
 
 #Confusion Matrix
@@ -382,11 +391,21 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_Fiveclass_Confusion_Matrix'
+    name = 'plotting/NN_plots/NN_Fifteenclass_Confusion_Matrix'
     fig.savefig(name)
 
-plot_output_score(data='output_score_qqh')
 plot_output_score(data='output_score_ggh')
+#plot_output_score(data='output_score_qqh0')
+plot_output_score(data='output_score_qqh1')
+plot_output_score(data='output_score_qqh2')
+plot_output_score(data='output_score_qqh3')
+plot_output_score(data='output_score_qqh4')
+plot_output_score(data='output_score_qqh5')
+plot_output_score(data='output_score_qqh6')
+plot_output_score(data='output_score_qqh7')
+plot_output_score(data='output_score_qqh8')
+plot_output_score(data='output_score_qqh9')
+plot_output_score(data='output_score_qqh10')
 plot_output_score(data='output_score_wh')
 plot_output_score(data='output_score_zh')
 plot_output_score(data='output_score_tth')
@@ -396,7 +415,7 @@ plot_output_score(data='output_score_th')
 #plot_loss()
 plot_confusion_matrix(cm,binNames,normalize=True)
 
-roc_score()
+#roc_score()
 
 
 #save as a pickle file

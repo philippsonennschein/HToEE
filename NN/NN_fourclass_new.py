@@ -496,7 +496,7 @@ plot_output_score(data='output_score_ggh')
 plot_output_score(data='output_score_vh')
 plot_output_score(data='output_score_tth')
 
-#roc_score()
+roc_score()
 
 #plot_accuracy()
 #plot_loss()

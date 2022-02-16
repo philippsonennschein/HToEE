@@ -28,10 +28,10 @@ from keras.utils import np_utils
 from keras.metrics import categorical_crossentropy, binary_crossentropy
 
 #Define key quantities, use to tune NN
-num_epochs = 2
+num_epochs = 20
 batch_size = 400
 val_split = 0.3
-learning_rate = 0.001
+learning_rate = 0.0001
 
 epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
 binNames = ['ggH','qqH','ZH','WH','ttH','tH'] 
@@ -219,6 +219,7 @@ wh_w = x_test_wh['weight'] / x_test_wh['weight'].sum()
 zh_w = x_test_zh['weight'] / x_test_zh['weight'].sum()
 tth_w = x_test_tth['weight'] / x_test_tth['weight'].sum()
 th_w = x_test_th['weight'] / x_test_th['weight'].sum()
+total_w = x_test['weight'] / x_test['weight'].sum()
 
 #Accuracy Score
 y_pred = y_pred_test.argmax(axis=1)
@@ -282,37 +283,37 @@ for i in range(len(y_pred_th)):
 
 def roc_score(y_true = y_true, y_pred = y_pred_test):
 
-    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_true_ggh, y_pred_ggh_prob,sample_weight=ggh_w)
+    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_true_ggh, y_pred_ggh_prob,sample_weight=total_w)
     fpr_keras_ggh.sort()
     tpr_keras_ggh.sort()
     auc_keras_test_ggh = auc(fpr_keras_ggh,tpr_keras_ggh)
     print("Area under ROC curve for ggH (test): ", auc_keras_test_ggh)
 
-    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=qqh_w)
+    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=total_w)
     fpr_keras_qqh.sort()
     tpr_keras_qqh.sort()
     auc_keras_test_qqh = auc(fpr_keras_qqh,tpr_keras_qqh)
     print("Area under ROC curve for qqH (test): ", auc_keras_test_qqh)
 
-    fpr_keras_wh, tpr_keras_wh, thresholds_keras_wh = roc_curve(y_true_wh, y_pred_wh_prob,sample_weight=wh_w)
+    fpr_keras_wh, tpr_keras_wh, thresholds_keras_wh = roc_curve(y_true_wh, y_pred_wh_prob,sample_weight=total_w)
     fpr_keras_wh.sort()
     tpr_keras_wh.sort()
     auc_keras_test_wh = auc(fpr_keras_wh,tpr_keras_wh)
     print("Area under ROC curve for WH (test): ", auc_keras_test_wh)
 
-    fpr_keras_zh, tpr_keras_zh, thresholds_keras_zh = roc_curve(y_true_zh, y_pred_zh_prob,sample_weight=zh_w)
+    fpr_keras_zh, tpr_keras_zh, thresholds_keras_zh = roc_curve(y_true_zh, y_pred_zh_prob,sample_weight=total_w)
     fpr_keras_zh.sort()
     tpr_keras_zh.sort()
     auc_keras_test_zh = auc(fpr_keras_zh,tpr_keras_zh)
     print("Area under ROC curve for ZH (test): ", auc_keras_test_zh)
 
-    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=tth_w)
+    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=total_w)
     fpr_keras_tth.sort()
     tpr_keras_tth.sort()
     auc_keras_test_tth = auc(fpr_keras_tth,tpr_keras_tth)
     print("Area under ROC curve for ttH (test): ", auc_keras_test_tth)
 
-    fpr_keras_th, tpr_keras_th, thresholds_keras_th = roc_curve(y_true_th, y_pred_th_prob,sample_weight=th_w)
+    fpr_keras_th, tpr_keras_th, thresholds_keras_th = roc_curve(y_true_th, y_pred_th_prob,sample_weight=total_w)
     fpr_keras_th.sort()
     tpr_keras_th.sort()
     auc_keras_test_th = auc(fpr_keras_th,tpr_keras_th)
@@ -330,7 +331,7 @@ def roc_score(y_true = y_true, y_pred = y_pred_test):
     ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
     ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
     ax.grid(True, 'major', linestyle='solid', color='grey', alpha=0.5)
-    name = 'plotting/NN_plots/NN_Multi_ROC_curve'
+    name = 'plotting/NN_plots/NN_Sixclass_ROC_curve'
     plt.savefig(name, dpi = 200)
 
 #Need to do other 3 plots too and include the MC weights!
@@ -416,7 +417,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_Fiveclass_Confusion_Matrix'
+    name = 'plotting/NN_plots/NN_Sixclass_Confusion_Matrix'
     fig.savefig(name)
 
 plot_output_score(data='output_score_qqh')

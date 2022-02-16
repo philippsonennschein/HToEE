@@ -166,6 +166,7 @@ ggh_w = x_test_ggh['weight'] / x_test_ggh['weight'].sum()
 qqh_w = x_test_qqh['weight'] / x_test_qqh['weight'].sum()
 vh_w = x_test_vh['weight'] / x_test_vh['weight'].sum()
 tth_w = x_test_tth['weight'] / x_test_tth['weight'].sum()
+total_w = x_test['weight'] / x_test['weight'].sum()
 
 #Accuracy Score
 y_pred = y_pred_test.argmax(axis=1)
@@ -215,25 +216,25 @@ for i in range(len(y_pred_tth)):
 #Plotting:
 def roc_score(y_true = y_true, y_pred = y_pred_test):
 
-    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_true_ggh, y_pred_ggh_prob,sample_weight=ggh_w)
+    fpr_keras_ggh, tpr_keras_ggh, thresholds_keras_ggh = roc_curve(y_true_ggh, y_pred_ggh_prob,sample_weight=total_w)
     fpr_keras_ggh.sort()
     tpr_keras_ggh.sort()
     auc_keras_test_ggh = auc(fpr_keras_ggh,tpr_keras_ggh)
     print("Area under ROC curve for ggH (test): ", auc_keras_test_ggh)
 
-    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=qqh_w)
+    fpr_keras_qqh, tpr_keras_qqh, thresholds_keras_qqh = roc_curve(y_true_qqh, y_pred_qqh_prob,sample_weight=total_w)
     fpr_keras_qqh.sort()
     tpr_keras_qqh.sort()
     auc_keras_test_qqh = auc(fpr_keras_qqh,tpr_keras_qqh)
     print("Area under ROC curve for qqH (test): ", auc_keras_test_qqh)
 
-    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob,sample_weight=vh_w)
+    fpr_keras_vh, tpr_keras_vh, thresholds_keras_vh = roc_curve(y_true_vh, y_pred_vh_prob,sample_weight=total_w)
     fpr_keras_vh.sort()
     tpr_keras_vh.sort()
     auc_keras_test_vh = auc(fpr_keras_vh,tpr_keras_vh)
     print("Area under ROC curve for VH (test): ", auc_keras_test_vh)
 
-    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=tth_w)
+    fpr_keras_tth, tpr_keras_tth, thresholds_keras_tth = roc_curve(y_true_tth, y_pred_tth_prob,sample_weight=total_w)
     fpr_keras_tth.sort()
     tpr_keras_tth.sort()
     auc_keras_test_tth = auc(fpr_keras_tth,tpr_keras_tth)
