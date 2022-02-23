@@ -70,7 +70,7 @@ epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plo
 #'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','QQ2HQQ_1J','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
 #'QQ2HQQ_0J','QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
 #'QQ2HQQ_GE2J_MJJ_0_60','QQ2HQQ_GE2J_MJJ_60_120','QQ2HQQ_FWDH','ZH','WH','ttH','tH'] 
-binNames = ['ggH','qqH1','qqH2','qqH3','qqH4','qqH5','qqH6','qqH7','qqH8','qqH9','qqH10','qqH0','ZH','WH','ttH','tH'] 
+binNames = ['ggH','qqH1','qqH2','qqH3','qqH4','qqH5','qqH6','qqH7','qqH8','qqH9','qqH10','qqH0','WH','ZH','ttH','tH'] 
 bins = 50
 
 #Directories
@@ -371,7 +371,7 @@ def plot_output_score(data='output_score_qqh', density=False,):
 
 #Confusion Matrix
 def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
-    fig, ax = plt.subplots(1)
+    fig, ax = plt.subplots(1,figsize=(12,12))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks,classes,rotation=45)
@@ -392,7 +392,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.ylabel('True Label')
     plt.xlabel('Predicted label')
     name = 'plotting/NN_plots/NN_Fifteenclass_Confusion_Matrix'
-    fig.savefig(name)
+    fig.savefig(name,dpi = 1200)
 
 plot_output_score(data='output_score_ggh')
 #plot_output_score(data='output_score_qqh0')
