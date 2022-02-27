@@ -292,4 +292,31 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     name = 'plotting/Cuts/Cuts_qqH_Sevenclass_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
+def plot_performance_plot(cm=cm,labels=binNames):
+    cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    for i in range(len(cm[0])):
+        for j in range(len(cm[1])):
+            cm[i][j] = float("{:.3f}".format(cm[i][j]))
+    cm = np.array(cm)
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.rcParams.update({
+    'font.size': 9})
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks,labels,rotation=90)
+    bottom = np.zeros(len(labels))
+    for i in range(len(cm)):
+        ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
+        bottom += np.array(cm[:,i])
+    plt.legend()
+    current_bottom, current_top = ax.get_ylim()
+    ax.set_ylim(bottom=0, top=current_top*1.2)
+    #plt.title('Performance Plot')
+    plt.ylabel('Fraction of events')
+    ax.set_xlabel('Events', ha='right',x=1,size=9) #, x=1, size=13)
+    name = 'plotting/Cuts/Cut_Performance_Plot'
+    plt.savefig(name, dpi = 500)
+    plt.show()
+
+plot_performance_plot()
+
 plot_confusion_matrix(cm,binNames,normalize=True)

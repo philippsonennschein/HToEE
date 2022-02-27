@@ -89,6 +89,24 @@ binNames = ['qqH_Rest',
             'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',
             'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
 
+binNames = ['qqH Rest',
+            '0 < $m_j$ < 350 $p^H_t$',
+            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
+            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
+            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
+            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
+            '$m_j$ > 700 $p^H_T$ > 200',
+]
+
+binNames = ['qqH Rest',
+            '60<$m_{jj}$<120',
+            '350<$m_{jj}$<700 $p^H_T$<200 $p^{H_{jj}}_T$<25',
+            '350<$m_{jj}$<700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
+            '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$<25',
+            '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
+            '$m_{jj}$>700 $p^H_T$>200',
+]
+#$\\bar{a}$
 bins = 50
 
 #Define the input features
@@ -431,10 +449,12 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     fig.savefig(name, dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
-    cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     for i in range(len(cm[0])):
         for j in range(len(cm[1])):
             cm[i][j] = float("{:.3f}".format(cm[i][j]))
+    print(cm)
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize = (12,12))
     plt.rcParams.update({
@@ -443,8 +463,10 @@ def plot_performance_plot(cm=cm,labels=binNames):
     plt.xticks(tick_marks,labels,rotation=90)
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
-        ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
-        bottom += np.array(cm[:,i])
+        #ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
+        #bottom += np.array(cm[:,i])
+        ax.bar(labels, cm[i,:],label=labels[i],bottom=bottom)
+        bottom += np.array(cm[i,:])
     plt.legend()
     current_bottom, current_top = ax.get_ylim()
     ax.set_ylim(bottom=0, top=current_top*1.3)
