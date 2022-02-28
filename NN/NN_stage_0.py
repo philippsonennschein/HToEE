@@ -24,14 +24,13 @@ from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import Nadam, adam, Adam
 from keras.regularizers import l2 
 from keras.callbacks import EarlyStopping 
-from keras.callbacks import LearningRateScheduler
 from keras.utils import np_utils 
 from keras.metrics import categorical_crossentropy, binary_crossentropy
 
 #Define key quantities
 
 num_epochs = 5
-batch_size = 64
+batch_size = 400
 test_split = 0.2
 val_split = 0.1
 learning_rate = 0.001
@@ -39,9 +38,8 @@ learning_rate = 0.001
 #STXS mapping
 #map_def_0 = [['ggH',10,11],['qqH',20,21,22,23],['WH',30,31],['ZH',40,41],['ttH',60,61],['tH',80,81]]
 
-epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
 binNames = ['ggH',
-            'qqH',
+            'VBF',
             'VH',
             'ttH',
             'tH']
@@ -60,8 +58,8 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      'subleadJetDiphoDPhi','subleadJetDiphoDEta',
      'subleadJetPt', 'subleadJetPUJID', 'subleadJetBTagScore', 'subleadJetMass',
      'subleadJetEn','subleadJetEta','subleadJetPhi',
-     'subsubleadJetEn','subsubleadJetPt','subsubleadJetEta','subsubleadJetPhi', 'subsubleadJetBTagScore', 
-     'subsubleadJetMass',
+     #'subsubleadJetEn','subsubleadJetPt','subsubleadJetEta','subsubleadJetPhi', 'subsubleadJetBTagScore', 
+     #'subsubleadJetMass',
      #'metPt','metPhi','metSumET',
      'nSoftJets',
      #'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
@@ -89,7 +87,7 @@ print('Finnished loading dfs')
 data = df[train_vars]
 
 # pTHjj and njets variable construction
-
+'''
 leadJetPt = np.array(data['leadJetPt'])
 leadJetPhi = np.array(data['leadJetPhi'])
 subleadJetPt = np.array(data['subleadJetPt'])
@@ -156,36 +154,33 @@ for i in range(data.shape[0]):
         num_jet = 0
     njets.append(num_jet)
 data['njets'] = njets
-
+'''
+print('preselection cuts')
 #Preselection cuts
 data = data[data.diphotonMass>100.]
 data = data[data.diphotonMass<180.]
 data = data[data.leadPhotonPtOvM>0.333]
 data = data[data.subleadPhotonPtOvM>0.25]
-
-proc_old = np.array(data['proc'])
+print('Relabelling procs')
+proc_old = np.array(data['proc'].values)
 proc = []
 for i in proc_old:
     if i == 'tHq':
         proc.append('tH')
-    if i == 'tHW':
+    elif i == 'tHW':
         proc.append('tH')
     else:
         proc.append(i)
-proc = np.array(proc)
+proc_1 = np.array(proc, dtype=object)
 
 data['proc'] = proc
 
-#data = data.replace('tHq','tH') 
-#data = data.replace('tHW','tH') 
 
-
-#Define the procs as the labels
-#ggh: 0, VBF:1, VH: 2, ttH: 3
 num_categories = data['proc'].nunique()
 
 #proc = np.array(data['proc'])
 #Assign the numbers in the same order as the binNames above
+print('Number encoding')
 y_train_labels_num = []
 for i in proc:
     if i == 'ggH':
@@ -200,7 +195,6 @@ for i in proc:
         y_train_labels_num.append(4)
 
 data['proc_num'] = y_train_labels_num
-
 #Shuffle dataframe
 #data = data.sample(frac=1)
 
@@ -226,8 +220,8 @@ num_inputs  = data_scaled.shape[1]
 x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data_scaled, y_train_labels_hot, weights, y_train_labels, test_size = test_split, shuffle = True)
 
 #Initialize the model
-model=Sequential([Dense(units=400,input_shape=(num_inputs,),activation='relu'),
-                Dense(units=400,activation='relu'),
+model=Sequential([Dense(units=100,input_shape=(num_inputs,),activation='relu'),
+                Dense(units=100,activation='relu'),
                 #Dense(units=100,activation='relu'),
                 Dense(units=num_categories,activation='softmax')]) #For multiclass NN use softmax
 
@@ -235,19 +229,6 @@ model=Sequential([Dense(units=400,input_shape=(num_inputs,),activation='relu'),
 model.compile(optimizer=Adam(lr=learning_rate),loss='categorical_crossentropy',metrics=['accuracy'])
 
 model.summary()
-
-# callbacks
-def scheduler(epoch, lr):
-    print("epoch: ", epoch+1)
-    if epoch < 10:
-        print("lr: ", lr)
-        return lr
-    else:
-        lr *= math.exp(-0.1)
-        print("lr: ", lr)
-        return lr
-callback_lr = LearningRateScheduler(scheduler)
-callback_earlystop = EarlyStopping(monitor='val_loss', min_delta = 0.001, patience=10)
 
 #Equalizing weights
 train_w_df = pd.DataFrame()
@@ -267,7 +248,7 @@ train_w_df.loc[train_w_df.proc == 'tH','weight'] = (train_w_df[train_w_df['proc'
 train_w = np.array(train_w_df['weight'])
 
 #Training the model
-history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,sample_weight=train_w,shuffle=True,verbose=2, validation_split = val_split, callbacks=[callback_lr,callback_earlystop])
+history = model.fit(x=x_train,y=y_train,batch_size=batch_size,epochs=num_epochs,sample_weight=train_w,shuffle=True,verbose=2, validation_split = val_split)
 
 # Output Score
 y_pred_test = model.predict_proba(x=x_test)
@@ -330,7 +311,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_qqH_Sevenclass_Confusion_Matrix'
+    name = 'plotting/NN_plots/NN_Stage0_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
@@ -358,11 +339,9 @@ def plot_performance_plot(cm=cm,labels=binNames):
     #plt.title('Performance Plot')
     plt.ylabel('Fraction of events')
     ax.set_xlabel('Events', ha='right',x=1,size=9) #, x=1, size=13)
-    name = 'plotting/NN_plots/NN_Performance_Plot'
+    name = 'plotting/NN_plots/NN_Stage0_Performance_Plot'
     plt.savefig(name, dpi = 500)
     plt.show()
 
 plot_performance_plot()
-
-
 plot_confusion_matrix(cm,binNames,normalize=True)
