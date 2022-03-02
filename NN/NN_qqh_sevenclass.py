@@ -13,6 +13,7 @@ from os import path, system
 from array import array
 from root_numpy import tree2array, fill_hist
 from math import pi
+import math
 import h5py
 from itertools import product
 from sklearn.metrics import accuracy_score, log_loss, confusion_matrix, roc_curve, auc, roc_auc_score
@@ -38,8 +39,8 @@ from keras.metrics import categorical_crossentropy, binary_crossentropy
 #learning_rate = 0.001
 
 #Optimized according to 4class
-num_epochs = 5
-batch_size = 64
+num_epochs = 50
+batch_size = 40
 test_split = 0.2
 val_split = 0.1
 learning_rate = 0.0001
@@ -81,22 +82,22 @@ map_def_2 = [
 epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
 #binNames = ['rest','QQ2HQQ_GE2J_MJJ_60_120','QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25'] 
 #binNames = ['MJJ_GT700_PTH_0_200_PTHJJ_GT25','Rest','MJJ_350_700_PTH_0_200_PTHJJ_GT25','MJJ_350_700_PTH_0_200_PTHJJ_0_25','MJJ_GT350_PTH_GT200','MJJ_GT700_PTH_0_200_PTHJJ_0_25','MJJ_60_120']
-binNames = ['qqH_Rest',
-            'QQ2HQQ_GE2J_MJJ_60_120',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
+#binNames = ['qqH_Rest',
+#            'QQ2HQQ_GE2J_MJJ_60_120',
+#            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
+#            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',
+#            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
+#            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',
+#            'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
 
-binNames = ['qqH Rest',
-            '0 < $m_j$ < 350 $p^H_t$',
-            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
-            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
-            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
-            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
-            '$m_j$ > 700 $p^H_T$ > 200',
-]
+#binNames = ['qqH Rest',
+#            '0 < $m_j$ < 350 $p^H_t$',
+#            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
+#            '350 < $m_j$ < 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
+#            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ < 25',
+#            '$m_j$ > 700 $p^H_T$ < 200 $p^{H_{jj}}_T$ > 25',
+#            '$m_j$ > 700 $p^H_T$ > 200'
+#]
 
 binNames = ['qqH Rest',
             '60<$m_{jj}$<120',
@@ -104,7 +105,7 @@ binNames = ['qqH Rest',
             '350<$m_{jj}$<700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
             '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$<25',
             '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
-            '$m_{jj}$>700 $p^H_T$>200',
+            '$m_{jj}$>700 $p^H_T$>200'
 ]
 #$\\bar{a}$
 bins = 50
@@ -298,8 +299,8 @@ num_inputs  = data_scaled.shape[1]
 x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data_scaled, y_train_labels_hot, weights, y_train_labels, test_size = test_split, shuffle = True)
 
 #Initialize the model
-model=Sequential([Dense(units=400,input_shape=(num_inputs,),activation='relu'),
-                Dense(units=400,activation='relu'),
+model=Sequential([Dense(units=500,input_shape=(num_inputs,),activation='relu'),
+                Dense(units=500,activation='relu'),
                 #Dense(units=100,activation='relu'),
                 Dense(units=num_categories,activation='softmax')]) #For multiclass NN use softmax
 
@@ -393,7 +394,11 @@ NNaccuracy = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
 
 #Confusion Matrix
-cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
+cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
+for i in range(len(y_true)):
+    cm_new[y_true[i]][y_pred[i]] += 1
 
 
 def plot_output_score(data='output_score_qqh', density=False,):
@@ -424,10 +429,16 @@ def plot_output_score(data='output_score_qqh', density=False,):
     plt.savefig(name, dpi = 1200)
 
 #Confusion Matrix
+cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
+
+#Confusion Matrix
 def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
+    plt.rcParams.update({
+    'font.size': 10})
     plt.xticks(tick_marks,classes,rotation=90)
     plt.yticks(tick_marks,classes)
     if normalize:
@@ -444,8 +455,8 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.tight_layout()
     plt.colorbar()
     plt.ylabel('True Label')
-    plt.xlabel('Predicted label')
-    name = 'plotting/NN_plots/NN_qqH_Sevenclass_Confusion_Matrix'
+    plt.xlabel('Predicted Label')
+    name = 'plotting/NN_plots/NN_qqh_sevenclass_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
@@ -456,28 +467,33 @@ def plot_performance_plot(cm=cm,labels=binNames):
             cm[i][j] = float("{:.3f}".format(cm[i][j]))
     print(cm)
     cm = np.array(cm)
-    fig, ax = plt.subplots(figsize = (12,12))
-    plt.rcParams.update({
-    'font.size': 9})
+    fig, ax = plt.subplots(figsize = (10,10))
+    #fig, ax = plt.subplots()
+    #plt.rcParams.update({
+    #'font.size': 14})
     tick_marks = np.arange(len(labels))
+    #plt.xticks(tick_marks,labels,rotation=90)
     plt.xticks(tick_marks,labels,rotation=90)
+    #color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
         #ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
         #bottom += np.array(cm[:,i])
-        ax.bar(labels, cm[i,:],label=labels[i],bottom=bottom)
+        ax.bar(labels, cm[i,:],label=labels[i],bottom=bottom)#,color=color[i])
         bottom += np.array(cm[i,:])
-    plt.legend()
+    plt.legend(loc='upper right')
     current_bottom, current_top = ax.get_ylim()
     ax.set_ylim(bottom=0, top=current_top*1.3)
     #plt.title('Performance Plot')
-    plt.ylabel('Fraction of events')
-    ax.set_xlabel('Events', ha='right',x=1,size=9) #, x=1, size=13)
-    name = 'plotting/NN_plots/NN_Performance_Plot'
-    plt.savefig(name, dpi = 500)
+    #plt.ylabel('Fraction of events')
+    ax.set_ylabel('Events', ha='center',size=14) #y=0.5,
+    ax.set_xlabel('Predicted Production Modes', ha='center',size=14) #, x=1, size=13)
+    name = 'plotting/NN_plots/NN_qqh_sevenclass_Performance_Plot'
+    plt.savefig(name, dpi = 1200)
     plt.show()
 
 plot_performance_plot()
+plot_confusion_matrix(cm,binNames,normalize=True)
 
 plot_output_score(data='output_score_qqh1')
 plot_output_score(data='output_score_qqh2')
@@ -487,4 +503,3 @@ plot_output_score(data='output_score_qqh5')
 plot_output_score(data='output_score_qqh6')
 plot_output_score(data='output_score_qqh7')
 
-plot_confusion_matrix(cm,binNames,normalize=True)

@@ -336,13 +336,19 @@ NNaccuracy = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
 
 #Confusion Matrix
-cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
+cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
+for i in range(len(y_true)):
+    cm_new[y_true[i]][y_pred[i]] += 1
 
 #Confusion Matrix
 def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
-    fig, ax = plt.subplots(figsize = (12,12))
+    fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
+    plt.rcParams.update({
+    'font.size': 10})
     plt.xticks(tick_marks,classes,rotation=90)
     plt.yticks(tick_marks,classes)
     if normalize:
@@ -359,66 +365,43 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.tight_layout()
     plt.colorbar()
     plt.ylabel('True Label')
-    plt.xlabel('Predicted label')
-    name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Confusion_Matrix'
-    fig.savefig(name, dpi = 500)
-
-
-def plot_output_score(data='output_score_qqh', density=False,):
-    #Can then change it to plotting proc
-    print('Plotting',data)
-    output_score_qqh1 = np.array(x_test_qqh1[data])
-    output_score_qqh2 = np.array(x_test_qqh2[data])
-    output_score_qqh3 = np.array(x_test_qqh3[data])
-    output_score_qqh4 = np.array(x_test_qqh4[data])
-    output_score_qqh5 = np.array(x_test_qqh5[data])
-    output_score_qqh6 = np.array(x_test_qqh6[data])
-    output_score_qqh7 = np.array(x_test_qqh7[data])
-
-    fig, ax = plt.subplots()
-    #ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
-    #ax.hist(output_score_qqh0, bins=50, label='FWDH', histtype='step',weights=qqh0_w)
-    ax.hist(output_score_qqh1, bins=50, label='qqH Rest', histtype='step',weights=qqh1_w)
-    ax.hist(output_score_qqh2, bins=50, label='QQ2HQQ_GE2J_MJJ_60_120', histtype='step',weights=qqh2_w)
-    ax.hist(output_score_qqh3, bins=50, label='QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh3_w)
-    ax.hist(output_score_qqh4, bins=50, label='QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh4_w)
-    ax.hist(output_score_qqh5, bins=50, label='QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh5_w)
-    ax.hist(output_score_qqh6, bins=50, label='QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh6_w)
-    ax.hist(output_score_qqh7, bins=50, label='QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200', histtype='step',weights=qqh7_w)
-    plt.legend()
-    plt.title('Output Score')
-    plt.ylabel('Fraction of Events')
-    plt.xlabel('BDT Score')
-    name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_'+data
-    plt.savefig(name, dpi = 300)
+    plt.xlabel('Predicted Label')
+    name = 'plotting/BDT_plots/BDT_qqH_Confusion_Matrix'
+    fig.savefig(name, dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
-    cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
+    cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     for i in range(len(cm[0])):
         for j in range(len(cm[1])):
             cm[i][j] = float("{:.3f}".format(cm[i][j]))
+    print(cm)
     cm = np.array(cm)
-    fig, ax = plt.subplots(figsize = (12,12))
-    plt.rcParams.update({
-    'font.size': 9})
+    fig, ax = plt.subplots(figsize = (10,10))
+    #fig, ax = plt.subplots()
+    #plt.rcParams.update({
+    #'font.size': 14})
     tick_marks = np.arange(len(labels))
+    #plt.xticks(tick_marks,labels,rotation=90)
     plt.xticks(tick_marks,labels,rotation=90)
+    #color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
-        ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
-        bottom += np.array(cm[:,i])
-    plt.legend()
+        #ax.bar(labels, cm[:,i],label=labels[i],bottom=bottom)
+        #bottom += np.array(cm[:,i])
+        ax.bar(labels, cm[i,:],label=labels[i],bottom=bottom)#,color=color[i])
+        bottom += np.array(cm[i,:])
+    plt.legend(loc='upper right')
     current_bottom, current_top = ax.get_ylim()
     ax.set_ylim(bottom=0, top=current_top*1.3)
     #plt.title('Performance Plot')
-    plt.ylabel('Fraction of events')
-    ax.set_xlabel('Events', ha='right',x=1,size=9) #, x=1, size=13)
-    name = 'plotting/NN_plots/NN_Performance_Plot'
-    plt.savefig(name, dpi = 500)
+    #plt.ylabel('Fraction of events')
+    ax.set_ylabel('Events', ha='center',size=14) #y=0.5,
+    ax.set_xlabel('Predicted Production Modes', ha='center',size=14) #, x=1, size=13)
+    name = 'plotting/BDT_plots/BDT_qqH_Performance_Plot'
+    plt.savefig(name, dpi = 1200)
     plt.show()
 
-
-# Feature Importance
 
 def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values = False):
     if num_plots == 'single':
@@ -437,11 +420,3 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
 plot_confusion_matrix(cm,binNames,normalize=True)
 
 plot_performance_plot()
-
-plot_output_score(data='output_score_qqh1')
-plot_output_score(data='output_score_qqh2')
-plot_output_score(data='output_score_qqh3')
-plot_output_score(data='output_score_qqh4')
-plot_output_score(data='output_score_qqh5')
-plot_output_score(data='output_score_qqh6')
-plot_output_score(data='output_score_qqh7')
