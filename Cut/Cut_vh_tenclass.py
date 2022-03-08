@@ -41,22 +41,46 @@ map_def_2 = [
 ['ZH',400,401,402,403,404,405],
 ]
 
-binNames = ['qqH_Rest',
-            'QQ2HQQ_GE2J_MJJ_60_120',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
-
-binNames = ['qqH Rest',
-            '60<$m_{jj}$<120',
-            '350<$m_{jj}$<700 $p^H_T$<200 $p^{H_{jj}}_T$<25',
-            '350<$m_{jj}$<700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
-            '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$<25',
-            '$m_{jj}$>700 $p^H_T$<200 $p^{H_{jj}}_T$>25',
-            '$m_{jj}$>700 $p^H_T$>200'
+map_def_3 = [
+['qqH',200,201,202,203,204,205,206,207,208,209,210], #qqH
+['QQ2HLNU_FWDH',300], #WH
+['QQ2HLNU_PTV_0_75',301],
+['QQ2HLNU_PTV_75_150',302],
+['QQ2HLNU_PTV_150_250_0J',303],
+['QQ2HLNU_PTV_150_250_GE1J',304],
+['QQ2HLNU_PTV_GT250',305],
+['QQ2HLL_FWDH',400], #ZH
+['QQ2HLL_PTV_0_75',401],
+['QQ2HLL_PTV_75_150',402],
+['QQ2HLL_PTV_150_250_0J',403],
+['QQ2HLL_PTV_150_250_GE1J',404],
+['QQ2HLL_PTV_GT250',405]
 ]
+
+binNames = ['QQ2HLNU_PTV_0_75',
+            'QQ2HLNU_PTV_75_150',
+            'QQ2HLNU_PTV_150_250_0J',
+            'QQ2HLNU_PTV_150_250_GE1J',
+            'QQ2HLNU_PTV_GT250',
+            'QQ2HLL_PTV_0_75',
+            'QQ2HLL_PTV_75_150',
+            'QQ2HLL_PTV_150_250_0J',
+            'QQ2HLL_PTV_150_250_GE1J',
+            'QQ2HLL_PTV_GT250']
+
+binNames = ['WH $p^H_T$<75',
+            'WH 75<$p^H_T$<150',
+            'WH 150<$p^H_T$<250 0 Jets',
+            'WH 150<$p^H_T$<250 1 Jet',
+            'WH $p^H_T$>250',
+            'ZH $p^H_T$<75',
+            'ZH 75<$p^H_T$<150',
+            'ZH 150<$p^H_T$<250 0 Jets',
+            'ZH 150<$p^H_T$<250 1 Jet',
+            'ZH $p^H_T$>250']
+
+color  = ['silver','indianred','yellowgreen','lightgreen','green','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
+
 bins = 50
 
 train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','diphotonPhi', 'diphotonSigmaMoM',
@@ -88,12 +112,13 @@ train_vars.append('HTXS_stage1_2_cat_pTjet30GeV')
 #Load the dataframe
 dataframes = []
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv'))
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv'))
 data = pd.concat(dataframes, sort=False, axis=0 )
+
 
 # Pre-selection cuts
 data = data[data.diphotonMass>100.]
@@ -117,13 +142,14 @@ def mapping(map_list,stage):
                 proc.append(proc_list[j])
     return proc
 
-data['proc_original'] = mapping(map_list=map_def_2,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
+data['proc_original'] = mapping(map_list=map_def_3,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
+
 
 # now I only want to keep the qqH - 7class
 #data = data.drop(data[(data.proc_original == 'QQ2HQQ_FWDH') & (data.proc_original == 'WH') & (data.proc_original == 'ZH')].index)
-data = data[data.proc_original != 'QQ2HQQ_FWDH']
-data = data[data.proc_original != 'WH']
-data = data[data.proc_original != 'ZH']
+data = data[data.proc_original != 'qqH']
+data = data[data.proc_original != 'QQ2HLNU_FWDH']
+data = data[data.proc_original != 'QQ2HLL_FWDH']
 
 #Define the procs as the labels
 #ggh: 0, VBF:1, VH: 2, ttH: 3
@@ -136,21 +162,26 @@ proc_original = np.array(data['proc_original'])
 #Assign the numbers in the same order as the binNames above
 y_train_labels_num = []
 for i in proc_original:
-    if i == 'qqH_Rest':
+    if i == 'QQ2HLNU_PTV_0_75':
         y_train_labels_num.append(0)
-    if i == 'QQ2HQQ_GE2J_MJJ_60_120':
+    if i == 'QQ2HLNU_PTV_75_150':
         y_train_labels_num.append(1)
-    if i == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25':
+    if i == 'QQ2HLNU_PTV_150_250_0J':
         y_train_labels_num.append(2)
-    if i == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25':
+    if i == 'QQ2HLNU_PTV_150_250_GE1J':
         y_train_labels_num.append(3)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25':
+    if i == 'QQ2HLNU_PTV_GT250':
         y_train_labels_num.append(4)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25':
+    if i == 'QQ2HLL_PTV_0_75':
         y_train_labels_num.append(5)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200':
+    if i == 'QQ2HLL_PTV_75_150':
         y_train_labels_num.append(6)
-
+    if i == 'QQ2HLL_PTV_150_250_0J':
+        y_train_labels_num.append(7)
+    if i == 'QQ2HLL_PTV_150_250_GE1J':
+        y_train_labels_num.append(8)
+    if i == 'QQ2HLL_PTV_GT250':
+        y_train_labels_num.append(9)
 
 data['proc_num'] = y_train_labels_num
 
@@ -160,6 +191,9 @@ y_train_labels_num = np.array(data['proc_num'])
 y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=num_categories)
 weights = np.array(data['weight'])
 
+stage_1_2 = np.array(data['HTXS_stage1_2_cat_pTjet30GeV'])
+leadJetPt = np.array(data['leadJetPt'])
+
 data = data.drop(columns=['proc'])
 data = data.drop(columns=['proc_num'])
 data = data.drop(columns=['HTXS_stage_0'])
@@ -167,115 +201,62 @@ data = data.drop(columns=['HTXS_stage1_2_cat_pTjet30GeV'])
 
 # well also need to only keep the qqH 7-class btw
 
-# pTHjj and njets variable construction
-# my soul has exited my body since I have tried every possible pandas way to do this ... I will turn to numpy arrays now for my own sanity
-# most inefficient code ever written lessgoooo
-
-leadJetPt = np.array(data['leadJetPt'])
-leadJetPhi = np.array(data['leadJetPhi'])
-subleadJetPt = np.array(data['subleadJetPt'])
-subleadJetPhi = np.array(data['subleadJetPhi'])
-leadPhotonPt = np.array(data['leadPhotonPt'])
-leadPhotonPhi = np.array(data['leadPhotonPhi'])
-subleadPhotonPt = np.array(data['subleadPhotonPt'])
-subleadPhotonPhi = np.array(data['subleadPhotonPhi'])
-
-# creating pTHjj variable
-pTHjj = []
-check = 0
-for i in range(data.shape[0]):
-    if leadJetPt[i] != -999.0 or leadJetPhi[i] != -999.0:
-        px_jet1 = leadJetPt[i]*np.cos(leadJetPhi[i])
-        py_jet1 = leadJetPt[i]*np.sin(leadJetPhi[i])
-    else:
-        px_jet1 = 0
-        py_jet1 = 0
-        check += 1
-    if subleadJetPt[i] != -999.0 or subleadJetPhi[i] != -999.0:
-        px_jet2 = subleadJetPt[i]*np.cos(subleadJetPhi[i])
-        py_jet2 = subleadJetPt[i]*np.sin(subleadJetPhi[i])
-    else:
-        px_jet2 = 0
-        py_jet2 = 0
-        check += 1
-    if leadPhotonPt[i] != -999.0 or leadPhotonPhi[i] != -999.0:
-        px_ph1 = leadPhotonPt[i]*np.cos(leadPhotonPhi[i])
-        py_ph1 = leadPhotonPt[i]*np.sin(leadPhotonPhi[i])
-    else:
-        px_ph1 = 0
-        py_ph1 = 0
-        check += 1
-    if subleadPhotonPt[i] != -999.0 or subleadPhotonPhi[i] != -999.0:
-        px_ph2 = subleadPhotonPt[i]*np.cos(subleadPhotonPhi[i])
-        py_ph2 = subleadPhotonPt[i]*np.sin(subleadPhotonPhi[i])
-    else:
-        px_ph2 = 0
-        py_ph2 = 0
-        check += 1 
-
-    px_sum = px_jet1 + px_jet2 + px_ph1 + px_ph2
-    py_sum = py_jet1 + py_jet2 + py_ph1 + py_ph2
-
-    if check == 4:
-        pTHjj.append(-999.0)
-    else:
-        pTHjj.append(np.sqrt(px_sum**2 + py_sum**2))    
-    check = 0
-
-data['pTHjj'] = pTHjj
 
 # creating n-jets variable
 njets = []
 num_jet = 0
 for i in range(data.shape[0]):
     if leadJetPt[i] != -999.0:
-        if subleadJetPt[i] != -999.0:
-            num_jet = 2
-        else:
-            num_jet = 1
+        num_jet = 1
     else:
         num_jet = 0
     njets.append(num_jet)
 data['njets'] = njets
 
 # manually setting cuts
-dijetmass = np.array(data['dijetMass'])
 njets = np.array(data['njets'])
 diphotonpt = np.array(data['diphotonPt'])
-diphotonjetspt = np.array(data['pTHjj'])
+
 
 proc = []
 y_train_labels_num_pred = []
 for i in range(data.shape[0]):
-    #print('eeee')
-    if njets[i] == 0 or njets[i] == 1:
-        proc_value = 'qqH_Rest'
-        proc_value_num = 0
-    else:
-        if dijetmass[i] < 350:
-            if dijetmass[i] > 60 and dijetmass[i] < 120:
-                proc_value = 'QQ2HQQ_GE2J_MJJ_60_120'
-                proc_value_num = 1
-            else:
-                proc_value = 'qqH_Rest'
-                proc_value_num = 0
-        else:
-            if diphotonpt[i] < 200:
-                if  dijetmass[i] < 700 and diphotonjetspt[i] < 25:
-                    proc_value = 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25'
-                    proc_value_num = 2
-                elif dijetmass[i] < 700 and diphotonjetspt[i] >= 25:
-                    proc_value = 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25'
-                    proc_value_num = 3
-                elif dijetmass[i] >= 700 and diphotonjetspt[i] < 25:
-                    proc_value = 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25'
-                    proc_value_num = 4
-                else:
-                    proc_value = 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25'
-                    proc_value_num = 5
-            else: 
-                proc_value = 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200'
-                proc_value_num = 6
+    if stage_1_2[i] == 300 or 301 or 302 or 303 or 304 or 305:
+        if diphotonpt[i] < 75:
+            proc_value = 'QQ2HLNU_PTV_0_75'
+            proc_value_num = 0
+        elif diphotonpt[i] >= 75 and diphotonpt[i] < 150:
+            proc_value = 'QQ2HLNU_PTV_75_150'
+            proc_value_num = 1
+        elif diphotonpt[i] >= 150 and diphotonpt[i] < 250:
+            if njets[i] == 2:
+                proc_value = 'QQ2HLNU_PTV_150_250_0J'
+                proc_value_num = 2
+            elif njets[i] == 1:
+                proc_value = 'QQ2HLNU_PTV_150_250_GE1J'
+                proc_value_num = 3
+        elif diphotonpt[i] >= 250:
+            proc_value = 'QQ2HLNU_PTV_75_150'
+            proc_value_num = 4
+    #else:
+    elif stage_1_2[i] == 400 or 401 or 402 or 403 or 404 or 405:
+        if diphotonpt[i] < 75:
+            proc_value = 'QQ2HLL_PTV_0_75'
+            proc_value_num = 5
+        elif diphotonpt[i] >= 75 and diphotonpt[i] < 150:
+            proc_value = 'QQ2HLL_PTV_75_150'
+            proc_value_num = 6
+        elif diphotonpt[i] >= 150 and diphotonpt[i] < 250:
+            if njets[i] == 0:
+                proc_value = 'QQ2HLL_PTV_150_250_0J'
+                proc_value_num = 7
+            elif njets[i] == 1:
+                proc_value = 'QQ2HLL_PTV_150_250_GE1J'
+                proc_value_num = 8
+        elif diphotonpt[i] >= 250:
+            proc_value = 'QQ2HLL_PTV_GT250'
+            proc_value_num = 9
+
     proc.append(proc_value)
     y_train_labels_num_pred.append(proc_value_num)
 y_train_labels_num_pred = np.array(y_train_labels_num_pred)
@@ -306,7 +287,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     tick_marks = np.arange(len(classes))
     plt.rcParams.update({
     'font.size': 10})
-    plt.xticks(tick_marks,classes,rotation=90)
+    plt.xticks(tick_marks,classes,rotation=45,horizontalalignment='right')
     plt.yticks(tick_marks,classes)
     if normalize:
         cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
@@ -323,7 +304,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.colorbar()
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
-    name = 'plotting/Cuts/Cut_Confusion_Matrix'
+    name = 'plotting/Cuts/Cut_VH_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
@@ -340,7 +321,7 @@ def plot_performance_plot(cm=cm,labels=binNames):
     #'font.size': 14})
     tick_marks = np.arange(len(labels))
     #plt.xticks(tick_marks,labels,rotation=90)
-    plt.xticks(tick_marks,labels,rotation=90)
+    plt.xticks(tick_marks,labels,rotation=45,horizontalalignment='right')
     #color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
@@ -355,9 +336,46 @@ def plot_performance_plot(cm=cm,labels=binNames):
     #plt.ylabel('Fraction of events')
     ax.set_ylabel('Events', ha='center',size=14) #y=0.5,
     ax.set_xlabel('Predicted Production Modes', ha='center',size=14) #, x=1, size=13)
-    name = 'plotting/Cuts/Cut_Performance_Plot'
+    name = 'plotting/Cuts/Cut_VH_Performance_Plot'
     plt.savefig(name, dpi = 1200)
     plt.show()
+'''
+def plot_roc_curve(binNames = binNames, y_test = y_train_labels_num, y_pred_test = y_pred, x_test = data, color = color):
+    # sample weights
+    # find weighted average 
+    fig, ax = plt.subplots()
+    #y_pred_test  = clf.predict_proba(x_test)
+    for k in range(len(binNames)):
+        signal = binNames[k]
+        for i in range(num_categories):
+            if binNames[i] == signal:
+                #sig_y_test  = np.where(y_test==i, 1, 0)
+                sig_y_test = y_test[:,i]
+                print('sig_y_test', sig_y_test)
+                y_pred_test_array = y_pred_test[:,i]
+                print('y_pred_test_array', y_pred_test_array)
+                print('Here')
+                #test_w = test_w.reshape(1, -1)
+                print('test_w', test_w)
+                #auc = roc_auc_score(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                #print('auc: ', auc)
+                print('Here')
+                fpr_keras.sort()
+                tpr_keras.sort()
+                auc_test = auc(fpr_keras, tpr_keras)
+                ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), binNames[i]), color = color[i])
+    ax.legend(loc = 'lower right', fontsize = 'x-small')
+    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
+    name = 'plotting/Cuts/Cut_stage_0_ROC_curve'
+    plt.savefig(name, dpi = 1200)
+    print("Plotting ROC Curve")
+    plt.close()
+'''
+#y_test not correct yet, need to check this again
+#plot_roc_curve(y_test=y_train_labels_num,y_pred_test=y_pred,x_test=data)
 
 plot_performance_plot()
 

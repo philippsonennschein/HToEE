@@ -17,6 +17,8 @@ num_estimators = 400
 test_split = 0.15
 learning_rate = 0.001
 
+color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
+
 #STXS mapping
 #STXS mapping
 map_def_0 = [['ggH',10,11],['qqH',20,21,22,23],['WH',30,31],['ZH',40,41],['ttH',60,61],['tH',80,81]]
@@ -250,10 +252,15 @@ x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test
 
 #Before n_estimators = 100, maxdepth=4, gamma = 1
 #Improved n_estimators = 300, maxdepth = 7, gamme = 4
+#clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=100, 
+#                            eta=0.1, maxDepth=6, min_child_weight=0.01, 
+#                            subsample=0.6, colsample_bytree=0.6, gamma=4,
+#                            num_class=4)
+
 clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=100, 
                             eta=0.1, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
-                            num_class=4)
+                            num_class=7)
 
 #Equalizing weights
 #Equalizing weights
@@ -349,7 +356,7 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     tick_marks = np.arange(len(classes))
     plt.rcParams.update({
     'font.size': 10})
-    plt.xticks(tick_marks,classes,rotation=90)
+    plt.xticks(tick_marks,classes,rotation=45,horizontalalignment='right')
     plt.yticks(tick_marks,classes)
     if normalize:
         cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
@@ -383,7 +390,7 @@ def plot_performance_plot(cm=cm,labels=binNames):
     #'font.size': 14})
     tick_marks = np.arange(len(labels))
     #plt.xticks(tick_marks,labels,rotation=90)
-    plt.xticks(tick_marks,labels,rotation=90)
+    plt.xticks(tick_marks,labels,rotation=45,horizontalalignment='right')
     #color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
@@ -417,6 +424,42 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
             plt.savefig('/plotting/BDT_plots/feature_importance_{0}.png'.format(i), dpi = 200)
             print('saving: /plotting/BDT_plots/feature_importance_{0}.png'.format(i))
 
+def plot_roc_curve(binNames = binNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color):
+    # sample weights
+    # find weighted average 
+    fig, ax = plt.subplots()
+    #y_pred_test  = clf.predict_proba(x_test)
+    for k in range(len(binNames)):
+        signal = binNames[k]
+        for i in range(num_categories):
+            if binNames[i] == signal:
+                #sig_y_test  = np.where(y_test==i, 1, 0)
+                sig_y_test = y_test[:,i]
+                print('sig_y_test', sig_y_test)
+                y_pred_test_array = y_pred_test[:,i]
+                print('y_pred_test_array', y_pred_test_array)
+                print('Here')
+                #test_w = test_w.reshape(1, -1)
+                print('test_w', test_w)
+                #auc = roc_auc_score(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                #print('auc: ', auc)
+                print('Here')
+                fpr_keras.sort()
+                tpr_keras.sort()
+                auc_test = auc(fpr_keras, tpr_keras)
+                ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), binNames[i]), color = color[i])
+    ax.legend(loc = 'lower right', fontsize = 'x-small')
+    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
+    name = 'plotting/BDT_plots/BDT_stage_0_ROC_curve'
+    plt.savefig(name, dpi = 1200)
+    print("Plotting ROC Curve")
+    plt.close()
+
+
+plot_roc_curve()
 plot_confusion_matrix(cm,binNames,normalize=True)
 
 plot_performance_plot()

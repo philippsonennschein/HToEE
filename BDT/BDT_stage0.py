@@ -58,8 +58,8 @@ dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv', nrows = 254039))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv', nrows = 130900))
 df = pd.concat(dataframes, sort=False, axis=0 )
 
 data = df[train_vars]
@@ -86,6 +86,8 @@ def mapping(map_list,stage):
     return proc
 
 data['proc_new'] = mapping(map_list=map_def,stage=data['HTXS_stage_0'])
+
+data.loc[data.proc_new == 'tH','weight'] = data[data['proc_new'] == 'tH']['weight'] * 4
 
 #Define the procs as the labels
 #ggh: 0, VBF:1, VH: 2, ttH: 3
@@ -215,6 +217,43 @@ def plot_performance_plot(cm=cm,labels=binNames):
     name = 'plotting/NN_plots/NN_Stage0_Performance_Plot'
     plt.savefig(name, dpi = 1200)
     plt.show()
+
+def plot_roc_curve(binNames = binNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color):
+    # sample weights
+    # find weighted average 
+    fig, ax = plt.subplots()
+    #y_pred_test  = clf.predict_proba(x_test)
+    for k in range(len(binNames)):
+        signal = binNames[k]
+        for i in range(num_categories):
+            if binNames[i] == signal:
+                #sig_y_test  = np.where(y_test==i, 1, 0)
+                sig_y_test = y_test[:,i]
+                print('sig_y_test', sig_y_test)
+                y_pred_test_array = y_pred_test[:,i]
+                print('y_pred_test_array', y_pred_test_array)
+                print('Here')
+                #test_w = test_w.reshape(1, -1)
+                print('test_w', test_w)
+                #auc = roc_auc_score(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w)
+                #print('auc: ', auc)
+                print('Here')
+                fpr_keras.sort()
+                tpr_keras.sort()
+                auc_test = auc(fpr_keras, tpr_keras)
+                ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), binNames[i]), color = color[i])
+    ax.legend(loc = 'lower right', fontsize = 'x-small')
+    ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+    ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+    ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
+    name = 'plotting/BDT_plots/BDT_stage_0_ROC_curve'
+    plt.savefig(name, dpi = 1200)
+    print("Plotting ROC Curve")
+    plt.close()
+
+
+plot_roc_curve()
 
 plot_performance_plot()
 
