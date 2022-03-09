@@ -13,7 +13,7 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 1 #400
+num_estimators = 10 #400
 test_split = 0.15
 learning_rate = 0.0001
 
@@ -102,16 +102,8 @@ data = df[train_vars]
 # my soul has exited my body since I have tried every possible pandas way to do this ... I will turn to numpy arrays now for my own sanity
 # most inefficient code ever written lessgoooo
 
-
 leadJetPt = np.array(data['leadJetPt'])
-leadJetPhi = np.array(data['leadJetPhi'])
 subleadJetPt = np.array(data['subleadJetPt'])
-subleadJetPhi = np.array(data['subleadJetPhi'])
-leadPhotonPt = np.array(data['leadPhotonPt'])
-leadPhotonPhi = np.array(data['leadPhotonPhi'])
-subleadPhotonPt = np.array(data['subleadPhotonPt'])
-subleadPhotonPhi = np.array(data['subleadPhotonPhi'])
-
 
 # creating n-jets variable
 njets = []
@@ -150,10 +142,11 @@ def mapping(map_list,stage):
 
 data['proc_new'] = mapping(map_list=map_def_3,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
 
+
 # now I only want to keep the VH - 10class
-data = data[data.proc_original != 'qqH']
-data = data[data.proc_original != 'QQ2HLNU_FWDH']
-data = data[data.proc_original != 'QQ2HLL_FWDH']
+data = data[data.proc_new != 'qqH']
+data = data[data.proc_new != 'QQ2HLNU_FWDH']
+data = data[data.proc_new != 'QQ2HLL_FWDH']
 
 
 num_categories = data['proc_new'].nunique()
@@ -300,13 +293,15 @@ y_pred = y_pred_test.argmax(axis=1)
 y_true = y_test
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred, sample_weight = test_w)
+acc = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
+print(acc)
 
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred, sample_weight = test_w)
 
 #Confusion Matrix
-def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Confusion_Matrix'):
+def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
@@ -469,7 +464,16 @@ plot_output_score(data='output_score_qqh7')
 # data_new['proc']  # are the true labels
 # data_new['weight'] are the weights
 
-signal = binNames
+signal = ['QQ2HLNU_PTV_0_75',
+            'QQ2HLNU_PTV_75_150',
+            'QQ2HLNU_PTV_150_250_0J',
+            'QQ2HLNU_PTV_150_250_GE1J',
+            'QQ2HLNU_PTV_GT250',
+            'QQ2HLL_PTV_0_75',
+            'QQ2HLL_PTV_75_150',
+            'QQ2HLL_PTV_150_250_0J',
+            'QQ2HLL_PTV_150_250_GE1J',
+            'QQ2HLL_PTV_GT250']
 
 #signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120'] # for debugging
 #conf_matrix = np.zeros((2,1)) # for the final confusion matrix
@@ -478,8 +482,8 @@ conf_matrix_no_w = np.zeros((2,len(signal)))
 
 for i in range(len(signal)):
     data_new = x_test.copy()  
-    data_new = data_new.drop(columns = ['output_score_qqh1','output_score_qqh2', 'output_score_qqh3', 'output_score_qqh4',
-                                        'output_score_qqh5', 'output_score_qqh6', 'output_score_qqh7'])
+    data_new = data_new.drop(columns = ['output_score_vh1','output_score_vh2', 'output_score_vh3', 'output_score_vh4',
+                                        'output_score_vh5', 'output_score_vh6', 'output_score_vh7'])
     # now i want to get the predicted labels
     proc_pred = []      
     for j in range(len(y_pred_0)):
@@ -581,7 +585,7 @@ def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = colo
     plt.savefig(name, dpi = 1200)
     plt.show()
 # now to make our final plot of performance
-plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Performance_Plot_final')
+plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Performance_Plot_final')
 
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
