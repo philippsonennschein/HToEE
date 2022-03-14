@@ -13,9 +13,9 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 200 #400
+num_estimators = 100 #400
 test_split = 0.15
-learning_rate = 0.0001
+learning_rate = 0.001
 
 #STXS mapping
 #STXS mapping
@@ -511,6 +511,9 @@ signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200
 conf_matrix_w = np.zeros((2,len(signal)))
 conf_matrix_no_w = np.zeros((2,len(signal)))
 
+fig, ax = plt.subplots()
+plt.rcParams.update({'font.size': 9})
+
 for i in range(len(signal)):
     data_new = x_test.copy()  
     data_new = data_new.drop(columns = ['output_score_qqh1','output_score_qqh2', 'output_score_qqh3', 'output_score_qqh4',
@@ -587,9 +590,36 @@ for i in range(len(signal)):
     conf_matrix_no_w[0][i] = cm_2_no_weights[0][1]
     conf_matrix_no_w[1][i] = cm_2_no_weights[1][1]
 
+    # ROC Curve
+    sig_y_test  = np.where(y_test_2==1, 1, 0)
+    #sig_y_test  = y_test_2
+    y_pred_test_array = y_pred_test_2[:,1] # to grab the signal
+    fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w_2)
+    fpr_keras.sort()
+    tpr_keras.sort()
+    name_fpr = 'csv_files/BDT_binary_fpr_' + signal[i]
+    name_tpr = 'csv_files/BDT_binary_tpr_' + signal[i]
+    np.savetxt(name_fpr, fpr_keras, delimiter = ',')
+    np.savetxt(name_tpr, tpr_keras, delimiter = ',')
+    auc_test = auc(fpr_keras, tpr_keras)
+    ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), labelNames[i]), color = color[i])
+
+ax.legend(loc = 'lower right', fontsize = 'small')
+ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
+plt.tight_layout()
+name = 'plotting/BDT_plots/BDT_qqH_binary_Multi_ROC_curve'
+plt.savefig(name, dpi = 1200)
+print("Plotting ROC Curve")
+plt.close()
 
 print('Final conf_matrix:')
 print(conf_matrix_w)
+
+#Exporting final confusion matrix
+name_cm = 'csv_files/BDT_binary_cm'
+np.savetxt(name_cm, conf_matrix_w, delimiter = ',')
 
 #Need a new function beause the cm structure is different
 def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = color, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Performance_Plot'):
@@ -621,5 +651,11 @@ plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plot
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
 accuracy = num_correct / (num_correct + num_false)
-print('Final Accuracy Score:')
+print('BDT Final Accuracy Score with qqH:')
+print(accuracy)
+
+num_false = np.sum(conf_matrix_w[0,1:])
+num_correct = np.sum(conf_matrix_w[1,1:])
+accuracy = num_correct / (num_correct + num_false)
+print('BDT Final Accuracy Score without qqH:')
 print(accuracy)
