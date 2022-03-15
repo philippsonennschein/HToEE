@@ -13,66 +13,54 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 400
-test_split = 0.15
+num_estimators = 200 #00 #400
+test_split = 0.4
 learning_rate = 0.0001
 
 #STXS mapping
-#STXS mapping
-map_def_0 = [['ggH',10,11],['qqH',20,21,22,23],['WH',30,31],['ZH',40,41],['ttH',60,61],['tH',80,81]]
-map_def_1 = [
-    ['ggH',100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116],
-    ['QQ2HQQ_FWDH',200],
-    ['QQ2HQQ_0J',201],
-    ['QQ2HQQ_1J',202],
-    ['QQ2HQQ_GE2J_MJJ_0_60',203],
-    ['QQ2HQQ_GE2J_MJJ_60_120',204],
-    ['QQ2HQQ_GE2J_MJJ_120_350',205],
-    ['QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200',206],
-    ['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',207],
-    ['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',208],
-    ['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',209],
-    ['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',210],
-    ['WH',300,301,302,303,304,305],
-    ['ZH',400,401,402,403,404,405],
-    ['ttH',600,601,602,603,604,605],
-    ['tH',800,801]
-    ]
-map_def_2 = [
-['QQ2HQQ_FWDH',200],
-['qqH_Rest', 201, 202, 203, 205],
-['QQ2HQQ_GE2J_MJJ_60_120',204],
-['QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200',206],
-['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',207],
-['QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',208],
-['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',209],
-['QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',210],
-['WH',300,301,302,303,304,305],
-['ZH',400,401,402,403,404,405],
+map_def_3 = [
+['qqH',200,201,202,203,204,205,206,207,208,209,210], #qqH
+['QQ2HLNU_FWDH',300], #WH
+['QQ2HLNU_PTV_0_75',301],
+['QQ2HLNU_PTV_75_150',302],
+['QQ2HLNU_PTV_150_250_0J',303],
+['QQ2HLNU_PTV_150_250_GE1J',304],
+['QQ2HLNU_PTV_GT250',305],
+['QQ2HLL_FWDH',400], #ZH
+['QQ2HLL_PTV_0_75',401],
+['QQ2HLL_PTV_75_150',402],
+['QQ2HLL_PTV_150_250_0J',403],
+['QQ2HLL_PTV_150_250_GE1J',404],
+['QQ2HLL_PTV_GT250',405]
 ]
+
+
+binNames = ['QQ2HLNU_PTV_0_75',
+            'QQ2HLNU_PTV_75_150',
+            'QQ2HLNU_PTV_150_250_0J',
+            'QQ2HLNU_PTV_150_250_GE1J',
+            'QQ2HLNU_PTV_GT250',
+            'QQ2HLL_PTV_0_75',
+            'QQ2HLL_PTV_75_150',
+            'QQ2HLL_PTV_150_250_0J',
+            'QQ2HLL_PTV_150_250_GE1J',
+            'QQ2HLL_PTV_GT250']
+
+labelNames = ['WH $p^H_T$<75',
+            'WH 75<$p^H_T$<150',
+            'WH 150<$p^H_T$<250 0 Jets',
+            'WH 150<$p^H_T$<250 1 Jet',
+            'WH $p^H_T$>250',
+            'ZH $p^H_T$<75',
+            'ZH 75<$p^H_T$<150',
+            'ZH 150<$p^H_T$<250 0 Jets',
+            'ZH 150<$p^H_T$<250 1 Jet',
+            'ZH $p^H_T$>250']
 
 #color = ['#f0700c', '#e03b04', '#eef522', '#8cad05', '#f5df87', '#6e0903', '#8c4503']
 color  = ['silver','indianred','salmon','lightgreen','seagreen','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
 
-binNames = ['qqH_Rest',
-            'QQ2HQQ_GE2J_MJJ_60_120',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25',
-            'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
-
-labelNames = [r'qqH rest', 
-            r'60<m$_{jj}$<120',
-            r'350<m$_{jj}$<700, 0<p$_{T}^{H}$<200, 0<p$_{T}^{H_{jj}}$<25',
-            r'350<m$_{jj}$<700, 0<p$_{T}^{H}$<200, p$_{T}^{H_{jj}}$>25',
-            r'm$_{jj}$>700, 0<p$_{T}^{H}$<200, 0<p$_{T}^{H_{jj}}$<25',
-            r'm$_{jj}$>700, 0<p$_{T}^{H}$<200, p$_{T}^{H_{jj}}$>25',
-            r'm$_{jj}$>350, p$_{T}^{H}$>200'
-            ]
-
 bins = 50
-
 
 train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','diphotonPhi', 'diphotonSigmaMoM',
      'dijetMass', 'dijetAbsDEta', 'dijetDPhi', 'dijetCentrality',
@@ -88,16 +76,12 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      'subsubleadJetEn','subsubleadJetPt','subsubleadJetEta','subsubleadJetPhi', 'subsubleadJetBTagScore', 
      'subsubleadJetMass',
      'metPt','metPhi','metSumET',
-     'nSoftJets'
-     #'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
-     #'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
-     #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
-     #'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
+     'nSoftJets',
+     'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
+     'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
+     'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
+     'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
      ]
-"""
-train_vars = ['dijetMass', 'diphotonPt', 'leadJetPt', 'leadJetPhi', 'subleadJetPt', 'subleadJetPhi', 
-            'leadPhotonPt', 'leadPhotonPhi', 'subleadPhotonPt', 'subleadPhotonPhi', 'diphotonMass', 'leadPhotonPtOvM', 'subleadPhotonPtOvM']
-"""
 
 train_vars.append('proc')
 train_vars.append('weight')
@@ -106,7 +90,7 @@ train_vars.append('HTXS_stage1_2_cat_pTjet30GeV')
 
 dataframes = []
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
 #dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv'))
@@ -119,59 +103,8 @@ data = df[train_vars]
 # my soul has exited my body since I have tried every possible pandas way to do this ... I will turn to numpy arrays now for my own sanity
 # most inefficient code ever written lessgoooo
 
-
 leadJetPt = np.array(data['leadJetPt'])
-leadJetPhi = np.array(data['leadJetPhi'])
 subleadJetPt = np.array(data['subleadJetPt'])
-subleadJetPhi = np.array(data['subleadJetPhi'])
-leadPhotonPt = np.array(data['leadPhotonPt'])
-leadPhotonPhi = np.array(data['leadPhotonPhi'])
-subleadPhotonPt = np.array(data['subleadPhotonPt'])
-subleadPhotonPhi = np.array(data['subleadPhotonPhi'])
-
-# creating pTHjj variable
-pTHjj = []
-check = 0
-for i in range(data.shape[0]):
-    if leadJetPt[i] != -999.0 or leadJetPhi[i] != -999.0:
-        px_jet1 = leadJetPt[i]*np.cos(leadJetPhi[i])
-        py_jet1 = leadJetPt[i]*np.sin(leadJetPhi[i])
-    else:
-        px_jet1 = 0
-        py_jet1 = 0
-        check += 1
-    if subleadJetPt[i] != -999.0 or subleadJetPhi[i] != -999.0:
-        px_jet2 = subleadJetPt[i]*np.cos(subleadJetPhi[i])
-        py_jet2 = subleadJetPt[i]*np.sin(subleadJetPhi[i])
-    else:
-        px_jet2 = 0
-        py_jet2 = 0
-        check += 1
-    if leadPhotonPt[i] != -999.0 or leadPhotonPhi[i] != -999.0:
-        px_ph1 = leadPhotonPt[i]*np.cos(leadPhotonPhi[i])
-        py_ph1 = leadPhotonPt[i]*np.sin(leadPhotonPhi[i])
-    else:
-        px_ph1 = 0
-        py_ph1 = 0
-        check += 1
-    if subleadPhotonPt[i] != -999.0 or subleadPhotonPhi[i] != -999.0:
-        px_ph2 = subleadPhotonPt[i]*np.cos(subleadPhotonPhi[i])
-        py_ph2 = subleadPhotonPt[i]*np.sin(subleadPhotonPhi[i])
-    else:
-        px_ph2 = 0
-        py_ph2 = 0
-        check += 1 
-
-    px_sum = px_jet1 + px_jet2 + px_ph1 + px_ph2
-    py_sum = py_jet1 + py_jet2 + py_ph1 + py_ph2
-
-    if check == 4:
-        pTHjj.append(-999.0)
-    else:
-        pTHjj.append(np.sqrt(px_sum**2 + py_sum**2))    
-    check = 0
-
-data['pTHjj'] = pTHjj
 
 # creating n-jets variable
 njets = []
@@ -186,6 +119,27 @@ for i in range(data.shape[0]):
         num_jet = 0
     njets.append(num_jet)
 data['njets'] = njets
+
+# creating n-leptons variable
+leadElectronPt = np.array(data['leadElectronPt'])
+leadMuonPt = np.array(data['leadMuonPt'])
+subleadElectronPt = np.array(data['subleadElectronPt'])
+subleadMuonPt = np.array(data['subleadMuonPt'])
+
+nleptons = []
+num_leptons = 0
+for i in range(data.shape[0]):
+    if leadElectronPt[i] != -999.0 or leadMuonPt[i] != -999.0:
+        if subleadElectronPt[i] != -999.0 or subleadMuonPt[i] != -999:
+            num_leptons = 2
+        else:
+            num_leptons = 1
+    else:
+        num_leptons = 0
+    nleptons.append(num_leptons)
+data['nleptons'] = nleptons
+
+#Need to add nleptons from Katerina's cuts code
 
 data = data[data.diphotonMass>100.]
 data = data[data.diphotonMass<180.]
@@ -208,34 +162,51 @@ def mapping(map_list,stage):
                 proc.append(proc_list[j])
     return proc
 
-data['proc_new'] = mapping(map_list=map_def_2,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
+data['proc_new'] = mapping(map_list=map_def_3,stage=data['HTXS_stage1_2_cat_pTjet30GeV'])
 
-# now I only want to keep the qqH - 7class
-data = data[data.proc_new != 'QQ2HQQ_FWDH']
-data = data[data.proc_new != 'WH']
-data = data[data.proc_new != 'ZH']
+
+# now I only want to keep the VH - 10class
+data = data[data.proc_new != 'qqH']
+data = data[data.proc_new != 'QQ2HLNU_FWDH']
+data = data[data.proc_new != 'QQ2HLL_FWDH']
 
 
 num_categories = data['proc_new'].nunique()
 proc_new = np.array(data['proc_new'])
 #Assign the numbers in the same order as the binNames above
 y_train_labels_num = []
+'''
 for i in proc_new:
-    if i == 'qqH_Rest':
+    if i == 'QQ2HLNU_PTV_0_75':
         y_train_labels_num.append(0)
-    if i == 'QQ2HQQ_GE2J_MJJ_60_120':
+    if i == 'QQ2HLNU_PTV_75_150':
         y_train_labels_num.append(1)
-    if i == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25':
+    if i == 'QQ2HLNU_PTV_150_250_0J':
         y_train_labels_num.append(2)
-    if i == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25':
+    if i == 'QQ2HLNU_PTV_150_250_GE1J':
         y_train_labels_num.append(3)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25':
+    if i == 'QQ2HLNU_PTV_GT250':
         y_train_labels_num.append(4)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25':
+    if i == 'QQ2HLL_PTV_0_75':
         y_train_labels_num.append(5)
-    if i == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200':
+    if i == 'QQ2HLL_PTV_75_150':
         y_train_labels_num.append(6)
-
+    if i == 'QQ2HLL_PTV_150_250_0J':
+        y_train_labels_num.append(7)
+    if i == 'QQ2HLL_PTV_150_250_GE1J':
+        y_train_labels_num.append(8)
+    if i == 'QQ2HLL_PTV_GT250':
+        y_train_labels_num.append(9)
+'''
+for i in proc_new:
+    if i == 'QQ2HLNU_PTV_0_75':
+        y_train_labels_num.append(0)
+    if i == 'QQ2HLNU_PTV_75_150':
+        y_train_labels_num.append(1)
+    if i == 'WH_Rest':
+        y_train_labels_num.append(2)
+    if i == 'ZH_Rest':
+        y_train_labels_num.append(4)
 data['proc_num'] = y_train_labels_num
 
 y_train_labels = np.array(data['proc_new'])
@@ -246,24 +217,20 @@ weights = np.array(data['weight'])
 
 data = data.drop(columns=['proc'])
 data = data.drop(columns=['proc_num'])
+data = data.drop(columns=['proc_new'])
 data = data.drop(columns=['weight'])
 data = data.drop(columns=['HTXS_stage_0'])
-data = data.drop(columns=['proc_new'])
 data = data.drop(columns=['HTXS_stage1_2_cat_pTjet30GeV'])
-
-#data = data.drop(columns = ['leadJetPt', 'leadJetPhi', 'subleadJetPt', 'subleadJetPhi', 'leadPhotonPt', 'leadPhotonPhi', 'subleadPhotonPt', 'subleadPhotonPhi', 'diphotonMass', 'leadPhotonPtOvM', 'subleadPhotonPtOvM'])
 
 #With num
 x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data, y_train_labels_num, weights, y_train_labels, test_size = test_split, shuffle = True)
-#With hot
-#x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data, y_train_labels_hot, weights, y_train_labels, test_size = val_split, shuffle = True)
 
 #Before n_estimators = 100, maxdepth=4, gamma = 1
 #Improved n_estimators = 300, maxdepth = 7, gamme = 4
 clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=num_estimators, 
                             eta=0.0001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
-                            num_class=7)
+                            num_class=10) #Could change this num_class
 
 clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
                             eta=0.0001, maxDepth=6, min_child_weight=0.01, 
@@ -274,20 +241,26 @@ train_w_df = pd.DataFrame()
 train_w = 300 * train_w # to make loss function O(1)
 train_w_df['weight'] = train_w
 train_w_df['proc'] = proc_arr_train
-qqh1_sum_w = train_w_df[train_w_df['proc'] == 'qqH_Rest']['weight'].sum()
-qqh2_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']['weight'].sum()
-qqh3_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']['weight'].sum()
-qqh4_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']['weight'].sum()
-qqh5_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']['weight'].sum()
-qqh6_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']['weight'].sum()
-qqh7_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']['weight'].sum()
+vh1_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_0_75']['weight'].sum()
+vh2_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_75_150']['weight'].sum()
+vh3_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_150_250_0J']['weight'].sum()
+vh4_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_150_250_GE1J']['weight'].sum()
+vh5_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_GT250']['weight'].sum()
+vh6_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_0_75']['weight'].sum()
+vh7_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_75_150']['weight'].sum()
+vh8_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_150_250_0J']['weight'].sum()
+vh9_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_150_250_GE1J']['weight'].sum()
+vh10_sum_w = train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_GT250']['weight'].sum()
 
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_60_120','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']['weight'] * qqh1_sum_w / qqh2_sum_w)
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']['weight'] * qqh1_sum_w / qqh3_sum_w)
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']['weight'] * qqh1_sum_w / qqh4_sum_w)
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']['weight'] * qqh1_sum_w / qqh5_sum_w)
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']['weight'] * qqh1_sum_w / qqh6_sum_w)
-train_w_df.loc[train_w_df.proc == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']['weight'] * qqh1_sum_w / qqh7_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLNU_PTV_75_150','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_75_150']['weight'] * vh1_sum_w / vh2_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLNU_PTV_150_250_0J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_150_250_0J']['weight'] * vh1_sum_w / vh3_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLNU_PTV_150_250_GE1J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_150_250_GE1J']['weight'] * vh1_sum_w / vh4_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLNU_PTV_GT250','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLNU_PTV_GT250']['weight'] * vh1_sum_w / vh5_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLL_PTV_0_75','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_0_75']['weight'] * vh1_sum_w / vh6_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLL_PTV_75_150','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_75_150']['weight'] * vh1_sum_w / vh7_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLL_PTV_150_250_0J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_150_250_0J']['weight'] * vh1_sum_w / vh8_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLL_PTV_150_250_GE1J','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_150_250_GE1J']['weight'] * vh1_sum_w / vh9_sum_w)
+train_w_df.loc[train_w_df.proc == 'QQ2HLL_PTV_GT250','weight'] = (train_w_df[train_w_df['proc'] == 'QQ2HLL_PTV_GT250']['weight'] * vh1_sum_w / vh10_sum_w)
 train_w = np.array(train_w_df['weight'])
 
 print (' Training classifier...')
@@ -297,41 +270,52 @@ print ('Finished Training classifier!')
 y_pred_0 = clf.predict(x_test)
 y_pred_test = clf.predict_proba(x_test)
 
-
 x_test['proc'] = proc_arr_test
 x_test['weight'] = test_w
 
-x_test['output_score_qqh1'] = y_pred_test[:,0]
-x_test['output_score_qqh2'] = y_pred_test[:,1]
-x_test['output_score_qqh3'] = y_pred_test[:,2]
-x_test['output_score_qqh4'] = y_pred_test[:,3]
-x_test['output_score_qqh5'] = y_pred_test[:,4]
-x_test['output_score_qqh6'] = y_pred_test[:,5]
-x_test['output_score_qqh7'] = y_pred_test[:,6]
+x_test['output_score_vh1'] = y_pred_test[:,0]
+x_test['output_score_vh2'] = y_pred_test[:,1]
+x_test['output_score_vh3'] = y_pred_test[:,2]
+x_test['output_score_vh4'] = y_pred_test[:,3]
+x_test['output_score_vh5'] = y_pred_test[:,4]
+x_test['output_score_vh6'] = y_pred_test[:,5]
+x_test['output_score_vh7'] = y_pred_test[:,6]
+x_test['output_score_vh8'] = y_pred_test[:,7]
+x_test['output_score_vh9'] = y_pred_test[:,8]
+x_test['output_score_vh10'] = y_pred_test[:,9]
 
-output_score_qqh1 = np.array(y_pred_test[:,0])
-output_score_qqh2 = np.array(y_pred_test[:,1])
-output_score_qqh3 = np.array(y_pred_test[:,2])
-output_score_qqh4 = np.array(y_pred_test[:,3])
-output_score_qqh5 = np.array(y_pred_test[:,4])
-output_score_qqh6 = np.array(y_pred_test[:,5])
-output_score_qqh7 = np.array(y_pred_test[:,6])
+output_score_vh1 = np.array(y_pred_test[:,0])
+output_score_vh2 = np.array(y_pred_test[:,1])
+output_score_vh3 = np.array(y_pred_test[:,2])
+output_score_vh4 = np.array(y_pred_test[:,3])
+output_score_vh5 = np.array(y_pred_test[:,4])
+output_score_vh6 = np.array(y_pred_test[:,5])
+output_score_vh7 = np.array(y_pred_test[:,6])
+output_score_vh8 = np.array(y_pred_test[:,7])
+output_score_vh9 = np.array(y_pred_test[:,8])
+output_score_vh10 = np.array(y_pred_test[:,9])
 
-x_test_qqh1 = x_test[x_test['proc'] == 'qqH_Rest']
-x_test_qqh2 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_60_120']
-x_test_qqh3 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25']
-x_test_qqh4 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25']
-x_test_qqh5 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25']
-x_test_qqh6 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25']
-x_test_qqh7 = x_test[x_test['proc'] == 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
+x_test_vh1 = x_test[x_test['proc'] == 'QQ2HLNU_PTV_0_75']
+x_test_vh2 = x_test[x_test['proc'] == 'QQ2HLNU_PTV_75_150']
+x_test_vh3 = x_test[x_test['proc'] == 'QQ2HLNU_PTV_150_250_0J']
+x_test_vh4 = x_test[x_test['proc'] == 'QQ2HLNU_PTV_150_250_GE1J']
+x_test_vh5 = x_test[x_test['proc'] == 'QQ2HLNU_PTV_GT250']
+x_test_vh6 = x_test[x_test['proc'] == 'QQ2HLL_PTV_0_75']
+x_test_vh7 = x_test[x_test['proc'] == 'QQ2HLL_PTV_75_150']
+x_test_vh8 = x_test[x_test['proc'] == 'QQ2HLL_PTV_150_250_0J']
+x_test_vh9 = x_test[x_test['proc'] == 'QQ2HLL_PTV_150_250_GE1J']
+x_test_vh10 = x_test[x_test['proc'] == 'QQ2HLL_PTV_GT250']
 
-qqh1_w = x_test_qqh1['weight'] / x_test_qqh1['weight'].sum()
-qqh2_w = x_test_qqh2['weight'] / x_test_qqh2['weight'].sum()
-qqh3_w = x_test_qqh3['weight'] / x_test_qqh3['weight'].sum()
-qqh4_w = x_test_qqh4['weight'] / x_test_qqh4['weight'].sum()
-qqh5_w = x_test_qqh5['weight'] / x_test_qqh5['weight'].sum()
-qqh6_w = x_test_qqh6['weight'] / x_test_qqh6['weight'].sum()
-qqh7_w = x_test_qqh7['weight'] / x_test_qqh7['weight'].sum()
+vh1_w = x_test_vh1['weight'] / x_test_vh1['weight'].sum()
+vh2_w = x_test_vh2['weight'] / x_test_vh2['weight'].sum()
+vh3_w = x_test_vh3['weight'] / x_test_vh3['weight'].sum()
+vh4_w = x_test_vh4['weight'] / x_test_vh4['weight'].sum()
+vh5_w = x_test_vh5['weight'] / x_test_vh5['weight'].sum()
+vh6_w = x_test_vh6['weight'] / x_test_vh6['weight'].sum()
+vh7_w = x_test_vh7['weight'] / x_test_vh7['weight'].sum()
+vh8_w = x_test_vh8['weight'] / x_test_vh8['weight'].sum()
+vh9_w = x_test_vh9['weight'] / x_test_vh9['weight'].sum()
+vh10_w = x_test_vh10['weight'] / x_test_vh10['weight'].sum()
 total_w = x_test['weight'] / x_test['weight'].sum()
 
 #Accuracy Score
@@ -340,13 +324,15 @@ y_pred = y_pred_test.argmax(axis=1)
 y_true = y_test
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred, sample_weight = test_w)
+acc = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
+print(acc)
 
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred, sample_weight = test_w)
 
 #Confusion Matrix
-def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Confusion_Matrix'):
+def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
@@ -374,32 +360,38 @@ def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='
 def plot_output_score(data='output_score_qqh', density=False):
     #Can then change it to plotting proc
     print('Plotting',data)
-    output_score_qqh1 = np.array(x_test_qqh1[data])
-    output_score_qqh2 = np.array(x_test_qqh2[data])
-    output_score_qqh3 = np.array(x_test_qqh3[data])
-    output_score_qqh4 = np.array(x_test_qqh4[data])
-    output_score_qqh5 = np.array(x_test_qqh5[data])
-    output_score_qqh6 = np.array(x_test_qqh6[data])
-    output_score_qqh7 = np.array(x_test_qqh7[data])
+    output_score_vh1 = np.array(x_test_vh1[data])
+    output_score_vh2 = np.array(x_test_vh2[data])
+    output_score_vh3 = np.array(x_test_vh3[data])
+    output_score_vh4 = np.array(x_test_vh4[data])
+    output_score_vh5 = np.array(x_test_vh5[data])
+    output_score_vh6 = np.array(x_test_vh6[data])
+    output_score_vh7 = np.array(x_test_vh7[data])
+    output_score_vh8 = np.array(x_test_vh8[data])
+    output_score_vh9 = np.array(x_test_vh9[data])
+    output_score_vh10 = np.array(x_test_vh10[data])
 
     fig, ax = plt.subplots()
     #ax.hist(output_score_ggh, bins=50, label='ggH', histtype='step',weights=ggh_w)#,density=True) 
     #ax.hist(output_score_qqh0, bins=50, label='FWDH', histtype='step',weights=qqh0_w)
-    ax.hist(output_score_qqh1, bins=50, label='qqH Rest', histtype='step',weights=qqh1_w)
-    ax.hist(output_score_qqh2, bins=50, label='QQ2HQQ_GE2J_MJJ_60_120', histtype='step',weights=qqh2_w)
-    ax.hist(output_score_qqh3, bins=50, label='QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200', histtype='step',weights=qqh3_w)
-    ax.hist(output_score_qqh4, bins=50, label='QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh4_w)
-    ax.hist(output_score_qqh5, bins=50, label='QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh5_w)
-    ax.hist(output_score_qqh6, bins=50, label='QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25', histtype='step',weights=qqh6_w)
-    ax.hist(output_score_qqh7, bins=50, label='QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25', histtype='step',weights=qqh7_w)
+    ax.hist(output_score_vh1, bins=50, label='QQ2HLNU_PTV_0_75', histtype='step',weights=vh1_w)
+    ax.hist(output_score_vh2, bins=50, label='QQ2HLNU_PTV_75_150', histtype='step',weights=vh2_w)
+    ax.hist(output_score_vh3, bins=50, label='QQ2HLNU_PTV_150_250_0J', histtype='step',weights=qqh3_w)
+    ax.hist(output_score_vh4, bins=50, label='QQ2HLNU_PTV_150_250_GE1J', histtype='step',weights=vh4_w)
+    ax.hist(output_score_vh5, bins=50, label='QQ2HLNU_PTV_GT250', histtype='step',weights=vh5_w)
+    ax.hist(output_score_vh6, bins=50, label='QQ2HLL_PTV_0_75', histtype='step',weights=vh6_w)
+    ax.hist(output_score_vh7, bins=50, label='QQ2HLL_PTV_75_150', histtype='step',weights=vh7_w)
+    ax.hist(output_score_vh8, bins=50, label='QQ2HLL_PTV_150_250_0J', histtype='step',weights=vh8_w)
+    ax.hist(output_score_vh9, bins=50, label='QQ2HLL_PTV_150_250_GE1J', histtype='step',weights=vh9_w)
+    ax.hist(output_score_vh10, bins=50, label='QQ2HLL_PTV_GT250', histtype='step',weights=vh10_w)
     plt.legend()
     plt.title('Output Score')
     plt.ylabel('Fraction of Events')
     plt.xlabel('BDT Score')
-    name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_'+data
+    name = 'plotting/BDT_plots/BDT_VH_Tenclass_'+data
     plt.savefig(name, dpi = 1200)
 
-def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = color, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Performance_Plot'):
+def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = color, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Performance_Plot'):
     #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
     cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     for i in range(len(cm[0])):
@@ -428,7 +420,7 @@ def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = col
     plt.savefig(name, dpi = 1200)
     plt.show()
 
-def plot_roc_curve(binNames = labelNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_ROC_curve'):
+def plot_roc_curve(binNames = labelNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color, name = 'plotting/BDT_plots/BDT_VH_Tenclass_ROC_curve'):
     # sample weights
     # find weighted average 
     fig, ax = plt.subplots()
@@ -468,23 +460,24 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
         plt.rcParams["figure.figsize"] = (12,7)
         xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(imp_type), show_values = values, color ='blue')
         plt.tight_layout()
-        plt.savefig('plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(imp_type), dpi = 1200)
-        print('saving: /plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(imp_type))
+        plt.savefig('plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(imp_type), dpi = 1200)
+        print('saving: /plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(imp_type))
         
     else:
         imp_types = ['weight','gain','cover']
         for i in imp_types:
             xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(i), show_values = values, color ='blue')
             plt.tight_layout()
-            plt.savefig('plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(i), dpi = 1200)
-            print('saving: plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(i))
+            plt.savefig('plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(i), dpi = 1200)
+            print('saving: plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(i))
 
 
-#plot_confusion_matrix(cm,binNames,normalize=True, name = 'plotting/BDT_plots/TEST_1')
-#plot_performance_plot(name = 'plotting/BDT_plots/TEST_2')
+#plot_confusion_matrix(cm,binNames,normalize=True)
+#plot_performance_plot()
+#feature_importance()
 #plot_roc_curve(name = 'plotting/BDT_plots/TEST_3')
-feature_importance()
-#print('BDT_qqH_sevenclass: ', NNaccuracy)
+#feature_importance()
+print('BDT_qqH_sevenclass: ', NNaccuracy)
 """
 plot_output_score(data='output_score_qqh1')
 plot_output_score(data='output_score_qqh2')
@@ -500,12 +493,17 @@ plot_output_score(data='output_score_qqh7')
 # Binary BDT for signal purity
 # okayy lessgooo
 
-# data_new['proc']  # are the true labels
-# data_new['weight'] are the weights
+signal = ['QQ2HLNU_PTV_0_75',
+            'QQ2HLNU_PTV_75_150',
+            'QQ2HLNU_PTV_150_250_0J',
+            'QQ2HLNU_PTV_150_250_GE1J',
+            'QQ2HLNU_PTV_GT250',
+            'QQ2HLL_PTV_0_75',
+            'QQ2HLL_PTV_75_150',
+            'QQ2HLL_PTV_150_250_0J',
+            'QQ2HLL_PTV_150_250_GE1J',
+            'QQ2HLL_PTV_GT250']
 
-signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120','QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_350_700_PTH_0_200_PTHJJ_GT25','QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_0_25',
-            'QQ2HQQ_GE2J_MJJ_GT700_PTH_0_200_PTHJJ_GT25', 'QQ2HQQ_GE2J_MJJ_GT350_PTH_GT200']
 #signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120'] # for debugging
 #conf_matrix = np.zeros((2,1)) # for the final confusion matrix
 conf_matrix_w = np.zeros((2,len(signal)))
@@ -516,8 +514,8 @@ plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
     data_new = x_test.copy()  
-    data_new = data_new.drop(columns = ['output_score_qqh1','output_score_qqh2', 'output_score_qqh3', 'output_score_qqh4',
-                                        'output_score_qqh5', 'output_score_qqh6', 'output_score_qqh7'])
+    data_new = data_new.drop(columns = ['output_score_vh1','output_score_vh2', 'output_score_vh3', 'output_score_vh4',
+                                        'output_score_vh5', 'output_score_vh6', 'output_score_vh7','output_score_vh8', 'output_score_vh9', 'output_score_vh10'])
     # now i want to get the predicted labels
     proc_pred = []      
     for j in range(len(y_pred_0)):
@@ -526,8 +524,6 @@ for i in range(len(signal)):
         else:
             proc_pred.append('background')
     data_new['proc_pred'] = proc_pred       # Problem might be here, they don't seem to line up
-
-    #exit(0)
 
     # now cut down the dataframe to the predicted ones -  this is the split for the different dataframes
     data_new = data_new[data_new.proc_pred == signal[i]] 
@@ -597,8 +593,8 @@ for i in range(len(signal)):
     fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w_2)
     fpr_keras.sort()
     tpr_keras.sort()
-    name_fpr = 'csv_files/BDT_binary_fpr_' + signal[i]
-    name_tpr = 'csv_files/BDT_binary_tpr_' + signal[i]
+    name_fpr = 'csv_files/VH_BDT_binary_fpr_' + signal[i]
+    name_tpr = 'csv_files/VH_BDT_binary_tpr_' + signal[i]
     np.savetxt(name_fpr, fpr_keras, delimiter = ',')
     np.savetxt(name_tpr, tpr_keras, delimiter = ',')
     auc_test = auc(fpr_keras, tpr_keras)
@@ -609,7 +605,7 @@ ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
 ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
 ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
 plt.tight_layout()
-name = 'plotting/BDT_plots/BDT_qqH_binary_Multi_ROC_curve'
+name = 'plotting/BDT_plots/BDT_VH_binary_Multi_ROC_curve'
 plt.savefig(name, dpi = 1200)
 print("Plotting ROC Curve")
 plt.close()
@@ -618,15 +614,15 @@ print('Final conf_matrix:')
 print(conf_matrix_w)
 
 #Exporting final confusion matrix
-name_cm = 'csv_files/BDT_binary_cm'
+name_cm = 'csv_files/VH_BDT_binary_cm'
 np.savetxt(name_cm, conf_matrix_w, delimiter = ',')
 
 #Need a new function beause the cm structure is different
 def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = color, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Performance_Plot'):
     cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
-    for i in range(len(cm[0])):
-        for j in range(len(cm[:,1])):
-            cm[j][i] = float("{:.3f}".format(cm[j][i]))
+    #for i in range(len(cm[0])):
+    #    for j in range(len(cm[:,1])):
+    #        cm[j][i] = float("{:.3f}".format(cm[j][i]))
     cm = np.array(cm)
     fig, ax = plt.subplots(figsize = (10,10))
     plt.rcParams.update({
@@ -646,16 +642,11 @@ def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = colo
     plt.savefig(name, dpi = 1200)
     plt.show()
 # now to make our final plot of performance
-plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_qqH_Sevenclass_Performance_Plot_final')
+plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Performance_Plot_final')
 
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
 accuracy = num_correct / (num_correct + num_false)
-print('BDT Final Accuracy Score with qqH:')
+print('BDT Final Accuracy Score:')
 print(accuracy)
 
-num_false = np.sum(conf_matrix_w[0,1:])
-num_correct = np.sum(conf_matrix_w[1,1:])
-accuracy = num_correct / (num_correct + num_false)
-print('BDT Final Accuracy Score without qqH:')
-print(accuracy)

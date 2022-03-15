@@ -399,8 +399,8 @@ def plot_roc_curve(binNames = binNames, y_test = y_train_labels_num, y_pred_test
 # data_new['proc']  # are the true labels
 # data_new['weight'] are the weights
 
-num_estimators = 100
-test_split = 0.15
+num_estimators = 200
+test_split = 0.4
 
 clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
                             eta=0.1, maxDepth=6, min_child_weight=0.01, 
@@ -411,6 +411,11 @@ signal = binNames
 #conf_matrix = np.zeros((2,1)) # for the final confusion matrix
 conf_matrix_w = np.zeros((2,len(signal)))
 conf_matrix_no_w = np.zeros((2,len(signal)))
+
+x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data, y_train_labels_num, weights, y_train_labels, test_size = test_split, shuffle = False)
+
+fig, ax = plt.subplots()
+plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
     data_new = data.copy()  
@@ -423,7 +428,7 @@ for i in range(len(signal)):
             proc_pred.append('background')
     data_new['proc_pred'] = proc_pred    
 
-    #exit(0)
+    rest, data_new = train_test_split(data_new, test_size = test_split, shuffle = True)
 
     # now cut down the dataframe to the predicted ones -  this is the split for the different dataframes
     data_new = data_new[data_new.proc_pred == signal[i]] 
@@ -487,8 +492,36 @@ for i in range(len(signal)):
     conf_matrix_no_w[0][i] = cm_2_no_weights[0][1]
     conf_matrix_no_w[1][i] = cm_2_no_weights[1][1]
 
+    # ROC Curve
+    sig_y_test  = np.where(y_test_2==1, 1, 0)
+    #sig_y_test  = y_test_2
+    y_pred_test_array = y_pred_test_2[:,1] # to grab the signal
+    fpr_keras, tpr_keras, thresholds_keras = roc_curve(sig_y_test, y_pred_test_array, sample_weight = test_w_2)
+    fpr_keras.sort()
+    tpr_keras.sort()
+    name_fpr = 'csv_files/VH_Cuts_binary_fpr_' + signal[i]
+    name_tpr = 'csv_files/VH_Cuts_binary_tpr_' + signal[i]
+    np.savetxt(name_fpr, fpr_keras, delimiter = ',')
+    np.savetxt(name_tpr, tpr_keras, delimiter = ',')
+    auc_test = auc(fpr_keras, tpr_keras)
+    ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), labelNames[i]), color = color[i])
+
+ax.legend(loc = 'lower right', fontsize = 'small')
+ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
+ax.set_ylabel('Signal Efficiency',ha='right', y=1, size=9)
+ax.grid(True, 'major', linestyle='dotted', color='grey', alpha=0.5)
+plt.tight_layout()
+name = 'plotting/Cuts/Cuts_VH_binary_Multi_ROC_curve'
+plt.savefig(name, dpi = 1200)
+print("Plotting ROC Curve")
+plt.close()
+
 print('Final conf_matrix:')
 print(conf_matrix_w)
+
+#Exporting final confusion matrix
+name_cm = 'csv_files/VH_Cuts_binary_cm'
+np.savetxt(name_cm, conf_matrix_w, delimiter = ',')
 
 #Need a new function beause the cm structure is different
 def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = color, name = 'plotting/Cuts/Cuts_VH_Tenclass_Performance_Plot_final'):

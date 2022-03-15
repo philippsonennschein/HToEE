@@ -451,10 +451,9 @@ signal = binNames
 conf_matrix_w = np.zeros((2,len(signal)))
 conf_matrix_no_w = np.zeros((2,len(signal)))
 
-x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test = train_test_split(data, y_train_labels_num, weights, y_train_labels, test_size = test_split, shuffle = False)
-
-
 fig, ax = plt.subplots()
+plt.rcParams.update({'font.size': 9})
+
 for i in range(len(signal)):
     data_new = data.copy()  
     #data_new = x_test.copy() 
