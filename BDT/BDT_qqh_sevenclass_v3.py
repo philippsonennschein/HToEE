@@ -13,9 +13,9 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 100 #400
+num_estimators = 4400
 test_split = 0.15
-learning_rate = 0.001
+learning_rate = 0.0001
 
 #STXS mapping
 #STXS mapping
@@ -261,12 +261,12 @@ x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test
 #Before n_estimators = 100, maxdepth=4, gamma = 1
 #Improved n_estimators = 300, maxdepth = 7, gamme = 4
 clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=num_estimators, 
-                            eta=0.001, maxDepth=6, min_child_weight=0.01, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=7)
 
 clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.001, maxDepth=6, min_child_weight=0.01, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4)
 
 #Equalizing weights

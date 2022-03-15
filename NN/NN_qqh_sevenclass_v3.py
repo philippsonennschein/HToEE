@@ -40,11 +40,11 @@ import xgboost as xgb
 #learning_rate = 0.001
 
 #Optimized according to 4class
-num_epochs = 2
-batch_size = 400
+num_epochs = 50
+batch_size = 40
 test_split = 0.15
 #val_split = 0.1
-learning_rate = 0.001
+learning_rate = 0.0001
 
 num_estimators = 100
 
