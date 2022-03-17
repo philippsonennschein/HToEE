@@ -256,6 +256,9 @@ print(acc)
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred, sample_weight = test_w)
 
+name_original_cm = 'csv_files/VH_fourclass_BDT_cm'
+np.savetxt(name_original_cm, cm, delimiter = ',')
+
 #Confusion Matrix
 def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))

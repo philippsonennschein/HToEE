@@ -39,7 +39,7 @@ batch_size = 32
 #val_split = 0.05
 test_split = 0.4
 learning_rate = 0.0001
-num_estimators = 200
+num_estimators = 300
 
 #Optimized according to 4class
 #num_epochs = 50
@@ -306,6 +306,9 @@ cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
 cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
 for i in range(len(y_true)):
     cm_new[y_true[i]][y_pred[i]] += 1
+
+name_original_cm = 'csv_files/VH_fourclass_NN_cm'
+np.savetxt(name_original_cm, cm, delimiter = ',')
 
 
 def plot_output_score(data='output_score_qqh', density=False,):

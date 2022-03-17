@@ -213,6 +213,9 @@ cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=weights)
 #for i in range(len(y_true)):
 #    cm_new[y_true[i]][y_pred[i]] += 1
 
+name_original_cm = 'csv_files/VH_fourclass_Cuts_cm'
+np.savetxt(name_original_cm, cm, delimiter = ',')
+
 # Accuracy Score
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred, sample_weight = weights)
