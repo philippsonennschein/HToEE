@@ -41,7 +41,7 @@ import xgboost as xgb
 
 #Optimized according to 4class
 num_epochs = 50
-batch_size = 40
+batch_size = 32
 test_split = 0.15
 #val_split = 0.1
 learning_rate = 0.0001
@@ -131,10 +131,10 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      'subsubleadJetMass',
      'metPt','metPhi','metSumET',
      'nSoftJets',
-     'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
-     'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
-     'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
-     'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
+     #'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
+     #'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
+     #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
+     #'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
      ]
 
 
@@ -404,6 +404,10 @@ cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
 cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
 for i in range(len(y_true)):
     cm_new[y_true[i]][y_pred[i]] += 1
+
+
+name_original_cm = 'csv_files/qqH_sevenclass_NN_cm'
+np.savetxt(name_original_cm, cm, delimiter = ',')
 
 
 def plot_output_score(data='output_score_qqh', density=False,):

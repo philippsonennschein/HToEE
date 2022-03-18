@@ -13,7 +13,7 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 200 #00 #400
+num_estimators = 10 #00 #400
 test_split = 0.4
 learning_rate = 0.0001
 
@@ -52,13 +52,13 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      'leadPhotonEta', 'leadPhotonIDMVA', 'leadPhotonEn', 'leadPhotonPt', 'leadPhotonPhi', 'leadPhotonPtOvM',
      'leadJetPt', 'leadJetPUJID', 'leadJetBTagScore', 'leadJetMass',
      'leadJetDiphoDEta','leadJetDiphoDPhi','leadJetEn','leadJetEta','leadJetPhi',
-     'subleadPhotonEta', 'subleadPhotonIDMVA', 'subleadPhotonPhi',
+     #'subleadPhotonEta', 'subleadPhotonIDMVA', 'subleadPhotonPhi',
      'subleadPhotonEn','subleadPhotonPt', 'subleadPhotonPtOvM',
      'subleadJetDiphoDPhi','subleadJetDiphoDEta',
      'subleadJetPt', 'subleadJetPUJID', 'subleadJetBTagScore', 'subleadJetMass',
      'subleadJetEn','subleadJetEta','subleadJetPhi',
-     'subsubleadJetEn','subsubleadJetPt','subsubleadJetEta','subsubleadJetPhi', 'subsubleadJetBTagScore', 
-     'subsubleadJetMass',
+     #'subsubleadJetEn','subsubleadJetPt','subsubleadJetEta','subsubleadJetPhi', 'subsubleadJetBTagScore', 
+     #'subsubleadJetMass',
      'metPt','metPhi','metSumET',
      'nSoftJets',
      'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
@@ -420,11 +420,16 @@ signal = ['QQ2HLNU_PTV_0_75',
         'WH_Rest',
         'ZH_Rest']
 
-y_label = ['WH $p^H_T$<75',
+x_label = ['WH $p^H_T$<75',
             'WH 75<$p^H_T$<150',
             'WH Rest',
             'ZH Rest',
             'No category']
+
+y_label = ['WH $p^H_T$<75',
+            'WH 75<$p^H_T$<150',
+            'WH Rest',
+            'ZH Rest']
 
 #signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120'] # for debugging
 #conf_matrix = np.zeros((2,1)) # for the final confusion matrix
@@ -572,12 +577,12 @@ def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = colo
     plt.savefig(name, dpi = 1200)
     plt.show()
 
-def plot_final_confusion_matrix(cm,classes,labels = labelNames,y_labels = y_label, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Fourclass_final_Confusion_Matrix'):
+def plot_final_confusion_matrix(cm,classes,x_labels = x_label,y_labels = y_label, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Fourclass_final_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
-    tick_marks_x = np.arange(len(classes))
-    tick_marks_y = np.arange(len(y_label))
-    plt.xticks(tick_marks_x,labels,rotation=45, horizontalalignment = 'right')
+    tick_marks_x = np.arange(len(x_labels))
+    tick_marks_y = np.arange(len(y_labels))
+    plt.xticks(tick_marks_x,x_labels,rotation=45, horizontalalignment = 'right')
     plt.yticks(tick_marks_y,y_labels)
     if normalize:
         #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
@@ -602,7 +607,7 @@ def plot_final_confusion_matrix(cm,classes,labels = labelNames,y_labels = y_labe
 # now to make our final plot of performance
 plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot_final')
 
-plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelNames,y_labels = y_label,normalize=True)
+plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,x_labels = x_label,y_labels = y_label,normalize=True)
 
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])

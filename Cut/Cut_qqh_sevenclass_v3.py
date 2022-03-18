@@ -300,6 +300,9 @@ cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
 for i in range(len(y_true)):
     cm_new[y_true[i]][y_pred[i]] += 1
 
+name_original_cm = 'csv_files/qqH_sevenclass_Cuts_cm'
+np.savetxt(name_original_cm, cm, delimiter = ',')
+
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
@@ -467,7 +470,7 @@ for i in range(len(signal)):
     data_new['proc_pred'] = proc_pred    
 
     #exit(0)
-    rest, data_new = train_test_split(data_new, test_size = test_split, shuffle = True)
+    #rest, data_new = train_test_split(data_new, test_size = test_split, shuffle = True)
 
 
     # now cut down the dataframe to the predicted ones -  this is the split for the different dataframes
