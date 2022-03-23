@@ -19,14 +19,7 @@ from itertools import product
 from sklearn.metrics import accuracy_score, log_loss, confusion_matrix, roc_curve, auc, roc_auc_score
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
-from keras.models import Sequential 
-from keras.initializers import RandomNormal 
-from keras.layers import Dense, Activation, Flatten
-from keras.optimizers import Nadam, adam, Adam
-from keras.regularizers import l2 
-from keras.callbacks import EarlyStopping 
 from keras.utils import np_utils 
-from keras.metrics import categorical_crossentropy, binary_crossentropy
 import xgboost as xgb
 
 map_def_2 = [
@@ -59,7 +52,7 @@ labelNames = ['qqH Rest',
             '$m_{jj}$>700 $p^H_T$>200'
 ]
 
-num_estimators = 100
+num_estimators = 200
 
 color  = ['silver','indianred','yellowgreen','lightgreen','green','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
 
@@ -80,10 +73,10 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      'subsubleadJetMass',
      'metPt','metPhi','metSumET',
      'nSoftJets',
-     'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
-     'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
-     'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
-     'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
+     #'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
+     #'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
+     #'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
+     #'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
      ]
 
 train_vars.append('proc')
@@ -294,7 +287,7 @@ y_pred_old = data['proc_new']
 y_true = y_train_labels_num
 y_pred = y_train_labels_num_pred
 
-cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
+#cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=weights)
 cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
 for i in range(len(y_true)):
@@ -332,8 +325,8 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.rcParams.update({
-    'font.size': 10})
+    #plt.rcParams.update({
+    #'font.size': 10})
     plt.xticks(tick_marks,classes,rotation=45,horizontalalignment='right')
     plt.yticks(tick_marks,classes)
     if normalize:
@@ -349,8 +342,8 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
         plt.text(j,i,cm[i,j],horizontalalignment='center',color='white' if cm[i,j]>thresh else 'black')
     plt.tight_layout()
     plt.colorbar()
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label', size = 12)
+    plt.xlabel('Predicted label', size = 12)
     name = 'plotting/Cuts/Cut_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
@@ -426,7 +419,7 @@ def plot_roc_curve(binNames = binNames, y_test = y_train_labels_num, y_pred_test
 
 #plot_performance_plot()
 
-#plot_confusion_matrix(cm,binNames,normalize=True)
+plot_confusion_matrix(cm,labelNames,normalize=True)
 
 print('Cuts_qqH_sevenclass: ', NNaccuracy)
 print('Cuts Final Accuracy Score with qqH rest: ', accuracy)
@@ -441,16 +434,33 @@ print('Cuts Final Accuracy Score without qqH rest: ', accuracy_2)
 # data_new['proc']  # are the true labels
 # data_new['weight'] are the weights
 
-num_estimators = 1
+
+num_estimators = 200
 test_split = 0.15
 
-clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.1, maxDepth=6, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=4)
 
 signal = binNames
 #signal = ['qqH_Rest','QQ2HQQ_GE2J_MJJ_60_120'] # for debugging
 #conf_matrix = np.zeros((2,1)) # for the final confusion matrix
+
+def plot_output_score(data, density=False,):
+    #Can then change it to plotting proc
+    print('Plotting',data)
+    output_score_qqh1 = np.array(x_test_qqh1[data])
+    output_score_qqh2 = np.array(x_test_qqh2[data])
+
+    fig, ax = plt.subplots()
+    #ax.hist(output_score_qqh0, bins=50, label='FWDH', histtype='step',weights=qqh0_w)
+    ax.hist(output_score_qqh1, bins=50, label=signal[i], histtype='step',weights=qqh1_w)
+    ax.hist(output_score_qqh2, bins=50, label='Background', histtype='step',weights=qqh2_w)
+    plt.legend()
+    #plt.title('Output Score')
+    plt.ylabel('Fraction of Events')
+    plt.xlabel('BDT Score')
+    name = 'plotting/Cuts/Cuts_qqH_sevenclass_outputscore'+data
+    plt.savefig(name, dpi = 1200)
+
+
 conf_matrix_w = np.zeros((2,len(signal)))
 conf_matrix_no_w = np.zeros((2,len(signal)))
 
@@ -458,6 +468,10 @@ fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
+                            eta=0.1, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+    
     data_new = data.copy()  
     #data_new = x_test.copy() 
     # now i want to get the predicted labels
@@ -519,6 +533,20 @@ for i in range(len(signal)):
     y_pred_test_2 = clf_2.predict_proba(x_test_2) 
     y_pred_2 = y_pred_test_2.argmax(axis=1)
 
+    x_test_2['proc'] = proc_arr_test_2
+    x_test_2['weight'] = test_w_2
+
+    x_test_2['output_score_background'] = y_pred_test_2[:,0]
+    x_test_2[signal[i]] = y_pred_test_2[:,1]
+
+    x_test_qqh1 = x_test_2[x_test_2['proc'] == signal[i]]
+    x_test_qqh2 = x_test_2[x_test_2['proc'] == 'background']
+
+    qqh1_w = x_test_qqh1['weight'] / x_test_qqh1['weight'].sum()
+    qqh2_w = x_test_qqh2['weight'] / x_test_qqh2['weight'].sum()
+
+    plot_output_score(data=signal[i])
+
     cm_2 = confusion_matrix(y_true = y_test_2, y_pred = y_pred_2, sample_weight = test_w_2)  #weights result in decimal values <1 so not sure if right
     cm_2_no_weights = confusion_matrix(y_true = y_test_2, y_pred = y_pred_2)
 
@@ -548,6 +576,7 @@ for i in range(len(signal)):
     np.savetxt(name_tpr, tpr_keras, delimiter = ',')
     auc_test = auc(fpr_keras, tpr_keras)
     ax.plot(fpr_keras, tpr_keras, label = 'AUC = {0}, {1}'.format(round(auc_test, 3), labelNames[i]), color = color[i])
+
 
 ax.legend(loc = 'lower right', fontsize = 'small')
 ax.set_xlabel('Background Efficiency', ha='right', x=1, size=9)
@@ -592,6 +621,9 @@ def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = colo
     plt.show()
 # now to make our final plot of performance
 #plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/Cuts/Cuts_qqH_Sevenclass_Performance_Plot_final')
+
+
+
 
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])

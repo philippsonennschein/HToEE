@@ -107,6 +107,7 @@ data = data[data.proc_original != 'qqH']
 data = data[data.proc_original != 'QQ2HLNU_FWDH']
 data = data[data.proc_original != 'QQ2HLL_FWDH']
 
+exit(0)
 #Define the procs as the labels
 #ggh: 0, VBF:1, VH: 2, ttH: 3
 #num_categories = data['proc'].nunique()
@@ -178,10 +179,13 @@ data['nleptons'] = nleptons
 print('Done 2')
 
 proc = []
+count_1 = 0
+count_2 = 0
 y_train_labels_num_pred = []
 for i in range(data.shape[0]):
     #if stage_1_2[i] == 300 or stage_1_2[i] == 301 or stage_1_2[i] == 302 or stage_1_2[i] == 303 or stage_1_2[i] == 304 or stage_1_2[i] == 305: # FIXME NLEPTONS
-    if nleptons[i] == 1:                        # WH
+    if nleptons[i] == 1:        
+        count_1 = count_1 +1                # WH
         if diphotonpt[i] < 75:
             proc_value = 'QQ2HLNU_PTV_0_75'
             proc_value_num = 0
@@ -192,6 +196,7 @@ for i in range(data.shape[0]):
             proc_value = 'WH_Rest'
             proc_value_num = 2
     if nleptons[i] == 0 or nleptons[i] == 2:  # ZH
+        count_2 = count_2 +1
         proc_value = 'ZH_Rest'
         proc_value_num = 3
 
@@ -209,6 +214,7 @@ y_pred = y_train_labels_num_pred
 
 #cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=weights)
+cm_test = confusion_matrix(y_true=y_true,y_pred=y_pred)
 #cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
 #for i in range(len(y_true)):
 #    cm_new[y_true[i]][y_pred[i]] += 1
@@ -255,7 +261,7 @@ def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='
     plt.colorbar()
     plt.ylabel('True Label', size = 12)
     plt.xlabel('Predicted label', size = 12)
-    name = 'plotting/Cuts/Cuts_VH_tenclass_Confusion_Matrix'
+    name = 'plotting/Cuts/Cuts_VH_fourclass_Confusion_Matrix'
     plt.tight_layout()
     fig.savefig(name, dpi = 1200)
 
@@ -328,7 +334,7 @@ def plot_roc_curve(binNames = binNames, y_test = y_train_labels_num, y_pred_test
 
 #plot_performance_plot()
 
-#plot_confusion_matrix(cm,binNames,normalize=True)
+plot_confusion_matrix(cm,labelNames,normalize=True)
 
 
 # ------------------------ 
@@ -341,9 +347,7 @@ def plot_roc_curve(binNames = binNames, y_test = y_train_labels_num, y_pred_test
 num_estimators = 200
 test_split = 0.4
 
-clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.1, maxDepth=6, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+
 
 signal = ['QQ2HLNU_PTV_0_75',
         'QQ2HLNU_PTV_75_150',
@@ -366,6 +370,10 @@ fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
+                            eta=0.1, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+        
     data_new = data.copy()  
     # now i want to get the predicted labels
     proc_pred = []      
@@ -537,5 +545,5 @@ plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelN
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
 accuracy = num_correct / (num_correct + num_false)
-print('BDT Final Accuracy Score:')
+print('Final Accuracy Score:')
 print(accuracy)

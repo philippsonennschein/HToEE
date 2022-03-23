@@ -193,9 +193,6 @@ clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=num_estimators,
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=4) #Could change this num_class
 
-clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=4)
 
 #Equalizing weights
 train_w_df = pd.DataFrame()
@@ -260,7 +257,7 @@ name_original_cm = 'csv_files/VH_fourclass_BDT_cm'
 np.savetxt(name_original_cm, cm, delimiter = ',')
 
 #Confusion Matrix
-def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Confusion_Matrix'):
+def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
@@ -390,13 +387,13 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
         for i in imp_types:
             xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(i), show_values = values, color ='blue')
             plt.tight_layout()
-            plt.savefig('plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(i), dpi = 1200)
-            print('saving: plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(i))
+            plt.savefig('plotting/BDT_plots/BDT_VH_fourclass_feature_importance_{0}'.format(i), dpi = 1200)
+            print('saving: plotting/BDT_plots/BDT_VH_fourclass_feature_importance_{0}'.format(i))
 
 
-#plot_confusion_matrix(cm,binNames,normalize=True)
+plot_confusion_matrix(cm,labelNames,normalize=True)
 #plot_performance_plot()
-#feature_importance()
+feature_importance()
 #plot_roc_curve(name = 'plotting/BDT_plots/TEST_3')
 #feature_importance()
 print('BDT_qqH_sevenclass: ', NNaccuracy)
@@ -443,6 +440,10 @@ fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=200, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+    
     data_new = x_test.copy()  
     data_new = data_new.drop(columns = ['output_score_vh1','output_score_vh2', 'output_score_vh3', 'output_score_vh4'])
     # now i want to get the predicted labels

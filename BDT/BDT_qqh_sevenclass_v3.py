@@ -265,9 +265,6 @@ clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=num_estimators,
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=7)
 
-clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=4)
 
 #Equalizing weights
 train_w_df = pd.DataFrame()
@@ -483,7 +480,7 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
             print('saving: plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(i))
 
 
-#plot_confusion_matrix(cm,binNames,normalize=True, name = 'plotting/BDT_plots/TEST_1')
+plot_confusion_matrix(cm,labelNames,normalize=True)
 #plot_performance_plot(name = 'plotting/BDT_plots/TEST_2')
 #plot_roc_curve(name = 'plotting/BDT_plots/TEST_3')
 feature_importance()
@@ -518,6 +515,11 @@ fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
+
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+
     data_new = x_test.copy()  
     data_new = data_new.drop(columns = ['output_score_qqh1','output_score_qqh2', 'output_score_qqh3', 'output_score_qqh4',
                                         'output_score_qqh5', 'output_score_qqh6', 'output_score_qqh7'])

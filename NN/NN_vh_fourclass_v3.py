@@ -39,7 +39,7 @@ batch_size = 32
 #val_split = 0.05
 test_split = 0.4
 learning_rate = 0.0001
-num_estimators = 300
+num_estimators = 200
 
 #Optimized according to 4class
 #num_epochs = 50
@@ -452,9 +452,6 @@ plot_confusion_matrix(cm,labelNames,normalize=True)
 #plot_output_score(data='output_score_qqh6')
 #plot_output_score(data='output_score_qqh7')
 
-clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
-                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
-                            subsample=0.6, colsample_bytree=0.6, gamma=4)
 
 signal = ['QQ2HLNU_PTV_0_75',
         'QQ2HLNU_PTV_75_150',
@@ -477,6 +474,11 @@ fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
+
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=num_estimators, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
+                            subsample=0.6, colsample_bytree=0.6, gamma=4)
+    
     data_new = x_test.copy()  
     data_new = data_new.drop(columns = ['output_score_vh1','output_score_vh2', 'output_score_vh3', 'output_score_vh4'])
     # now i want to get the predicted labels
@@ -646,5 +648,5 @@ plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelN
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
 accuracy = num_correct / (num_correct + num_false)
-print('BDT Final Accuracy Score:')
+print('Final Accuracy Score:')
 print(accuracy)
