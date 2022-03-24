@@ -1,3 +1,4 @@
+from __future__ import division
 import argparse
 import pandas as pd
 import numpy as np
@@ -34,7 +35,7 @@ import xgboost as xgb
 
 #HPs
 #Original
-num_epochs = 50
+num_epochs = 5
 batch_size = 32
 #val_split = 0.05
 test_split = 0.4
@@ -297,15 +298,102 @@ y_true = y_test.argmax(axis=1)
 print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred, sample_weight = test_w)
 acc = accuracy_score(y_true, y_pred)
-print(NNaccuracy)
-print(acc)
+#print(NNaccuracy)
+#print(acc)
 
 #Confusion Matrix
 cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
-cm_new = np.zeros((len(binNames),len(binNames)),dtype=int)
+
+#Generatin own confusion & weights matrix to calculate the accuracy scores
+
+cm_new = np.zeros((len(labelNames),len(labelNames)),dtype=int)
+cm_weights = np.zeros((len(labelNames),len(labelNames)),dtype=float)
+cm_weights_squared = np.zeros((len(labelNames),len(labelNames)),dtype=float)
 for i in range(len(y_true)):
     cm_new[y_true[i]][y_pred[i]] += 1
+    cm_weights[y_true[i]][y_pred[i]] += test_w[i]
+    cm_weights_squared[y_true[i]][y_pred[i]] += test_w[i]**2
+
+num_correct = 0
+num_correct_w = 0
+num_correct_w_squared = 0
+num_all = 0
+num_all_w = 0
+num_all_w_squared = 0
+for i in range(cm_new.shape[0]):
+    for j in range(cm_new.shape[1]):
+        num_all += cm_new[i][j]
+        num_all_w += cm_weights[i][j]
+        num_all_w_squared += cm_weights_squared[i][j]
+        if i == j: # so diagonal
+            num_correct += cm_new[i][j]
+            num_correct_w += cm_weights[i][j]
+            num_correct_w_squared += cm_weights_squared[i][j]
+accuracy = num_correct/num_all
+sigma_e = np.sqrt(num_correct_w_squared)
+sigma_f = np.sqrt(num_all_w_squared)
+e = num_correct_w
+f = num_all_w
+
+def error_function(num_correct, num_all, sigma_correct, sigma_all): 
+    error = (((1/num_all)**2) * (sigma_correct**2) + ((num_correct / (num_all**2))**2) * (sigma_correct**2))**0.5
+    return error
+
+accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
+print(accuracy)
+print(accuracy_error)
+
+s_in = []
+s_in_w = []
+s_in_w_squared = []
+s_tot = []
+s_tot_w = []
+s_tot_w_squared = []
+e_s = []
+signal_error_list = []
+b_in = []
+b_in_w = []
+b_in_w_squared = []
+b_tot = []
+b_tot_w = []
+b_tot_w_squared = []
+e_b = []
+bckg_error_list = []
+
+for i in range(len(labelNames)):
+    s_in.append(cm_new[i][i])
+    s_in_w.append(np.sqrt(cm_weights[i][i]))
+    s_in_w_squared.append(cm_weights_squared[i][i])
+    s_tot.append(np.sum(cm_new[i,:]))
+    s_tot_w.append(np.sum(cm_weights[i,:]))
+    s_tot_w_squared.append(np.sum(cm_weights_squared[i,:]))
+    e_s.append(s_in[i]/s_tot[i])
+
+    b_in.append(np.sum(cm_new[:,i]) - s_in[i])
+    b_in_w.append(np.sum(cm_weights[:,i]) - s_in_w[i])
+    b_in_w_squared.append(np.sum(cm_weights_squared[:,i]) - s_in_w_squared[i])
+    b_tot.append(np.sum(cm_new) - s_tot[i])
+    b_tot_w.append(np.sum(cm_weights) - s_tot_w[i])
+    b_tot_w_squared.append(np.sum(cm_weights_squared) - s_tot_w_squared[i])
+    e_b.append(b_in[i]/b_tot[i])
+
+    print(labelNames[i])
+    signal_error = error_function(s_in_w[i], s_tot_w[i], s_in_w_squared[i], s_tot_w_squared[i])
+    print('Final Signal Efficiency: ', e_s[i])
+    print('with error: ', signal_error)
+    signal_error_list.append(signal_error)
+
+    bckg_error = error_function(b_in_w[i], b_tot_w[i], b_in_w_squared[i], b_tot_w_squared[i])
+    print('Final Background Efficiency: ', e_b[i])
+    print('with error: ', bckg_error)
+    bckg_error_list.append(bckg_error)
+
+accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
+print(accuracy)
+print(accuracy_error)
+
+exit(0)
 
 name_original_cm = 'csv_files/VH_fourclass_NN_cm'
 np.savetxt(name_original_cm, cm, delimiter = ',')
@@ -645,8 +733,8 @@ plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plot
 
 plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelNames,y_labels = y_label,normalize=True)
 
-num_false = np.sum(conf_matrix_w[0,:])
-num_correct = np.sum(conf_matrix_w[1,:])
-accuracy = num_correct / (num_correct + num_false)
-print('Final Accuracy Score:')
-print(accuracy)
+#num_false = np.sum(conf_matrix_w[0,:])
+#num_correct = np.sum(conf_matrix_w[1,:])
+#accuracy = num_correct / (num_correct + num_false)
+#print('Final Accuracy Score:')
+#print(accuracy)
