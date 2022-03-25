@@ -337,7 +337,7 @@ e = num_correct_w
 f = num_all_w
 
 def error_function(num_correct, num_all, sigma_correct, sigma_all): 
-    error = (((1/num_all)**2) * (sigma_correct**2) + ((num_correct / (num_all**2))**2) * (sigma_correct**2))**0.5
+    error = (((1/num_all)**2) * (sigma_correct**2) + ((num_correct / (num_all**2))**2) * (sigma_all**2))**0.5
     return error
 
 accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
@@ -363,7 +363,7 @@ bckg_error_list = []
 
 for i in range(len(labelNames)):
     s_in.append(cm_new[i][i])
-    s_in_w.append(np.sqrt(cm_weights[i][i]))
+    s_in_w.append(cm_weights[i][i])
     s_in_w_squared.append(cm_weights_squared[i][i])
     s_tot.append(np.sum(cm_new[i,:]))
     s_tot_w.append(np.sum(cm_weights[i,:]))
@@ -379,12 +379,12 @@ for i in range(len(labelNames)):
     e_b.append(b_in[i]/b_tot[i])
 
     print(labelNames[i])
-    signal_error = error_function(s_in_w[i], s_tot_w[i], s_in_w_squared[i], s_tot_w_squared[i])
+    signal_error = error_function(s_in_w[i], s_tot_w[i], np.sqrt(s_in_w_squared[i]), np.sqrt(s_tot_w_squared[i]))
     print('Final Signal Efficiency: ', e_s[i])
     print('with error: ', signal_error)
     signal_error_list.append(signal_error)
 
-    bckg_error = error_function(b_in_w[i], b_tot_w[i], b_in_w_squared[i], b_tot_w_squared[i])
+    bckg_error = error_function(b_in_w[i], b_tot_w[i], np.sqrt(b_in_w_squared[i]), np.sqrt(b_tot_w_squared[i]))
     print('Final Background Efficiency: ', e_b[i])
     print('with error: ', bckg_error)
     bckg_error_list.append(bckg_error)
@@ -392,8 +392,6 @@ for i in range(len(labelNames)):
 accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
 print(accuracy)
 print(accuracy_error)
-
-exit(0)
 
 name_original_cm = 'csv_files/VH_fourclass_NN_cm'
 np.savetxt(name_original_cm, cm, delimiter = ',')
@@ -540,6 +538,25 @@ plot_confusion_matrix(cm,labelNames,normalize=True)
 #plot_output_score(data='output_score_qqh6')
 #plot_output_score(data='output_score_qqh7')
 
+s_in_2 = []
+s_in_w_2 = []
+s_in_w_squared_2 = []
+s_tot_2 = []
+s_tot_w_2 = []
+s_tot_w_squared_2 = []
+e_s_2 = []
+signal_error_list_2 = []
+b_in_2 = []
+b_in_w_2 = []
+b_in_w_squared_2 = []
+b_tot_2 = []
+b_tot_w_2 = []
+b_tot_w_squared_2 = []
+e_b_2 = []
+bckg_error_list_2 = []
+
+error_final_array = []
+
 
 signal = ['QQ2HLNU_PTV_0_75',
         'QQ2HLNU_PTV_75_150',
@@ -628,6 +645,84 @@ for i in range(len(signal)):
 
     #print('cm_2:')
     #print(cm_2)
+    # ERROR STUFF -----------
+
+    # dear philipp, here is your christmas present:
+
+    threshold = 0.05 # bckg efficiency threshold (manually set)
+    # get output score
+    x_test_2['proc'] = proc_arr_test_2
+    x_test_2['weight'] = test_w_2
+    x_test_2['output_score_background'] = y_pred_test_2[:,0]
+    x_test_2[signal[i]] = y_pred_test_2[:,1]
+
+    x_test_qqh1 = x_test_2[x_test_2['proc'] == signal[i]]
+    x_test_qqh2 = x_test_2[x_test_2['proc'] == 'background']
+
+    qqh1_w = x_test_qqh1['weight'] / x_test_qqh1['weight'].sum()
+    qqh2_w = x_test_qqh2['weight'] / x_test_qqh2['weight'].sum()
+
+    output_score_qqh2 = np.array(x_test_qqh2[signal[i]])
+    counts, bins, _ = plt.hist(output_score_qqh2, bins=100, label='Background', histtype='step',weights=qqh2_w,density=True)
+    plt.savefig('plotting/TESTING', dpi = 1200)
+    for j in range(len(bins)):
+        bins_2 = bins[:j+1]
+        counts_2 = counts[:j]
+        area = sum(np.diff(bins_2)*counts_2)
+        if area <= (1-threshold):
+            bdt_score = bins_2[j]
+    print('bdt_score: ', bdt_score)
+    
+    thresh = bdt_score
+    #thresh = 0.3
+
+    y_pred_errors = []
+    for k in range(len(y_test_2)):
+        if y_pred_test_2[:,1][k]>thresh:
+            y_pred_errors.append(1)
+        else:
+            y_pred_errors.append(0)
+    y_pred_errors = np.array(y_pred_errors)
+
+    cm_errors = np.zeros((2,2),dtype=int)
+    cm_errors_weights = np.zeros((2,2),dtype=float)
+    cm_errors_weights_squared = np.zeros((2,2),dtype=float)
+    for l in range(len(y_test_2)):
+        cm_errors[y_test_2[l]][y_pred_errors[l]] += 1
+        cm_errors_weights[y_test_2[l]][y_pred_errors[l]] += test_w_2[l]
+        cm_errors_weights_squared[y_test_2[l]][y_pred_errors[l]] += test_w_2[l]**2
+    
+    print(cm_errors)
+
+    s_in_2.append(cm_errors[1][1])
+    s_in_w_2.append(cm_errors_weights[1][1])
+    s_in_w_squared_2.append(cm_errors_weights_squared[1][1])
+    s_tot_2.append(np.sum(cm_errors[1,:]))
+    s_tot_w_2.append(np.sum(cm_errors_weights[1,:]))
+    s_tot_w_squared_2.append(np.sum(cm_errors_weights_squared[1,:]))
+    e_s_2.append(s_in_2[i]/s_tot_2[i])
+
+    b_in_2.append(cm_errors[0][1])
+    b_in_w_2.append(cm_errors_weights[0][1])
+    b_in_w_squared_2.append(cm_errors_weights_squared[0][1])
+    b_tot_2.append(np.sum(cm_errors[0,:]))
+    b_tot_w_2.append(np.sum(cm_errors_weights[0,:]))
+    b_tot_w_squared_2.append(np.sum(cm_errors_weights_squared[0,:]))
+    e_b_2.append(b_in_2[i]/b_tot_2[i])
+
+    print(signal[i])
+    signal_error = error_function(s_in_w_2[i], s_tot_w_2[i], np.sqrt(s_in_w_squared_2[i]), np.sqrt(s_tot_w_squared_2[i]))
+    print('Final Signal Efficiency: ', e_s_2[i])
+    print('with error: ', signal_error)
+    signal_error_list_2.append(signal_error)
+
+    bckg_error = error_function(b_in_w_2[i], b_tot_w_2[i], np.sqrt(b_in_w_squared_2[i]), np.sqrt(b_tot_w_squared_2[i]))
+    print('Final Background Efficiency: ', e_b_2[i])
+    print('with error: ', bckg_error)
+    bckg_error_list_2.append(bckg_error)
+
+    error_final_array.append(np.sqrt(signal_error_list_2[i]**2 + bckg_error_list_2[i]**2 + signal_error_list[i]**2 + bckg_error_list[i]**2))
+    print('Error final: ', error_final_array[i])
 
     # grabbing predicted label column
     #norm = cm_2[0][1] + cm_2[1][1]
@@ -738,3 +833,5 @@ plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelN
 #accuracy = num_correct / (num_correct + num_false)
 #print('Final Accuracy Score:')
 #print(accuracy)
+
+print(error_final_array)
