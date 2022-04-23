@@ -35,12 +35,12 @@ import xgboost as xgb
 
 #HPs
 #Original
-num_epochs = 5
+num_epochs = 50
 batch_size = 32
-#val_split = 0.05
+#val_split = 0.5
 test_split = 0.4
 learning_rate = 0.0001
-num_estimators = 200
+num_estimators = 400
 
 #Optimized according to 4class
 #num_epochs = 50
@@ -68,10 +68,10 @@ binNames = ['qqH',
             'QQ2HLL_FWDH',
             'ZH_Rest']
 
-labelNames = ['WH $p^H_T$<75',
-            'WH 75<$p^H_T$<150',
+labelNames = ['WH $p^V_T$<75',
+            'WH 75<$p^V_T$<150',
             'WH Rest',
-            'ZH Rest']
+            'ZH']
 
 #color = ['#f0700c', '#e03b04', '#eef522', '#8cad05', '#f5df87', '#6e0903', '#8c4503']
 color  = ['silver','indianred','salmon','lightgreen','seagreen','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
@@ -304,6 +304,7 @@ acc = accuracy_score(y_true, y_pred)
 #Confusion Matrix
 cm_old = confusion_matrix(y_true=y_true,y_pred=y_pred)
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
+cm_old = cm
 
 #Generatin own confusion & weights matrix to calculate the accuracy scores
 
@@ -389,10 +390,6 @@ for i in range(len(labelNames)):
     print('with error: ', bckg_error)
     bckg_error_list.append(bckg_error)
 
-accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
-print(accuracy)
-print(accuracy_error)
-
 name_original_cm = 'csv_files/VH_fourclass_NN_cm'
 np.savetxt(name_original_cm, cm, delimiter = ',')
 
@@ -436,8 +433,6 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.rcParams.update({
-    'font.size': 10})
     plt.xticks(tick_marks,classes,rotation=45,horizontalalignment='right')
     plt.yticks(tick_marks,classes)
     if normalize:
@@ -448,13 +443,13 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     thresh = cm.max()/2.
     print(cm)
     plt.imshow(cm,interpolation='nearest',cmap=cmap)
-    plt.title(title)
+    #plt.title(title)
     for i, j in product(range(cm.shape[0]),range(cm.shape[1])):
         plt.text(j,i,cm[i,j],horizontalalignment='center',color='white' if cm[i,j]>thresh else 'black')
     plt.tight_layout()
     plt.colorbar()
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
+    plt.ylabel('True Label', size = 12)
+    plt.xlabel('Predicted Label', size = 12)
     name = 'plotting/NN_plots/NN_vh_fourclass_Confusion_Matrix'
     fig.savefig(name, dpi = 1200)
 
@@ -525,7 +520,43 @@ def plot_roc_curve(binNames = binNames, y_test = y_test, y_pred_test = y_pred_te
     print("Plotting ROC Curve")
     plt.close()
 
+epochs = np.linspace(1,num_epochs,num_epochs,endpoint=True).astype(int) #For plotting
+
+def plot_accuracy():
+    val_accuracy = history.history['val_acc']
+    accuracy = history.history['acc']
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.plot(epochs,val_accuracy,label='Validation')
+    plt.plot(epochs,accuracy,label='Train')
+    #plt.title('Model Accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    #plt.xticks(epochs)
+    plt.legend()
+    name = 'plotting/NN_plots/NN_Stage12_Accuracy_Plot'
+    fig.savefig(name,dpi=1200)
+
+#Plot loss
+def plot_loss():
+    val_loss = history.history['val_loss']
+    loss = history.history['loss']
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.plot(epochs,val_loss,label='Validation')
+    plt.plot(epochs,loss,label='Train')
+    #plt.title('Loss function')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    #plt.xticks(epochs)
+    plt.legend()
+    name = 'plotting/NN_plots/NN_Stage12_Loss_Plot'
+    fig.savefig(name,dpi=1200)
+
 #plot_roc_curve()
+
+
+#plot_accuracy()
+#plot_loss()
+
 
 plot_performance_plot()
 plot_confusion_matrix(cm,labelNames,normalize=True)
@@ -649,7 +680,7 @@ for i in range(len(signal)):
 
     # dear philipp, here is your christmas present:
 
-    threshold = 0.05 # bckg efficiency threshold (manually set)
+    threshold = 0.5 # bckg efficiency threshold (manually set)
     # get output score
     x_test_2['proc'] = proc_arr_test_2
     x_test_2['weight'] = test_w_2
@@ -772,7 +803,7 @@ name_cm = 'csv_files/VH_fourclass_NN_binary_cm'
 np.savetxt(name_cm, conf_matrix_w, delimiter = ',')
 
 #Need a new function beause the cm structure is different
-def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = color, name = 'plotting/NN_plots/NN_VH_Fourclass_Performance_Plot'):
+def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = color, name = 'plotting/NN_plots/NN_VH_Fourclass_final_Performance_Plot'):
     cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     #for i in range(len(cm[0])):
     #    for j in range(len(cm[:,1])):
@@ -824,14 +855,45 @@ def plot_final_confusion_matrix(cm,classes,labels = labelNames,y_labels = y_labe
     plt.tight_layout()
     fig.savefig(name, dpi = 1200)
 # now to make our final plot of performance
+
+def plot_performance_plot_final_kate(cm=conf_matrix_w, cm_old = cm_old, labels=labelNames, color = color, name = 'plotting/NN_plots/NN_VH_Fourclass_Performance_Plot_Kate'):
+    cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
+    cm_old = cm_old.astype('float')/cm_old.sum(axis=0)[np.newaxis,:]
+    sig_old = []
+    for k in range(cm_old.shape[0]):
+        sig_old.append(cm_old[k][k])
+    for i in range(len(cm[0])):
+        for j in range(len(cm[:,1])):
+            cm[j][i] = float("{:.3f}".format(cm[j][i]))
+    cm = np.array(cm)
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.rcParams.update({
+    'font.size': 9})
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks,labels,rotation=45, horizontalalignment = 'right')
+    bottom = np.zeros(len(labels))   
+    ax.bar(labels, cm[1,:],label='Signal',bottom=bottom,color=color[1])
+    bottom += np.array(cm[1,:])
+    ax.bar(labels, cm[0,:],label='Background',bottom=bottom,color=color[0])
+    ax.bar(labels, sig_old, label = 'Signal before binary BDT',fill = False, ecolor = 'black')
+    plt.legend()
+    current_bottom, current_top = ax.get_ylim()
+    ax.set_ylim(bottom=0, top=current_top*1.3)
+    plt.ylabel('Fraction of events', size = 12)
+    ax.set_xlabel('Predicted Classes',size=12)
+    plt.tight_layout()
+    plt.savefig(name, dpi = 1200)
+    plt.show()
+# now to make our final plot of performance
+plot_performance_plot_final_kate(cm = conf_matrix_w,labels = labelNames, name = 'plotting/NN_plots/NN_VH_Fourclass_Performance_Plot_final_kate')
 plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/NN_plots/NN_VH_Fourclass_Performance_Plot_final')
 
 plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,labels = labelNames,y_labels = y_label,normalize=True)
 
-#num_false = np.sum(conf_matrix_w[0,:])
-#num_correct = np.sum(conf_matrix_w[1,:])
-#accuracy = num_correct / (num_correct + num_false)
-#print('Final Accuracy Score:')
-#print(accuracy)
+num_false = np.sum(conf_matrix_w[0,:])
+num_correct = np.sum(conf_matrix_w[1,:])
+accuracy = num_correct / (num_correct + num_false)
+print('Final Accuracy Score:')
+print(accuracy)
 
 print(error_final_array)

@@ -1,4 +1,4 @@
-
+from __future__ import division
 import argparse
 import pandas as pd
 import numpy as np
@@ -16,34 +16,46 @@ from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc
 
 #Define key quantities, use to tune BDT
 num_estimators = 300
-test_split = 0.15
-learning_rate = 0.001
+test_split = 0.30
+learning_rate = 0.0001
 
 map_def = [['ggH',10,11],['qqH',20,21,22,23],['VH',30,31,40,41],['ttH',60,61],['tH',80,81]]
 
 binNames = ['ggH','qqH','VH','ttH','tH'] 
+labelNames = binNames
 bins = 50
+
+color  = ['silver','indianred','salmon','lightgreen','seagreen','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
+
 
 train_vars = ['diphotonMass', 'diphotonPt', 'diphotonEta',
 'diphotonPhi', 'diphotonCosPhi', 'diphotonSigmaMoM',
 'leadPhotonIDMVA', 'leadPhotonPtOvM', 'leadPhotonEta',
 'leadPhotonEn', 'leadPhotonMass', 'leadPhotonPt', 'leadPhotonPhi',
-'subleadPhotonIDMVA', 'subleadPhotonPtOvM', 'subleadPhotonEta',
+'subleadPhotonIDMVA', 
+'subleadPhotonPtOvM', 
+'subleadPhotonEta',
 'subleadPhotonEn', 'subleadPhotonMass', 'subleadPhotonPt',
 'subleadPhotonPhi', 'dijetMass', 'dijetPt', 'dijetEta', 'dijetPhi',
-'dijetDPhi', 'dijetAbsDEta', 'dijetCentrality', 'dijetMinDRJetPho',
-'dijetDiphoAbsDEta', 'leadJetPUJID', 'leadJetPt', 'leadJetEn',
+'dijetDPhi', 'dijetAbsDEta', 'dijetCentrality', 
+'dijetMinDRJetPho',
+'dijetDiphoAbsDEta', 'leadJetPUJID', 
+'leadJetPt', 'leadJetEn',
 'leadJetEta', 'leadJetPhi', 'leadJetMass', 'leadJetBTagScore',
 'leadJetDiphoDEta', 'leadJetDiphoDPhi', 'subleadJetPUJID',
-'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi',
-'subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
-'subleadJetDiphoDEta',
-#, 'subsubleadJetPUJID', 'subsubleadJetPt',
+'subleadJetPt', 'subleadJetEn', 'subleadJetEta', 'subleadJetPhi','subleadJetBTagScore','subsubleadJetBTagScore',
+#'subleadJetMass', 'subleadJetBTagScore', 'subleadJetDiphoDPhi',
+#'subleadJetDiphoDEta',
+#'subsubleadJetPUJID', 'subsubleadJetPt',
 #'subsubleadJetEn', 'subsubleadJetEta', 'subsubleadJetPhi',
-#'subsubleadJetMass', 'subsubleadJetBTagScore','nSoftJets',
-'metPt','metPhi','metSumET'
-#'leadElectronEn','leadElectronMass','leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
-#'leadMuonEn','leadMuonMass','leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
+#'subsubleadJetMass', 'subsubleadJetBTagScore',
+'metPt','metPhi','metSumET','nSoftJets',
+'leadElectronEn',
+#'leadElectronMass',
+#'leadElectronPt','leadElectronEta','leadElectronPhi','leadElectronCharge',
+'leadMuonEn'
+#,'leadMuonMass','
+#leadMuonPt','leadMuonEta','leadMuonPhi','leadMuonCharge',
 #'subleadElectronEn','subleadElectronMass','subleadElectronPt','subleadElectronEta','subleadElectronPhi','subleadElectronCharge',
 #'subleadMuonEn','subleadMuonMass','subleadMuonPt','subleadMuonEta','subleadMuonPhi','subleadMuonCharge'
 ]
@@ -54,8 +66,8 @@ train_vars.append('HTXS_stage_0')
 #train_vars.append('HTXS_stage1_2_cat_pTjet30GeV')
 
 dataframes = []
-dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv', nrows = 494025))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv', nrows = 533739))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
 dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv', nrows = 254039))
@@ -87,6 +99,8 @@ def mapping(map_list,stage):
 
 data['proc_new'] = mapping(map_list=map_def,stage=data['HTXS_stage_0'])
 
+data.loc[data.proc_new == 'ggH','weight'] = data[data['proc_new'] == 'ggH']['weight'] * 2
+data.loc[data.proc_new == 'qqH','weight'] = data[data['proc_new'] == 'qqH']['weight'] * 2
 data.loc[data.proc_new == 'tH','weight'] = data[data['proc_new'] == 'tH']['weight'] * 4
 
 #Define the procs as the labels
@@ -95,19 +109,24 @@ data.loc[data.proc_new == 'tH','weight'] = data[data['proc_new'] == 'tH']['weigh
 #y_train_labels_num, y_train_labels_def = pd.factorize(data['proc'])
 
 num_categories = data['proc_new'].nunique()
-y_train_labels_num, y_train_labels_def = pd.factorize(data['proc_new'])
-
-#Label definition:
-print('Label Definition:')
-label_def = []
-for i in range(num_categories):
-    label_def.append([i,y_train_labels_def[i]])
-    print(i,y_train_labels_def[i])
-
+proc_new = np.array(data['proc_new'])
+#Assign the numbers in the same order as the binNames above
+y_train_labels_num = []
+for i in proc_new:
+    if i == 'ggH':
+        y_train_labels_num.append(0)
+    if i == 'qqH':
+        y_train_labels_num.append(1)
+    if i == 'VH':
+        y_train_labels_num.append(2)
+    if i == 'ttH':
+        y_train_labels_num.append(3)
+    if i == 'tH':
+        y_train_labels_num.append(4)
 data['proc_num'] = y_train_labels_num
 
+
 y_train_labels = np.array(data['proc_new'])
-#y_train_labels = np.array(data['proc'])
 y_train_labels_num = np.array(data['proc_num'])
 y_train_labels_hot = np_utils.to_categorical(y_train_labels_num, num_classes=num_categories)
 weights = np.array(data['weight'])
@@ -124,7 +143,7 @@ x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test
 # Current best compbination of HP values:, 300, 0.01, 6)
 
 clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=300, 
-                            eta=0.01, maxDepth=6, min_child_weight=0.01, 
+                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=5)
 
@@ -155,19 +174,58 @@ y_pred = y_pred_test.argmax(axis=1)
 #y_true = y_test.argmax(axis=1)
 y_true = y_test
 print 'Accuracy score: '
-NNaccuracy = accuracy_score(y_true, y_pred)
+NNaccuracy = accuracy_score(y_true, y_pred,sample_weight=test_w)
 print(NNaccuracy)
 
 #Confusion Matrix
-cm = confusion_matrix(y_true=y_true,y_pred=y_pred)
+cm = confusion_matrix(y_true=y_true,y_pred=y_pred,sample_weight=test_w)
+
+cm_new = np.zeros((len(labelNames),len(labelNames)),dtype=int)
+cm_weights = np.zeros((len(labelNames),len(labelNames)),dtype=float)
+cm_weights_squared = np.zeros((len(labelNames),len(labelNames)),dtype=float)
+for i in range(len(y_true)):
+    cm_new[y_true[i]][y_pred[i]] += 1
+    cm_weights[y_true[i]][y_pred[i]] += test_w[i]
+    cm_weights_squared[y_true[i]][y_pred[i]] += test_w[i]**2
+
+num_correct = 0
+num_correct_w = 0
+num_correct_w_squared = 0
+num_all = 0
+num_all_w = 0
+num_all_w_squared = 0
+for i in range(cm_new.shape[0]):
+    for j in range(cm_new.shape[1]):
+        num_all += cm_new[i][j]
+        num_all_w += cm_weights[i][j]
+        num_all_w_squared += cm_weights_squared[i][j]
+        if i == j: # so diagonal
+            num_correct += cm_new[i][j]
+            num_correct_w += cm_weights[i][j]
+            num_correct_w_squared += cm_weights_squared[i][j]
+accuracy = num_correct/num_all
+sigma_e = np.sqrt(num_correct_w_squared)
+sigma_f = np.sqrt(num_all_w_squared)
+e = num_correct_w
+f = num_all_w
+
+def error_function(num_correct, num_all, sigma_correct, sigma_all): 
+    error = (((1/num_all)**2) * (sigma_correct**2) + ((num_correct / (num_all**2))**2) * (sigma_all**2))**0.5
+    return error
+
+accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
+print(accuracy)
+print(accuracy_error)
 
 
 #Confusion Matrix
 def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cmap=plt.cm.Blues):
-    fig, ax = plt.subplots(1)
+    fig, ax = plt.subplots(figsize = (10,10))
     #plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks,classes,rotation=45)
+    plt.rcParams.update({
+    'font.size': 10})
+    plt.xticks(tick_marks,classes,rotation=45,horizontalalignment='right')
     plt.yticks(tick_marks,classes)
     if normalize:
         cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
@@ -183,24 +241,24 @@ def plot_confusion_matrix(cm,classes,normalize=True,title='Confusion matrix',cma
     plt.tight_layout()
     plt.colorbar()
     plt.ylabel('True Label')
-    plt.xlabel('Predicted label')
+    plt.xlabel('Predicted Label')
     name = 'plotting/BDT_plots/BDT_Stage0_Confusion_Matrix'
-    fig.savefig(name)
+    fig.savefig(name,dpi = 1200)
 
 def plot_performance_plot(cm=cm,labels=binNames):
-    #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
     cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     for i in range(len(cm[0])):
         for j in range(len(cm[1])):
             cm[i][j] = float("{:.3f}".format(cm[i][j]))
     print(cm)
     cm = np.array(cm)
-    #fig, ax = plt.subplots(figsize = (12,12))
-    fig, ax = plt.subplots()
-    plt.rcParams.update({
-    'font.size': 12})
+    fig, ax = plt.subplots(figsize = (10,10))
+    #fig, ax = plt.subplots()
+    #plt.rcParams.update({
+    #'font.size': 14})
     tick_marks = np.arange(len(labels))
-    plt.xticks(tick_marks,labels,rotation=90)
+    #plt.xticks(tick_marks,labels,rotation=90)
+    plt.xticks(tick_marks,labels,rotation=45,horizontalalignment='right')
     color = ['#24b1c9','#e36b1e','#1eb037','#c21bcf','#dbb104']
     bottom = np.zeros(len(labels))
     for i in range(len(cm)):
@@ -208,13 +266,14 @@ def plot_performance_plot(cm=cm,labels=binNames):
         #bottom += np.array(cm[:,i])
         ax.bar(labels, cm[i,:],label=labels[i],bottom=bottom,color=color[i])
         bottom += np.array(cm[i,:])
-    plt.legend()
+    plt.legend(loc='upper right')
     current_bottom, current_top = ax.get_ylim()
     ax.set_ylim(bottom=0, top=current_top*1.3)
     #plt.title('Performance Plot')
-    plt.ylabel('Fraction of events')
-    ax.set_xlabel('Events', ha='right',x=1,size=9) #, x=1, size=13)
-    name = 'plotting/NN_plots/NN_Stage0_Performance_Plot'
+    #plt.ylabel('Fraction of events')
+    ax.set_ylabel('Events', ha='center',size=14) #y=0.5,
+    ax.set_xlabel('Predicted Production Modes', ha='center',size=14) #, x=1, size=13)
+    name = 'plotting/BDT_plots/BDT_Stage0_Performance_Plot'
     plt.savefig(name, dpi = 1200)
     plt.show()
 
@@ -252,8 +311,26 @@ def plot_roc_curve(binNames = binNames, y_test = y_test, y_pred_test = y_pred_te
     print("Plotting ROC Curve")
     plt.close()
 
+def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values = False):
+    if num_plots == 'single':
+        plt.rcParams["figure.figsize"] = (12,7)
+        xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(imp_type), show_values = values, color ='blue')
+        plt.tight_layout()
+        plt.savefig('plotting/BDT_plots/BDT_Stage0_feature_importance_{0}'.format(imp_type), dpi = 1200)
+        print('saving: /plotting/BDT_plots/BDT_Stage0_feature_importance_{0}'.format(imp_type))
+        
+    else:
+        imp_types = ['weight','gain','cover']
+        for i in imp_types:
+            xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(i), show_values = values, color ='blue')
+            plt.tight_layout()
+            plt.savefig('plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(i), dpi = 1200)
+            print('saving: plotting/BDT_plots/BDT_qqH_sevenclass_feature_importance_{0}'.format(i))
 
-plot_roc_curve()
+
+#feature_importance()
+
+#plot_roc_curve()
 
 plot_performance_plot()
 

@@ -12,12 +12,12 @@ map_def = [['ggH',10,11],['qqH',20,21,22,23],['VH',30,31,40,41],['ttH',60,61],['
 binNames = ['ggH','qqH','VH','ttH','tH'] 
 
 dataframes = []
-dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
-dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
-#dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv', nrows = 254039))
-#dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv', nrows = 130900))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/ggH_VBF_BDT_df_2017.csv'))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/VBF_VBF_BDT_df_2017.csv'))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/VH_VBF_BDT_df_2017.csv'))
+#dataframes.append(pd.read_csv('2017/MC/DataFrames/ttH_VBF_BDT_df_2017.csv'))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHq_VBF_BDT_df_2017.csv')) #, nrows = 254039))
+dataframes.append(pd.read_csv('2017/MC/DataFrames/tHW_VBF_BDT_df_2017.csv')) #, nrows = 130900))
 df = pd.concat(dataframes, sort=False, axis=0 )
 
 train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','diphotonPhi', 'diphotonSigmaMoM',
@@ -133,14 +133,14 @@ upper_lim = 50000
 num_bins = 50
 
 data_temp = data[data.DR>-10.]
-data_temp = data_temp[data_temp.diphotonPt<150]
+data_temp = data_temp[data_temp.diphotonPt<180]
 
 
 for variable1 in list_variables1:
   
   # Signal
   #data_temp1 = data[data.leadJetEta>-10.]
-
+  '''
   qqh_sig_1 = np.array(data_temp[data_temp['proc_new'] == 'qqH'][variable1])
   qqh_sig_1_w = np.array(data_temp[data_temp['proc_new'] == 'qqH']['weight'])
 
@@ -152,18 +152,19 @@ for variable1 in list_variables1:
 
   tth_sig_1 = np.array(data_temp[data_temp['proc_new'] == 'ttH'][variable1])
   tth_sig_1_w = np.array(data_temp[data_temp['proc_new'] == 'ttH']['weight'])
+  '''
+  th_sig_1 = np.array(data_temp[data_temp['proc_new'] == 'tH'][variable1])
+  th_sig_1_w = np.array(data_temp[data_temp['proc_new'] == 'tH']['weight'])
 
-  #th_sig_1 = np.array(data_temp[data_temp['proc_new'] == 'tH'][variable1])
-  #th_sig_1_w = np.array(data_temp[data_temp['proc_new'] == 'tH']['weight'])
 
   #combined_sig_1 = np.concatenate((qqh_sig_1,vh_sig_1,ggh_sig_1,tth_sig_1,th_sig_1),axis=0)
-  combined_sig_1 = np.concatenate((qqh_sig_1,vh_sig_1,ggh_sig_1,tth_sig_1),axis=0)
+  #combined_sig_1 = np.concatenate((qqh_sig_1,vh_sig_1,ggh_sig_1,tth_sig_1),axis=0)
   #combined_sig_1_w = np.concatenate((qqh_sig_1_w,vh_sig_1_w,ggh_sig_1_w,tth_sig_1_w,th_sig_1_w),axis=0)
 
   for variable2 in list_variables2:
 
     #data_temp2 = data[data.subleadJetEta>-10.]
-
+    '''
     qqh_sig_2 = np.array(data_temp[data_temp['proc_new'] == 'qqH'][variable2])
     qqh_sig_2_w = np.array(data_temp[data_temp['proc_new'] == 'qqH']['weight'])
 
@@ -175,12 +176,12 @@ for variable1 in list_variables1:
 
     tth_sig_2= np.array(data_temp[data_temp['proc_new'] == 'ttH'][variable2])
     tth_sig_2_w = np.array(data_temp[data_temp['proc_new'] == 'ttH']['weight'])
-
-    #th_sig_2 = np.array(data_temp[data_temp['proc_new'] == 'tH'][variable2])
-    #th_sig_2_w = np.array(data_temp[data_temp['proc_new'] == 'tH']['weight'])
+    '''
+    th_sig_2 = np.array(data_temp[data_temp['proc_new'] == 'tH'][variable2])
+    th_sig_2_w = np.array(data_temp[data_temp['proc_new'] == 'tH']['weight'])
 
     #combined_sig_2 = np.concatenate((qqh_sig_2,vh_sig_2,ggh_sig_2,tth_sig_2,th_sig_2),axis=0)
-    combined_sig_2 = np.concatenate((qqh_sig_2,vh_sig_2,ggh_sig_2,tth_sig_2),axis=0)
+    #combined_sig_2 = np.concatenate((qqh_sig_2,vh_sig_2,ggh_sig_2,tth_sig_2),axis=0)
     #combined_sig_2_w = np.concatenate((qqh_sig_2_w,vh_sig_2_w,ggh_sig_2_w,tth_sig_2_w,th_sig_2_w),axis=0)
     
 
@@ -228,20 +229,58 @@ for variable1 in list_variables1:
         ax[1].set_ylim(-5,5)
         ax[1].set_aspect('equal', adjustable='box')
         '''
-        #plotting a single mode
-        #Change the cmap
-        #Include a colorbar
-        #Normalize
-        fig, ax = plt.subplots() #figsize = (10,10)
-        ax.hist2d(tth_sig_1,tth_sig_2,bins=num_bins,cmap=plt.cm.jet)#,label='VBF',)
-        #ax.set_title('VBF')
+        '''
+        fig, ax = plt.subplots()
+        ax.hist2d(ggh_sig_1,ggh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        counts, xedges, yedges, im = ax.hist2d(ggh_sig_1,ggh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        fig.colorbar(im, ax=ax)
         ax.set(xlabel=variable1)
         ax.set(ylabel=variable2)
-        #ax.set_xlim(-5,5)
-        #ax.set_ylim(-5,5)
-        #ax.set_aspect('equal', adjustable='box')
-        name = 'plotting/Correlation_plots/Correlation_' + variable1 + '_' + variable2 
+        name = 'plotting/Correlation_plots/Correlation_' + 'ggH_' + variable1 + '_' + variable2 
         fig.savefig(name, dpi = 1200)
+        print("Saved Figure with name", name)
+
+        fig, ax = plt.subplots()
+        ax.hist2d(qqh_sig_1,qqh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        counts, xedges, yedges, im = ax.hist2d(qqh_sig_1,qqh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        fig.colorbar(im, ax=ax)
+        ax.set(xlabel=variable1)
+        ax.set(ylabel=variable2)
+        name = 'plotting/Correlation_plots/Correlation_' + 'qqH_' + variable1 + '_' + variable2 
+        fig.savefig(name, dpi = 1200)
+        print("Saved Figure with name", name)
+
+        fig, ax = plt.subplots()
+        ax.hist2d(vh_sig_1,vh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        counts, xedges, yedges, im = ax.hist2d(vh_sig_1,vh_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        fig.colorbar(im, ax=ax)
+        ax.set(xlabel=variable1)
+        ax.set(ylabel=variable2)
+        name = 'plotting/Correlation_plots/Correlation_' + 'VH_' + variable1 + '_' + variable2 
+        fig.savefig(name, dpi = 1200)
+        print("Saved Figure with name", name)
+
+        fig, ax = plt.subplots()
+        ax.hist2d(tth_sig_1,tth_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        counts, xedges, yedges, im = ax.hist2d(tth_sig_1,tth_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        fig.colorbar(im, ax=ax)
+        ax.set(xlabel=variable1)
+        ax.set(ylabel=variable2)
+        name = 'plotting/Correlation_plots/Correlation_' + 'ttH_' + variable1 + '_' + variable2 
+        fig.savefig(name, dpi = 1200)
+        print("Saved Figure with name", name)
+
+        '''
+        fig, ax = plt.subplots()
+        ax.hist2d(th_sig_1,th_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        counts, xedges, yedges, im = ax.hist2d(th_sig_1,th_sig_2,bins=num_bins,cmap=plt.cm.jet)
+        fig.colorbar(im, ax=ax)
+        ax.set(xlabel=variable1)
+        ax.set(ylabel=variable2)
+        name = 'plotting/Correlation_plots/Correlation_' + 'tH_' + variable1 + '_' + variable2 
+        fig.savefig(name, dpi = 1200)
+        print("Saved Figure with name", name)
+        
         
       list_plots.append([variable1,variable2])
       list_plots.append([variable2,variable1])

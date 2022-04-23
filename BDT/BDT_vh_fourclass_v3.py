@@ -1,3 +1,4 @@
+from __future__ import division
 import argparse
 import pandas as pd
 import numpy as np
@@ -13,7 +14,7 @@ from keras.utils import np_utils
 from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, roc_auc_score, auc
 
 #Define key quantities, use to tune BDT
-num_estimators = 10 #00 #400
+num_estimators = 400 #00 #400
 test_split = 0.4
 learning_rate = 0.0001
 
@@ -36,10 +37,10 @@ binNames = ['qqH',
             'QQ2HLL_FWDH',
             'ZH_Rest']
 
-labelNames = ['WH $p^H_T$<75',
-            'WH 75<$p^H_T$<150',
+labelNames = ['WH $p^V_T$<75',
+            'WH 75<$p^V_T$<150',
             'WH Rest',
-            'ZH Rest']
+            'ZH']
 
 #color = ['#f0700c', '#e03b04', '#eef522', '#8cad05', '#f5df87', '#6e0903', '#8c4503']
 color  = ['silver','indianred','salmon','lightgreen','seagreen','mediumturquoise','darkslategrey','skyblue','steelblue','lightsteelblue','mediumslateblue']
@@ -61,8 +62,8 @@ train_vars = ['diphotonPt', 'diphotonMass', 'diphotonCosPhi', 'diphotonEta','dip
      #'subsubleadJetMass',
      'metPt','metPhi','metSumET',
      'nSoftJets',
-     'leadElectronEn', 'leadElectronMass', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge',
-     'leadMuonEn', 'leadMuonMass', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge',
+     'leadElectronEn', 'leadElectronPt', 'leadElectronEta', 'leadElectronPhi', 'leadElectronCharge', #'leadElectronMass', 
+     'leadMuonEn', 'leadMuonPt', 'leadMuonEta', 'leadMuonPhi', 'leadMuonCharge', #'leadMuonMass',
      'subleadElectronEn', 'subleadElectronMass', 'subleadElectronPt', 'subleadElectronEta', 'subleadElectronPhi', 'subleadElectronCharge', 
      'subleadMuonEn', 'subleadMuonMass', 'subleadMuonPt', 'subleadMuonEta', 'subleadMuonPhi', 'subleadMuonCharge'
      ]
@@ -189,7 +190,7 @@ x_train, x_test, y_train, y_test, train_w, test_w, proc_arr_train, proc_arr_test
 #Before n_estimators = 100, maxdepth=4, gamma = 1
 #Improved n_estimators = 300, maxdepth = 7, gamme = 4
 clf = xgb.XGBClassifier(objective='multi:softprob', n_estimators=num_estimators, 
-                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
+                            eta=0.001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4,
                             num_class=4) #Could change this num_class
 
@@ -248,10 +249,94 @@ print 'Accuracy score: '
 NNaccuracy = accuracy_score(y_true, y_pred, sample_weight = test_w)
 acc = accuracy_score(y_true, y_pred)
 print(NNaccuracy)
-print(acc)
+#print(acc)
 
 #Confusion Matrix
 cm = confusion_matrix(y_true=y_true,y_pred=y_pred, sample_weight = test_w)
+
+#Generatin own confusion & weights matrix to calculate the accuracy scores
+
+cm_new = np.zeros((len(labelNames),len(labelNames)),dtype=int)
+cm_weights = np.zeros((len(labelNames),len(labelNames)),dtype=float)
+cm_weights_squared = np.zeros((len(labelNames),len(labelNames)),dtype=float)
+for i in range(len(y_true)):
+    cm_new[y_true[i]][y_pred[i]] += 1
+    cm_weights[y_true[i]][y_pred[i]] += test_w[i]
+    cm_weights_squared[y_true[i]][y_pred[i]] += test_w[i]**2
+
+num_correct = 0
+num_correct_w = 0
+num_correct_w_squared = 0
+num_all = 0
+num_all_w = 0
+num_all_w_squared = 0
+for i in range(cm_new.shape[0]):
+    for j in range(cm_new.shape[1]):
+        num_all += cm_new[i][j]
+        num_all_w += cm_weights[i][j]
+        num_all_w_squared += cm_weights_squared[i][j]
+        if i == j: # so diagonal
+            num_correct += cm_new[i][j]
+            num_correct_w += cm_weights[i][j]
+            num_correct_w_squared += cm_weights_squared[i][j]
+accuracy = num_correct/num_all
+sigma_e = np.sqrt(num_correct_w_squared)
+sigma_f = np.sqrt(num_all_w_squared)
+e = num_correct_w
+f = num_all_w
+
+def error_function(num_correct, num_all, sigma_correct, sigma_all): 
+    error = (((1/num_all)**2) * (sigma_correct**2) + ((num_correct / (num_all**2))**2) * (sigma_all**2))**0.5
+    return error
+
+accuracy_error = error_function(num_correct=e, num_all=f, sigma_correct=sigma_e, sigma_all=sigma_f)
+print(accuracy)
+print(accuracy_error)
+
+s_in = []
+s_in_w = []
+s_in_w_squared = []
+s_tot = []
+s_tot_w = []
+s_tot_w_squared = []
+e_s = []
+signal_error_list = []
+b_in = []
+b_in_w = []
+b_in_w_squared = []
+b_tot = []
+b_tot_w = []
+b_tot_w_squared = []
+e_b = []
+bckg_error_list = []
+
+for i in range(len(labelNames)):
+    s_in.append(cm_new[i][i])
+    s_in_w.append(cm_weights[i][i])
+    s_in_w_squared.append(cm_weights_squared[i][i])
+    s_tot.append(np.sum(cm_new[i,:]))
+    s_tot_w.append(np.sum(cm_weights[i,:]))
+    s_tot_w_squared.append(np.sum(cm_weights_squared[i,:]))
+    e_s.append(s_in[i]/s_tot[i])
+
+    b_in.append(np.sum(cm_new[:,i]) - s_in[i])
+    b_in_w.append(np.sum(cm_weights[:,i]) - s_in_w[i])
+    b_in_w_squared.append(np.sum(cm_weights_squared[:,i]) - s_in_w_squared[i])
+    b_tot.append(np.sum(cm_new) - s_tot[i])
+    b_tot_w.append(np.sum(cm_weights) - s_tot_w[i])
+    b_tot_w_squared.append(np.sum(cm_weights_squared) - s_tot_w_squared[i])
+    e_b.append(b_in[i]/b_tot[i])
+
+    print(labelNames[i])
+    signal_error = error_function(s_in_w[i], s_tot_w[i], np.sqrt(s_in_w_squared[i]), np.sqrt(s_tot_w_squared[i]))
+    print('Final Signal Efficiency: ', e_s[i])
+    print('with error: ', signal_error)
+    signal_error_list.append(signal_error)
+
+    bckg_error = error_function(b_in_w[i], b_tot_w[i], np.sqrt(b_in_w_squared[i]), np.sqrt(b_tot_w_squared[i]))
+    print('Final Background Efficiency: ', e_b[i])
+    print('with error: ', bckg_error)
+    bckg_error_list.append(bckg_error)
 
 name_original_cm = 'csv_files/VH_fourclass_BDT_cm'
 np.savetxt(name_original_cm, cm, delimiter = ',')
@@ -277,8 +362,7 @@ def plot_confusion_matrix(cm,classes,labels = labelNames, normalize=True,title='
     plt.tight_layout()
     plt.colorbar()
     plt.ylabel('True Label', size = 12)
-    plt.xlabel('Predicted label', size = 12)
-    plt.tight_layout()
+    plt.xlabel('Predicted Label', size = 12)
     fig.savefig(name, dpi = 1200)
 
 
@@ -310,7 +394,7 @@ def plot_output_score(data='output_score_qqh', density=False):
     name = 'plotting/BDT_plots/BDT_VH_Tenclass_'+data
     plt.savefig(name, dpi = 1200)
 
-def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = color, name = 'plotting/BDT_plots/BDT_VH_Tenclass_Performance_Plot'):
+def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = color, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot'):
     #cm = cm.astype('float')/cm.sum(axis=1)[:,np.newaxis]
     cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
     for i in range(len(cm[0])):
@@ -339,7 +423,7 @@ def plot_performance_plot(cm=cm,labels=labelNames, normalize = True, color = col
     plt.savefig(name, dpi = 1200)
     plt.show()
 
-def plot_roc_curve(binNames = labelNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color, name = 'plotting/BDT_plots/BDT_VH_Tenclass_ROC_curve'):
+def plot_roc_curve(binNames = labelNames, y_test = y_test, y_pred_test = y_pred_test, x_test = x_test, color = color, name = 'plotting/BDT_plots/BDT_VH_Fourclass_ROC_curve'):
     # sample weights
     # find weighted average 
     fig, ax = plt.subplots()
@@ -379,8 +463,8 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
         plt.rcParams["figure.figsize"] = (12,7)
         xgb.plot_importance(clf, max_num_features=num_feature, grid = False, height = 0.4, importance_type = imp_type, title = 'Feature importance ({})'.format(imp_type), show_values = values, color ='blue')
         plt.tight_layout()
-        plt.savefig('plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(imp_type), dpi = 1200)
-        print('saving: /plotting/BDT_plots/BDT_VH_tenclass_feature_importance_{0}'.format(imp_type))
+        plt.savefig('plotting/BDT_plots/BDT_VH_Fourclass_feature_importance_{0}'.format(imp_type), dpi = 1200)
+        print('saving: /plotting/BDT_plots/BDT_VH_Fourclass_feature_importance_{0}'.format(imp_type))
         
     else:
         imp_types = ['weight','gain','cover']
@@ -391,26 +475,45 @@ def feature_importance(num_plots='single',num_feature=20,imp_type='gain',values 
             print('saving: plotting/BDT_plots/BDT_VH_fourclass_feature_importance_{0}'.format(i))
 
 
-plot_confusion_matrix(cm,labelNames,normalize=True)
-#plot_performance_plot()
+plot_performance_plot()
 feature_importance()
+plot_confusion_matrix(cm,labelNames,normalize=True)
+
 #plot_roc_curve(name = 'plotting/BDT_plots/TEST_3')
 #feature_importance()
-print('BDT_qqH_sevenclass: ', NNaccuracy)
-"""
-plot_output_score(data='output_score_qqh1')
-plot_output_score(data='output_score_qqh2')
-plot_output_score(data='output_score_qqh3')
-plot_output_score(data='output_score_qqh4')
-plot_output_score(data='output_score_qqh5')
-plot_output_score(data='output_score_qqh6')
-plot_output_score(data='output_score_qqh7')
-"""
-#exit(0)
+
+
+#plot_output_score(data='output_score_qqh1')
+#plot_output_score(data='output_score_qqh2')
+#plot_output_score(data='output_score_qqh3')
+#plot_output_score(data='output_score_qqh4')
+#plot_output_score(data='output_score_qqh5')
+#plot_output_score(data='output_score_qqh6')
+#plot_output_score(data='output_score_qqh7')
+
 
 # ------------------------ 
 # Binary BDT for signal purity
 # okayy lessgooo
+
+s_in_2 = []
+s_in_w_2 = []
+s_in_w_squared_2 = []
+s_tot_2 = []
+s_tot_w_2 = []
+s_tot_w_squared_2 = []
+e_s_2 = []
+signal_error_list_2 = []
+b_in_2 = []
+b_in_w_2 = []
+b_in_w_squared_2 = []
+b_tot_2 = []
+b_tot_w_2 = []
+b_tot_w_squared_2 = []
+e_b_2 = []
+bckg_error_list_2 = []
+
+error_final_array = []
 
 signal = ['QQ2HLNU_PTV_0_75',
         'QQ2HLNU_PTV_75_150',
@@ -436,12 +539,16 @@ conf_matrix_no_w = np.zeros((2,len(signal)))
 conf_matrix_w2 = np.zeros((1,len(signal)))
 conf_matrix_no_w2 = np.zeros((1,len(signal)))
 
+conf_matrix_3 = np.zeros((2,len(signal)))
+conf_matrix_w_3 = np.zeros((2,len(signal)))
+conf_matrix_w_squared_3 = np.zeros((2,len(signal)))
+
 fig, ax = plt.subplots()
 plt.rcParams.update({'font.size': 9})
 
 for i in range(len(signal)):
-    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=200, 
-                            eta=0.0001, maxDepth=6, min_child_weight=0.01, 
+    clf_2 = xgb.XGBClassifier(objective='binary:logistic', n_estimators=400, 
+                            eta=0.001, maxDepth=6, min_child_weight=0.01, 
                             subsample=0.6, colsample_bytree=0.6, gamma=4)
     
     data_new = x_test.copy()  
@@ -503,8 +610,95 @@ for i in range(len(signal)):
     cm_2 = confusion_matrix(y_true = y_test_2, y_pred = y_pred_2, sample_weight = test_w_2)  #weights result in decimal values <1 so not sure if right
     cm_2_no_weights = confusion_matrix(y_true = y_test_2, y_pred = y_pred_2)
 
-    #print('cm_2:')
-    #print(cm_2)
+    cm_new_3 = np.zeros((2,2),dtype=int)
+    cm_weights_3 = np.zeros((2,2),dtype=float)
+    cm_weights_squared_3 = np.zeros((2,2),dtype=float)
+    for k in range(len(y_test_2)):
+        cm_new_3[y_test_2[k]][y_pred_2[k]] += 1
+        cm_weights_3[y_test_2[k]][y_pred_2[k]] += test_w_2[k]
+        cm_weights_squared_3[y_test_2[k]][y_pred_2[k]] += test_w_2[k]**2
+
+    conf_matrix_3[0][i] = cm_new_3[1][0] + cm_new_3[0][1]
+    conf_matrix_3[1][i] = cm_new_3[0][0] + cm_new_3[1][1]
+    conf_matrix_w_3[0][i] = cm_weights_3[0][1] + cm_weights_3[1][0]
+    conf_matrix_w_3[1][i] = cm_weights_3[0][0] + cm_weights_3[1][1]
+    conf_matrix_w_squared_3[0][i] = cm_weights_squared_3[0][0] + cm_weights_squared_3[1][1]
+    conf_matrix_w_squared_3[1][i] = cm_weights_squared_3[0][0] + cm_weights_squared_3[1][1]
+
+    threshold = 0.5 # bckg efficiency threshold (manually set)
+    # get output score
+    x_test_2['proc'] = proc_arr_test_2
+    x_test_2['weight'] = test_w_2
+    x_test_2['output_score_background'] = y_pred_test_2[:,0]
+    x_test_2[signal[i]] = y_pred_test_2[:,1]
+
+    x_test_qqh1 = x_test_2[x_test_2['proc'] == signal[i]]
+    x_test_qqh2 = x_test_2[x_test_2['proc'] == 'background']
+
+    qqh1_w = x_test_qqh1['weight'] / x_test_qqh1['weight'].sum()
+    qqh2_w = x_test_qqh2['weight'] / x_test_qqh2['weight'].sum()
+
+    output_score_qqh2 = np.array(x_test_qqh2[signal[i]])
+    counts, bins, _ = plt.hist(output_score_qqh2, bins=100, label='Background', histtype='step',weights=qqh2_w,density=True)
+    plt.savefig('plotting/TESTING', dpi = 1200)
+    for j in range(len(bins)):
+        bins_2 = bins[:j+1]
+        counts_2 = counts[:j]
+        area = sum(np.diff(bins_2)*counts_2)
+        if area <= (1-threshold):
+            bdt_score = bins_2[j]
+    print('bdt_score: ', bdt_score)
+    
+    thresh = bdt_score
+    #thresh = 0.3
+
+    y_pred_errors = []
+    for k in range(len(y_test_2)):
+        if y_pred_test_2[:,1][k]>thresh:
+            y_pred_errors.append(1)
+        else:
+            y_pred_errors.append(0)
+    y_pred_errors = np.array(y_pred_errors)
+
+    cm_errors = np.zeros((2,2),dtype=int)
+    cm_errors_weights = np.zeros((2,2),dtype=float)
+    cm_errors_weights_squared = np.zeros((2,2),dtype=float)
+    for l in range(len(y_test_2)):
+        cm_errors[y_test_2[l]][y_pred_errors[l]] += 1
+        cm_errors_weights[y_test_2[l]][y_pred_errors[l]] += test_w_2[l]
+        cm_errors_weights_squared[y_test_2[l]][y_pred_errors[l]] += test_w_2[l]**2
+    
+    print(cm_errors)
+
+    s_in_2.append(cm_errors[1][1])
+    s_in_w_2.append(cm_errors_weights[1][1])
+    s_in_w_squared_2.append(cm_errors_weights_squared[1][1])
+    s_tot_2.append(np.sum(cm_errors[1,:]))
+    s_tot_w_2.append(np.sum(cm_errors_weights[1,:]))
+    s_tot_w_squared_2.append(np.sum(cm_errors_weights_squared[1,:]))
+    e_s_2.append(s_in_2[i]/s_tot_2[i])
+
+    b_in_2.append(cm_errors[0][1])
+    b_in_w_2.append(cm_errors_weights[0][1])
+    b_in_w_squared_2.append(cm_errors_weights_squared[0][1])
+    b_tot_2.append(np.sum(cm_errors[0,:]))
+    b_tot_w_2.append(np.sum(cm_errors_weights[0,:]))
+    b_tot_w_squared_2.append(np.sum(cm_errors_weights_squared[0,:]))
+    e_b_2.append(b_in_2[i]/b_tot_2[i])
+
+    print(signal[i])
+    signal_error = error_function(s_in_w_2[i], s_tot_w_2[i], np.sqrt(s_in_w_squared_2[i]), np.sqrt(s_tot_w_squared_2[i]))
+    print('Final Signal Efficiency: ', e_s_2[i])
+    print('with error: ', signal_error)
+    signal_error_list_2.append(signal_error)
+
+    bckg_error = error_function(b_in_w_2[i], b_tot_w_2[i], np.sqrt(b_in_w_squared_2[i]), np.sqrt(b_tot_w_squared_2[i]))
+    print('Final Background Efficiency: ', e_b_2[i])
+    print('with error: ', bckg_error)
+    bckg_error_list_2.append(bckg_error)
+
+    error_final_array.append(np.sqrt(signal_error_list_2[i]**2 + bckg_error_list_2[i]**2 + signal_error_list[i]**2 + bckg_error_list[i]**2))
+    print('Error final: ', error_final_array[i])
 
     # grabbing predicted label column
     #norm = cm_2[0][1] + cm_2[1][1]
@@ -572,11 +766,44 @@ def plot_performance_plot_final(cm=conf_matrix_w,labels=labelNames, color = colo
     plt.legend()
     current_bottom, current_top = ax.get_ylim()
     ax.set_ylim(bottom=0, top=current_top*1.3)
-    plt.ylabel('Fraction of events', size = 12)
-    ax.set_xlabel('Events',size=12)
+    plt.ylabel('Fraction of Events', size = 12)
+    ax.set_xlabel('Predicted Classes',size=12)
     plt.tight_layout()
     plt.savefig(name, dpi = 1200)
     plt.show()
+
+cm_old = cm
+
+def plot_performance_plot_final_kate(cm=conf_matrix_w, cm_old = cm_old, labels=labelNames, color = color, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot'):
+    cm = cm.astype('float')/cm.sum(axis=0)[np.newaxis,:]
+    cm_old = cm_old.astype('float')/cm_old.sum(axis=0)[np.newaxis,:]
+    sig_old = []
+    for k in range(cm_old.shape[0]):
+        sig_old.append(cm_old[k][k])
+    for i in range(len(cm[0])):
+        for j in range(len(cm[:,1])):
+            cm[j][i] = float("{:.3f}".format(cm[j][i]))
+    cm = np.array(cm)
+    fig, ax = plt.subplots(figsize = (10,10))
+    plt.rcParams.update({
+    'font.size': 9})
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks,labels,rotation=45, horizontalalignment = 'right')
+    bottom = np.zeros(len(labels))   
+    ax.bar(labels, cm[1,:],label='Signal',bottom=bottom,color=color[1])
+    bottom += np.array(cm[1,:])
+    ax.bar(labels, cm[0,:],label='Background',bottom=bottom,color=color[0])
+    ax.bar(labels, sig_old, label = 'Signal before binary BDT',fill = False, ecolor = 'black')
+    plt.legend()
+    current_bottom, current_top = ax.get_ylim()
+    ax.set_ylim(bottom=0, top=current_top*1.3)
+    plt.ylabel('Fraction of Events', size = 12)
+    ax.set_xlabel('Predicted Classes',size=12)
+    plt.tight_layout()
+    plt.savefig(name, dpi = 1200)
+    plt.show()
+# now to make our final plot of performance
+plot_performance_plot_final_kate(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot_final_kate')
 
 def plot_final_confusion_matrix(cm,classes,x_labels = x_label,y_labels = y_label, normalize=True,title='Confusion matrix',cmap=plt.cm.Blues, name = 'plotting/BDT_plots/BDT_VH_Fourclass_final_Confusion_Matrix'):
     fig, ax = plt.subplots(figsize = (10,10))
@@ -606,9 +833,12 @@ def plot_final_confusion_matrix(cm,classes,x_labels = x_label,y_labels = y_label
     plt.tight_layout()
     fig.savefig(name, dpi = 1200)
 # now to make our final plot of performance
-plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot_final')
+#plot_performance_plot_final(cm = conf_matrix_w,labels = labelNames, name = 'plotting/BDT_plots/BDT_VH_Fourclass_Performance_Plot_final')
 
-plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,x_labels = x_label,y_labels = y_label,normalize=True)
+#plot_final_confusion_matrix(cm=confusion_matrix,classes=binNames,x_labels = x_label,y_labels = y_label,normalize=True)
+
+print('Final error array:')
+print(error_final_array)
 
 num_false = np.sum(conf_matrix_w[0,:])
 num_correct = np.sum(conf_matrix_w[1,:])
@@ -616,3 +846,19 @@ accuracy = num_correct / (num_correct + num_false)
 print('BDT Final Accuracy Score:')
 print(accuracy)
 
+
+num_correct_3 = np.sum(conf_matrix_3[1])
+num_correct_w_3 = np.sum(conf_matrix_w_3[1])
+num_correct_w_squared_3 = np.sum(conf_matrix_w_squared_3[1])
+num_all_3 = np.sum(conf_matrix_3)
+num_all_w_3 = np.sum(conf_matrix_w_3)
+num_all_w_squared_3 = np.sum(conf_matrix_w_squared_3)
+accuracy_3 = num_correct_3/num_all_3
+sigma_e_3 = np.sqrt(num_correct_w_squared_3)
+sigma_f_3 = np.sqrt(num_all_w_squared_3)
+e_3 = num_correct_w_3
+f_3 = num_all_w_3
+
+final_accuracy_error = error_function(num_correct=e_3, num_all=f_3, sigma_correct=sigma_e_3, sigma_all=sigma_f_3)
+print(accuracy)
+print(final_accuracy_error)
